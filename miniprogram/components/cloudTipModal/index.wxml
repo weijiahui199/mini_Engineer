@@ -1,0 +1,3 @@
+<!--miniprogram/components/cloudTipModal/index.wxml-->
+<!--  wx:if="{{showUploadTip}}" -->
+<t-button theme="primary">按钮</t-button>

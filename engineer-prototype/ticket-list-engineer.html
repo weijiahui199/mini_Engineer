@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>工单列表 - 工程师视图</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // 模拟用户角色 - 工程师视图
+        const userRole = 'engineer'; // 'engineer' | 'manager'
+        
+        function navigateToAssign(ticketId) {
+            // 实际项目中应导航到分配页面并传递工单ID
+            window.location.href = `ticket-assign.html?ticketId=${ticketId}`;
+        }
+    </script>
+    <style>
+        .priority-urgent { background-color: #ff4d4f; }
+        .priority-high { background-color: #faad14; }
+        .priority-medium { background-color: #1890ff; }
+        .priority-low { background-color: #52c41a; }
+        
+        .status-pending { background-color: #faad14; color: white; }
+        .status-processing { background-color: #1890ff; color: white; }
+        .status-resolved { background-color: #52c41a; color: white; }
+        .status-closed { background-color: #8c8c8c; color: white; }
+        
+        .filter-active {
+            background-color: #1890ff;
+            color: white;
+        }
+        
+        .priority-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- 导航栏 -->
+    <div class="bg-white px-4 py-3 shadow-sm">
+        <div class="flex items-center justify-between">
+            <button class="p-2 -ml-2">
+                <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                </svg>
+            </button>
+            <h1 class="text-lg font-semibold text-gray-800">我的工单 (工程师)</h1>
+            <button class="p-2 -mr-2">
+                <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- 筛选栏 -->
+    <div class="bg-white px-4 py-3 border-b">
+        <div class="flex space-x-2 overflow-x-auto">
+            <button class="filter-active px-3 py-1 rounded-full text-sm whitespace-nowrap">全部</button>
+            <button class="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm whitespace-nowrap">待处理</button>
+            <button class="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm whitespace-nowrap">处理中</button>
+            <button class="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm whitespace-nowrap">已解决</button>
+            <button class="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm whitespace-nowrap">
+                <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
+                </svg>
+                筛选
+            </button>
+        </div>
+    </div>
+
+    <!-- 工单统计 -->
+    <div class="bg-blue-50 px-4 py-3">
+        <div class="flex items-center justify-between text-sm">
+            <span class="text-gray-600">今日分配: 8个工单</span>
+            <span class="text-blue-600 font-medium">完成率: 75%</span>
+        </div>
+    </div>
+
+    <!-- 工单列表 -->
+    <div class="px-4 py-4 space-y-3">
+        <!-- 紧急工单 -->
+        <div class="bg-white rounded-xl p-4 shadow-sm border-l-4 border-red-500">
+            <div class="flex items-start justify-between mb-2">
+                <div class="flex items-center">
+                    <span class="priority-dot priority-urgent"></span>
+                    <span class="font-semibold text-gray-800">#TK001215</span>
+                    <span class="ml-2 bg-red-100 text-red-600 px-2 py-0.5 rounded text-xs">紧急</span>
+                </div>
+                <span class="status-pending px-2 py-0.5 rounded text-xs">待处理</span>
+            </div>
+            
+            <h3 class="font-medium text-gray-800 mb-2">电脑无法开机</h3>
+            
+            <div class="text-sm text-gray-600 space-y-1 mb-3">
+                <div class="flex items-center">
+                    <span class="w-4 text-center">👤</span>
+                    <span class="ml-2">张三 | 财务部</span>
+                </div>
+                <div class="flex items-center">
+                    <span class="w-4 text-center">📞</span>
+                    <span class="ml-2">138****8000</span>
+                </div>
+                <div class="flex items-center">
+                    <span class="w-4 text-center">📍</span>
+                    <span class="ml-2">研发部A区12号工位</span>
+                </div>
+                <div class="flex items-center">
+                    <span class="w-4 text-center">⏰</span>
+                    <span class="ml-2">2小时前</span>
+                </div>
+            </div>
+            
+            <div class="flex justify-end space-x-2">
+                <button class="bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg text-sm">查看详情</button>
+                <!-- 经理分配按钮 -->
+                <button id="assign-btn-1" class="bg-blue-500 text-white px-3 py-1.5 rounded-lg text-sm" onclick="navigateToAssign('TK001215')" style="display: none;">
+                    👥 分配
+                </button>
+                <!-- 工程师处理按钮 -->
+                <button id="process-btn-1" class="bg-red-500 text-white px-3 py-1.5 rounded-lg text-sm" style="display: none;">
+                    立即处理
+                </button>
+            </div>
+        </div>
+
+        <!-- 普通工单 -->
+        <div class="bg-white rounded-xl p-4 shadow-sm">
+            <div class="flex items-start justify-between mb-2">
+                <div class="flex items-center">
+                    <span class="priority-dot priority-high"></span>
+                    <span class="font-semibold text-gray-800">#TK001207</span>
+                    <span class="ml-2 bg-orange-100 text-orange-600 px-2 py-0.5 rounded text-xs">高</span>
+                </div>
+                <span class="status-processing px-2 py-0.5 rounded text-xs">处理中</span>
+            </div>
+            
+            <h3 class="font-medium text-gray-800 mb-2">网络连接问题</h3>
+            
+            <div class="text-sm text-gray-600 space-y-1 mb-3">
+                <div class="flex items-center">
+                    <span class="w-4 text-center">👤</span>
+                    <span class="ml-2">李四 | 行政部</span>
+                </div>
+                <div class="flex items-center">
+                    <span class="w-4 text-center">📞</span>
+                    <span class="ml-2">139****9000</span>
+                </div>
+                <div class="flex items-center">
+                    <span class="w-4 text-center">📍</span>
+                    <span class="ml-2">行政楼4楼405室</span>
+                </div>
+                <div class="flex items-center">
+                    <span class="w-4 text-center">⏰</span>
+                    <span class="ml-2">4小时前</span>
+                </div>
+            </div>
+            
+            <div class="bg-blue-50 p-2 rounded-lg mb-3">
+                <div class="text-xs text-blue-600 font-medium">处理进度</div>
+                <div class="text-sm text-gray-700 mt-1">正在检查网络配置...</div>
+            </div>
+            
+            <div class="flex justify-end space-x-2">
+                <button class="bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg text-sm">查看详情</button>
+                <!-- 经理重新分配按钮 -->
+                <button id="assign-btn-2" class="bg-orange-500 text-white px-3 py-1.5 rounded-lg text-sm" onclick="navigateToAssign('TK001207')" style="display: none;">
+                    🔄 重新分配
+                </button>
+                <!-- 工程师继续处理按钮 -->
+                <button id="process-btn-2" class="bg-blue-500 text-white px-3 py-1.5 rounded-lg text-sm" style="display: none;">
+                    继续处理
+                </button>
+            </div>
+        </div>
+
+        <!-- 低优先级工单 -->
+        <div class="bg-white rounded-xl p-4 shadow-sm">
+            <div class="flex items-start justify-between mb-2">
+                <div class="flex items-center">
+                    <span class="priority-dot priority-low"></span>
+                    <span class="font-semibold text-gray-800">#TK001180</span>
+                    <span class="ml-2 bg-green-100 text-green-600 px-2 py-0.5 rounded text-xs">低</span>
+                </div>
+                <span class="status-pending px-2 py-0.5 rounded text-xs">待处理</span>
+            </div>
+            
+            <h3 class="font-medium text-gray-800 mb-2">软件安装申请</h3>
+            
+            <div class="text-sm text-gray-600 space-y-1 mb-3">
+                <div class="flex items-center">
+                    <span class="w-4 text-center">👤</span>
+                    <span class="ml-2">赵六 | 研发部</span>
+                </div>
+                <div class="flex items-center">
+                    <span class="w-4 text-center">📞</span>
+                    <span class="ml-2">136****7000</span>
+                </div>
+                <div class="flex items-center">
+                    <span class="w-4 text-center">📍</span>
+                    <span class="ml-2">研发楼3楼</span>
+                </div>
+                <div class="flex items-center">
+                    <span class="w-4 text-center">⏰</span>
+                    <span class="ml-2">今天 9:00</span>
+                </div>
+            </div>
+            
+            <div class="flex justify-end space-x-2">
+                <button class="bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg text-sm">查看详情</button>
+                <!-- 经理分配按钮 -->
+                <button id="assign-btn-4" class="bg-blue-500 text-white px-3 py-1.5 rounded-lg text-sm" onclick="navigateToAssign('TK001180')" style="display: none;">
+                    👥 分配
+                </button>
+                <!-- 工程师开始处理按钮 -->
+                <button id="process-btn-4" class="bg-green-500 text-white px-3 py-1.5 rounded-lg text-sm" style="display: none;">
+                    开始处理
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 底部安全区域 -->
+    <div class="h-20"></div>
+
+    <script>
+        // 根据用户角色显示相应的按钮
+        document.addEventListener('DOMContentLoaded', function() {
+            if (userRole === 'manager') {
+                // 经理看到分配按钮
+                document.getElementById('assign-btn-1').style.display = 'inline-block';
+                document.getElementById('assign-btn-2').style.display = 'inline-block';
+                document.getElementById('assign-btn-4').style.display = 'inline-block';
+            } else if (userRole === 'engineer') {
+                // 工程师看到处理按钮
+                document.getElementById('process-btn-1').style.display = 'inline-block';
+                document.getElementById('process-btn-2').style.display = 'inline-block';
+                document.getElementById('process-btn-4').style.display = 'inline-block';
+            }
+        });
+    </script>
+</body>
+</html>
