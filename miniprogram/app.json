@@ -1,15 +1,93 @@
 {
   "pages": [
-    "pages/index/index",
-    "pages/example/index"
+    "pages/dashboard/index",
+    "pages/ticket-list/index",
+    "pages/ticket-detail/index",
+    "pages/materials/index",
+    "pages/statistics/index",
+    "pages/profile/index",
+    "pages/ticket-assign/index",
+    "pages/help-request/index"
   ],
   "window": {
-    "backgroundColor": "#F6F6F6",
     "backgroundTextStyle": "light",
-    "navigationBarBackgroundColor": "#F6F6F6",
-    "navigationBarTitleText": "云开发 QuickStart",
-    "navigationBarTextStyle": "black"
+    "navigationBarBackgroundColor": "#0ea5e9",
+    "navigationBarTitleText": "IT工程师工作台",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#f8fafc"
   },
-  "sitemapLocation": "sitemap.json",
-  "lazyCodeLoading": "requiredComponents"
+  "tabBar": {
+    "color": "#6b7280",
+    "selectedColor": "#0ea5e9",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/dashboard/index",
+        "text": "工作台",
+        "iconPath": "assets/tabbar/dashboard.png",
+        "selectedIconPath": "assets/tabbar/dashboard-active.png"
+      },
+      {
+        "pagePath": "pages/ticket-list/index",
+        "text": "工单",
+        "iconPath": "assets/tabbar/ticket.png",
+        "selectedIconPath": "assets/tabbar/ticket-active.png"
+      },
+      {
+        "pagePath": "pages/materials/index",
+        "text": "耗材",
+        "iconPath": "assets/tabbar/materials.png",
+        "selectedIconPath": "assets/tabbar/materials-active.png"
+      },
+      {
+        "pagePath": "pages/statistics/index",
+        "text": "统计",
+        "iconPath": "assets/tabbar/stats.png",
+        "selectedIconPath": "assets/tabbar/stats-active.png"
+      },
+      {
+        "pagePath": "pages/profile/index",
+        "text": "我的",
+        "iconPath": "assets/tabbar/profile.png",
+        "selectedIconPath": "assets/tabbar/profile-active.png"
+      }
+    ]
+  },
+  "usingComponents": {
+    "t-button": "miniprogram_npm/tdesign-miniprogram/button/button",
+    "t-icon": "miniprogram_npm/tdesign-miniprogram/icon/icon",
+    "t-cell": "miniprogram_npm/tdesign-miniprogram/cell/cell",
+    "t-cell-group": "miniprogram_npm/tdesign-miniprogram/cell-group/cell-group",
+    "t-tag": "miniprogram_npm/tdesign-miniprogram/tag/tag",
+    "t-search": "miniprogram_npm/tdesign-miniprogram/search/search",
+    "t-tabs": "miniprogram_npm/tdesign-miniprogram/tabs/tabs",
+    "t-tab-panel": "miniprogram_npm/tdesign-miniprogram/tab-panel/tab-panel",
+    "t-swipe-cell": "miniprogram_npm/tdesign-miniprogram/swipe-cell/swipe-cell",
+    "t-popup": "miniprogram_npm/tdesign-miniprogram/popup/popup",
+    "t-dialog": "miniprogram_npm/tdesign-miniprogram/dialog/dialog",
+    "t-toast": "miniprogram_npm/tdesign-miniprogram/toast/toast",
+    "t-loading": "miniprogram_npm/tdesign-miniprogram/loading/loading",
+    "t-empty": "miniprogram_npm/tdesign-miniprogram/empty/empty",
+    "t-fab": "miniprogram_npm/tdesign-miniprogram/fab/fab",
+    "t-picker": "miniprogram_npm/tdesign-miniprogram/picker/picker",
+    "t-input": "miniprogram_npm/tdesign-miniprogram/input/input",
+    "t-textarea": "miniprogram_npm/tdesign-miniprogram/textarea/textarea",
+    "t-checkbox": "miniprogram_npm/tdesign-miniprogram/checkbox/checkbox",
+    "t-checkbox-group": "miniprogram_npm/tdesign-miniprogram/checkbox-group/checkbox-group",
+    "t-radio": "miniprogram_npm/tdesign-miniprogram/radio/radio",
+    "t-radio-group": "miniprogram_npm/tdesign-miniprogram/radio-group/radio-group",
+    "t-switch": "miniprogram_npm/tdesign-miniprogram/switch/switch",
+    "t-slider": "miniprogram_npm/tdesign-miniprogram/slider/slider",
+    "t-stepper": "miniprogram_npm/tdesign-miniprogram/stepper/stepper",
+    "t-progress": "miniprogram_npm/tdesign-miniprogram/progress/progress",
+    "t-grid": "miniprogram_npm/tdesign-miniprogram/grid/grid",
+    "t-grid-item": "miniprogram_npm/tdesign-miniprogram/grid-item/grid-item",
+    "t-navbar": "miniprogram_npm/tdesign-miniprogram/navbar/navbar",
+    "t-notice-bar": "miniprogram_npm/tdesign-miniprogram/notice-bar/notice-bar",
+    "t-avatar": "miniprogram_npm/tdesign-miniprogram/avatar/avatar",
+    "t-badge": "miniprogram_npm/tdesign-miniprogram/badge/badge"
+  },
+  "lazyCodeLoading": "requiredComponents",
+  "sitemapLocation": "sitemap.json"
 }

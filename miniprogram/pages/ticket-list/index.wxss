@@ -1,0 +1,250 @@
+/* 工单列表页面样式 */
+.ticket-list-container {
+  min-height: 100vh;
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 搜索容器 */
+.search-container {
+  padding: 24rpx 32rpx;
+  background: white;
+  box-shadow: var(--shadow-light);
+}
+
+/* 筛选容器 */
+.filter-container {
+  background: white;
+  padding: 0 32rpx 24rpx;
+  border-bottom: 1rpx solid #e5e7eb;
+}
+
+.filter-scroll {
+  width: 100%;
+}
+
+.filter-tabs {
+  display: flex;
+  gap: 16rpx;
+  white-space: nowrap;
+}
+
+.filter-count {
+  margin-left: 8rpx;
+  font-weight: 600;
+}
+
+.filter-icon {
+  margin-right: 8rpx;
+}
+
+/* 统计栏 */
+.stats-bar {
+  background: var(--light-blue-50);
+  padding: 20rpx 32rpx;
+  border-bottom: 1rpx solid var(--light-blue-200);
+}
+
+.stats-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.stats-text {
+  font-size: 28rpx;
+  color: #6b7280;
+}
+
+.stats-highlight {
+  font-size: 28rpx;
+  color: var(--primary-color);
+  font-weight: 600;
+}
+
+/* 工单滚动区域 */
+.ticket-scroll {
+  flex: 1;
+  height: 100%;
+}
+
+/* 工单列表 */
+.ticket-list {
+  padding: 24rpx 32rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+}
+
+/* 工单卡片 */
+.ticket-card {
+  background: white;
+  border-radius: var(--radius-md);
+  padding: 24rpx;
+  box-shadow: var(--shadow-standard);
+  border-left: 6rpx solid transparent;
+}
+
+.ticket-card.urgent-border {
+  border-left-color: var(--priority-urgent);
+}
+
+/* 卡片头部 */
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16rpx;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.ticket-no {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #374151;
+}
+
+/* 卡片内容 */
+.card-content {
+  margin-bottom: 16rpx;
+}
+
+.ticket-title {
+  font-size: 32rpx;
+  color: #111827;
+  font-weight: 500;
+  display: block;
+  margin-bottom: 8rpx;
+}
+
+.ticket-category {
+  font-size: 26rpx;
+  color: #6b7280;
+}
+
+/* 卡片信息 */
+.card-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24rpx;
+  margin-bottom: 20rpx;
+}
+
+.info-item {
+  display: flex;
+  align-items: center;
+  font-size: 26rpx;
+  color: #6b7280;
+}
+
+.info-icon {
+  margin-right: 8rpx;
+}
+
+/* 卡片操作 */
+.card-actions {
+  display: flex;
+  gap: 16rpx;
+  justify-content: flex-end;
+}
+
+/* 加载更多 */
+.load-more {
+  padding: 32rpx;
+  display: flex;
+  justify-content: center;
+}
+
+/* 高级筛选弹窗 */
+.filter-popup {
+  background: white;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  padding: 32rpx;
+  padding-bottom: calc(32rpx + env(safe-area-inset-bottom));
+}
+
+.popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32rpx;
+}
+
+.popup-title {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #111827;
+}
+
+.popup-actions {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+}
+
+.reset-btn {
+  font-size: 28rpx;
+  color: #6b7280;
+}
+
+.filter-section {
+  margin-bottom: 32rpx;
+}
+
+.filter-label {
+  font-size: 30rpx;
+  font-weight: 500;
+  color: #374151;
+  display: block;
+  margin-bottom: 16rpx;
+}
+
+/* 滑动操作样式 */
+.swipe-accept {
+  background: var(--primary-color);
+  color: white;
+}
+
+.swipe-pause {
+  background: #faad14;
+  color: white;
+}
+
+/* TDesign组件样式覆盖 */
+.ticket-list-container .t-search {
+  background: var(--light-blue-50);
+  border-radius: var(--radius-md);
+}
+
+.ticket-list-container .t-tag {
+  padding: 8rpx 16rpx;
+  font-size: 26rpx;
+}
+
+.ticket-list-container .t-button--small {
+  height: 56rpx;
+  font-size: 26rpx;
+  padding: 0 24rpx;
+}
+
+.ticket-list-container .t-empty {
+  padding: 120rpx 0;
+}
+
+.ticket-list-container .t-checkbox-group,
+.ticket-list-container .t-radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.ticket-list-container .t-checkbox,
+.ticket-list-container .t-radio {
+  padding: 12rpx 0;
+}

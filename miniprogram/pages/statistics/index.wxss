@@ -1,0 +1,464 @@
+/* 统计页面样式 */
+.statistics-container {
+  min-height: 100vh;
+  background: #f8fafc;
+  padding-bottom: 32rpx;
+}
+
+/* 时间选择器 */
+.time-selector {
+  margin-bottom: 24rpx;
+}
+
+/* 统计区块 */
+.stats-section {
+  padding: 0 32rpx 32rpx;
+}
+
+.section-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 24rpx;
+}
+
+/* 统计卡片网格 */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16rpx;
+}
+
+.stat-card {
+  background: white;
+  border-radius: var(--radius-lg);
+  padding: 24rpx;
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  box-shadow: var(--shadow-light);
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  opacity: 0.9;
+  z-index: 0;
+}
+
+.gradient-blue::before {
+  background: linear-gradient(135deg, #0ea5e9, #06b6d4);
+}
+
+.gradient-green::before {
+  background: linear-gradient(135deg, #10b981, #059669);
+}
+
+.gradient-purple::before {
+  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+}
+
+.gradient-orange::before {
+  background: linear-gradient(135deg, #f59e0b, #f97316);
+}
+
+.stat-icon {
+  width: 64rpx;
+  height: 64rpx;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+}
+
+.stat-info {
+  flex: 1;
+  position: relative;
+  z-index: 1;
+}
+
+.stat-value {
+  font-size: 36rpx;
+  font-weight: bold;
+  color: white;
+  display: block;
+  margin-bottom: 4rpx;
+}
+
+.stat-label {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* 图表区块 */
+.chart-section {
+  padding: 0 32rpx 32rpx;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24rpx;
+}
+
+.chart-tabs {
+  display: flex;
+  gap: 12rpx;
+}
+
+.chart-card {
+  background: white;
+  border-radius: var(--radius-lg);
+  padding: 24rpx;
+  box-shadow: var(--shadow-light);
+}
+
+.chart-placeholder {
+  height: 300rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #f9fafb;
+  border-radius: var(--radius-md);
+  margin-bottom: 24rpx;
+}
+
+.placeholder-text {
+  font-size: 26rpx;
+  color: #9ca3af;
+  margin-top: 16rpx;
+}
+
+/* 图例 */
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 8rpx 0;
+  flex: 0 0 calc(50% - 8rpx);
+}
+
+.legend-dot {
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: 4rpx;
+}
+
+.legend-label {
+  font-size: 26rpx;
+  color: #6b7280;
+  flex: 1;
+}
+
+.legend-value {
+  font-size: 26rpx;
+  font-weight: 500;
+  color: #374151;
+}
+
+/* 团队对比 */
+.team-comparison {
+  background: white;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-light);
+}
+
+.ranking-list {
+  padding: 16rpx;
+}
+
+.ranking-item {
+  display: flex;
+  align-items: center;
+  padding: 16rpx;
+  border-bottom: 1rpx solid #f3f4f6;
+}
+
+.ranking-item:last-child {
+  border-bottom: none;
+}
+
+.ranking-index {
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 24rpx;
+  margin-right: 16rpx;
+}
+
+.ranking-1 {
+  background: #fbbf24;
+  color: white;
+}
+
+.ranking-2 {
+  background: #d1d5db;
+  color: white;
+}
+
+.ranking-3 {
+  background: #f59e0b;
+  color: white;
+}
+
+.ranking-index:not(.ranking-1):not(.ranking-2):not(.ranking-3) {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.ranking-avatar {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 50%;
+  overflow: hidden;
+  margin-right: 16rpx;
+  background: #e5e7eb;
+}
+
+.ranking-avatar image {
+  width: 100%;
+  height: 100%;
+}
+
+.ranking-info {
+  flex: 1;
+}
+
+.ranking-name {
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #111827;
+  display: block;
+  margin-bottom: 8rpx;
+}
+
+.ranking-stats {
+  display: flex;
+  gap: 16rpx;
+}
+
+.ranking-stats .stat-item {
+  font-size: 24rpx;
+  color: #6b7280;
+}
+
+.ranking-score {
+  text-align: center;
+}
+
+.score-value {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: var(--primary-color);
+  display: block;
+  margin-bottom: 4rpx;
+}
+
+.score-label {
+  font-size: 22rpx;
+  color: #9ca3af;
+}
+
+/* 详细数据表格 */
+.detail-section {
+  padding: 0 32rpx 32rpx;
+}
+
+.section-link {
+  font-size: 28rpx;
+  color: var(--primary-color);
+}
+
+.detail-table {
+  background: white;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-light);
+}
+
+.table-header {
+  display: flex;
+  background: #f9fafb;
+  padding: 16rpx 24rpx;
+  border-bottom: 1rpx solid #e5e7eb;
+}
+
+.table-cell {
+  flex: 1;
+  font-size: 26rpx;
+  color: #6b7280;
+  text-align: center;
+}
+
+.table-cell:first-child {
+  text-align: left;
+}
+
+.table-body {
+  max-height: 400rpx;
+}
+
+.table-row {
+  display: flex;
+  padding: 16rpx 24rpx;
+  border-bottom: 1rpx solid #f3f4f6;
+}
+
+.table-row:last-child {
+  border-bottom: none;
+}
+
+.table-row .table-cell {
+  color: #374151;
+}
+
+.text-green {
+  color: #10b981 !important;
+}
+
+.text-blue {
+  color: #0ea5e9 !important;
+}
+
+.text-red {
+  color: #ef4444 !important;
+}
+
+/* 导出区块 */
+.export-section {
+  padding: 0 32rpx 32rpx;
+}
+
+.export-options {
+  margin-top: 16rpx;
+  padding: 16rpx;
+  background: white;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-light);
+}
+
+/* 筛选弹窗 */
+.filter-dialog {
+  background: white;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 32rpx;
+  border-bottom: 1rpx solid #e5e7eb;
+}
+
+.dialog-title {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #111827;
+}
+
+.dialog-content {
+  flex: 1;
+  padding: 32rpx;
+  overflow-y: auto;
+}
+
+.filter-group {
+  margin-bottom: 32rpx;
+}
+
+.filter-label {
+  font-size: 30rpx;
+  font-weight: 500;
+  color: #374151;
+  display: block;
+  margin-bottom: 16rpx;
+}
+
+.dialog-actions {
+  display: flex;
+  gap: 24rpx;
+  padding: 32rpx;
+  border-top: 1rpx solid #e5e7eb;
+}
+
+.dialog-actions .t-button {
+  flex: 1;
+}
+
+/* TDesign组件样式覆盖 */
+.statistics-container .t-navbar {
+  background: var(--primary-color);
+}
+
+.statistics-container .t-navbar__left,
+.statistics-container .t-navbar__center {
+  color: white;
+}
+
+.statistics-container .t-cell-group {
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-light);
+}
+
+.statistics-container .t-tag {
+  padding: 8rpx 16rpx;
+}
+
+.statistics-container .t-button--large {
+  height: 88rpx;
+  font-size: 32rpx;
+}
+
+.statistics-container .t-checkbox-group,
+.statistics-container .t-radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.statistics-container .t-checkbox,
+.statistics-container .t-radio {
+  padding: 12rpx 0;
+}
+
+.statistics-container .t-fab {
+  box-shadow: var(--shadow-elevated);
+}
+
+/* 响应式适配 */
+@media (max-width: 375px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .legend-item {
+    flex: 0 0 100%;
+  }
+}

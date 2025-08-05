@@ -1,0 +1,280 @@
+/* 工程师工作台页面样式 */
+.dashboard-container {
+  min-height: 100vh;
+  background: #f8fafc;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* 状态栏 */
+.status-header {
+  padding: 32rpx;
+  padding-top: calc(32rpx + env(safe-area-inset-top));
+  color: white;
+}
+
+.status-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.engineer-info {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+}
+
+.engineer-details {
+  flex: 1;
+}
+
+.engineer-name {
+  display: flex;
+  align-items: center;
+  font-size: 36rpx;
+  font-weight: 600;
+  margin-bottom: 8rpx;
+}
+
+.status-indicator {
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: 50%;
+  margin-left: 16rpx;
+  margin-right: 8rpx;
+}
+
+.status-indicator.online {
+  background-color: #52c41a;
+}
+
+.status-indicator.busy {
+  background-color: #faad14;
+}
+
+.status-indicator.offline {
+  background-color: #8c8c8c;
+}
+
+.status-text {
+  font-size: 28rpx;
+  opacity: 0.9;
+}
+
+.workload {
+  font-size: 28rpx;
+  opacity: 0.8;
+}
+
+.location-info {
+  text-align: right;
+}
+
+.location {
+  font-size: 28rpx;
+  opacity: 0.9;
+  margin-bottom: 8rpx;
+}
+
+.last-update {
+  font-size: 24rpx;
+  opacity: 0.7;
+}
+
+/* 章节容器 */
+.section-container {
+  padding: 32rpx;
+}
+
+.section-title {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 24rpx;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24rpx;
+}
+
+.section-more {
+  font-size: 28rpx;
+  color: var(--primary-color);
+}
+
+/* 统计项 */
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24rpx;
+  background: white;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-light);
+}
+
+.stat-value {
+  font-size: 48rpx;
+  font-weight: bold;
+  margin-bottom: 8rpx;
+}
+
+.text-orange { color: #faad14; }
+.text-blue { color: #1890ff; }
+.text-green { color: #52c41a; }
+.text-red { color: #ff4d4f; }
+
+/* 快捷操作 */
+.quick-action-icon {
+  width: 120rpx;
+  height: 120rpx;
+  background: white;
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-standard);
+  margin-bottom: 16rpx;
+}
+
+.emoji-icon {
+  font-size: 48rpx;
+}
+
+/* 工单列表 */
+.ticket-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.ticket-card {
+  background: white;
+  border-radius: var(--radius-md);
+  padding: 24rpx;
+  box-shadow: var(--shadow-standard);
+  border-left: 6rpx solid transparent;
+}
+
+.ticket-card[data-priority="urgent"] {
+  border-left-color: var(--priority-urgent);
+}
+
+.ticket-card[data-priority="high"] {
+  border-left-color: var(--priority-high);
+}
+
+.ticket-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16rpx;
+}
+
+.ticket-left {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.ticket-no {
+  font-weight: 600;
+  color: #374151;
+}
+
+.ticket-content {
+  margin-bottom: 16rpx;
+}
+
+.ticket-title {
+  font-size: 32rpx;
+  color: #111827;
+  display: block;
+  margin-bottom: 12rpx;
+}
+
+.ticket-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24rpx;
+}
+
+.meta-item {
+  display: flex;
+  align-items: center;
+  font-size: 26rpx;
+  color: #6b7280;
+}
+
+.meta-icon {
+  margin-right: 8rpx;
+}
+
+.ticket-actions {
+  display: flex;
+  gap: 16rpx;
+  justify-content: flex-end;
+}
+
+/* 状态弹窗 */
+.status-popup {
+  background: white;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  padding: 32rpx;
+  padding-bottom: calc(32rpx + env(safe-area-inset-bottom));
+}
+
+.popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32rpx;
+}
+
+.popup-title {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #111827;
+}
+
+/* TDesign组件样式覆盖 */
+.dashboard-container .t-grid {
+  gap: 16rpx;
+}
+
+.dashboard-container .t-grid-item__content {
+  padding: 0;
+}
+
+.dashboard-container .t-grid-item__text {
+  font-size: 26rpx;
+  color: #6b7280;
+  margin-top: 8rpx;
+}
+
+.dashboard-container .t-notice-bar {
+  border-radius: var(--radius-md);
+}
+
+.dashboard-container .t-tag {
+  padding: 4rpx 12rpx;
+}
+
+.dashboard-container .t-button--small {
+  height: 56rpx;
+  font-size: 26rpx;
+  padding: 0 20rpx;
+}
+
+.dashboard-container .t-radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+}
+
+.dashboard-container .t-radio {
+  padding: 16rpx 0;
+}

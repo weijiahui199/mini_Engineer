@@ -1,0 +1,285 @@
+<!-- 个人中心页面 -->
+<view class="profile-container">
+  <!-- 个人信息头部 -->
+  <view class="profile-header gradient-bg">
+    <view class="header-content">
+      <!-- 头像和基本信息 -->
+      <view class="user-info">
+        <view class="avatar-wrapper">
+          <image 
+            class="user-avatar" 
+            src="{{userInfo.avatar || '/assets/default-avatar.png'}}" 
+            mode="aspectFill"
+            bindtap="changeAvatar"
+          />
+          <view class="avatar-badge" wx:if="{{userInfo.isOnline}}">
+            <view class="badge-dot"></view>
+          </view>
+        </view>
+        <view class="user-details">
+          <text class="user-name">{{userInfo.name}}</text>
+          <text class="user-role">{{userInfo.roleText}}</text>
+          <view class="user-tags">
+            <t-tag theme="primary" variant="light" size="small">{{userInfo.department}}</t-tag>
+            <t-tag theme="success" variant="light" size="small" wx:if="{{userInfo.isManager}}">管理员</t-tag>
+          </view>
+        </view>
+      </view>
+      
+      <!-- 统计数据 -->
+      <view class="stats-row">
+        <view class="stat-item">
+          <text class="stat-value">{{stats.totalCompleted}}</text>
+          <text class="stat-label">累计完成</text>
+        </view>
+        <view class="stat-divider"></view>
+        <view class="stat-item">
+          <text class="stat-value">{{stats.monthCompleted}}</text>
+          <text class="stat-label">本月完成</text>
+        </view>
+        <view class="stat-divider"></view>
+        <view class="stat-item">
+          <text class="stat-value">{{stats.rating}}</text>
+          <text class="stat-label">服务评分</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 快捷入口 -->
+  <view class="quick-entries">
+    <view class="section-title">快捷入口</view>
+    <view class="entries-grid">
+      <view class="entry-item" bindtap="goToTicketStats">
+        <t-icon name="task" size="48rpx" color="#0ea5e9" />
+        <text class="entry-label">工单统计</text>
+      </view>
+      <view class="entry-item" bindtap="goToMaterialStats">
+        <t-icon name="box" size="48rpx" color="#10b981" />
+        <text class="entry-label">耗材统计</text>
+      </view>
+      <view class="entry-item" bindtap="goToWorkHistory">
+        <t-icon name="history" size="48rpx" color="#f59e0b" />
+        <text class="entry-label">工作记录</text>
+      </view>
+      <view class="entry-item" bindtap="goToSettings">
+        <t-icon name="setting" size="48rpx" color="#8b5cf6" />
+        <text class="entry-label">设置</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 功能列表 -->
+  <view class="function-list">
+    <t-cell-group theme="card">
+      <t-cell 
+        title="个人信息" 
+        note="查看和修改个人资料"
+        left-icon="user"
+        arrow
+        bind:click="goToUserInfo"
+      />
+      <t-cell 
+        title="工单统计" 
+        note="{{ticketStats ? '本月完成 ' + ticketStats.completed + ' 单' : '查看工单统计'}}"
+        left-icon="task"
+        arrow
+        bind:click="goToTicketStats"
+      />
+      <t-cell 
+        title="耗材统计" 
+        note="{{materialStats ? '本月使用 ' + materialStats.total + ' 项' : '查看耗材统计'}}"
+        left-icon="box"
+        arrow
+        bind:click="goToMaterialStats"
+      />
+      <t-cell 
+        title="工作记录" 
+        note="查看历史工单记录"
+        left-icon="history"
+        arrow
+        bind:click="goToWorkHistory"
+      />
+    </t-cell-group>
+
+    <t-cell-group theme="card">
+      <t-cell 
+        title="团队管理" 
+        note="管理团队成员"
+        left-icon="usergroup"
+        arrow
+        bind:click="goToTeamManage"
+        wx:if="{{userInfo.isManager}}"
+      />
+      <t-cell 
+        title="排班管理" 
+        note="安排工作排班"
+        left-icon="calendar-event"
+        arrow
+        bind:click="goToScheduleManage"
+        wx:if="{{userInfo.isManager}}"
+      />
+      <t-cell 
+        title="数据报表" 
+        note="查看团队统计报表"
+        left-icon="chart-bubble"
+        arrow
+        bind:click="goToReports"
+        wx:if="{{userInfo.isManager}}"
+      />
+    </t-cell-group>
+
+    <t-cell-group theme="card">
+      <t-cell 
+        title="消息通知" 
+        note="{{unreadCount > 0 ? unreadCount + '条未读' : '系统消息'}}"
+        left-icon="notification"
+        arrow
+        bind:click="goToNotification"
+      >
+        <t-badge 
+          wx:if="{{unreadCount > 0}}"
+          count="{{unreadCount}}"
+          slot="note"
+          offset="{{[0, 0]}}"
+        />
+      </t-cell>
+      <t-cell 
+        title="设置" 
+        note="应用设置和偏好"
+        left-icon="setting"
+        arrow
+        bind:click="goToSettings"
+      />
+      <t-cell 
+        title="帮助与反馈" 
+        note="使用帮助和问题反馈"
+        left-icon="help-circle"
+        arrow
+        bind:click="goToHelp"
+      />
+      <t-cell 
+        title="关于" 
+        note="版本 {{version}}"
+        left-icon="info-circle"
+        arrow
+        bind:click="goToAbout"
+      />
+    </t-cell-group>
+  </view>
+
+  <!-- 退出登录按钮 -->
+  <view class="logout-section">
+    <t-button 
+      theme="default" 
+      size="large"
+      block
+      bind:click="logout"
+    >
+      退出登录
+    </t-button>
+  </view>
+
+  <!-- 设置弹窗 -->
+  <t-popup 
+    visible="{{settingsVisible}}" 
+    placement="bottom"
+    bind:visible-change="handleSettingsChange"
+  >
+    <view class="settings-dialog">
+      <view class="dialog-header">
+        <text class="dialog-title">设置</text>
+        <t-icon name="close" size="48rpx" bindtap="closeSettings" />
+      </view>
+      
+      <view class="dialog-content">
+        <!-- 通知设置 -->
+        <view class="setting-group">
+          <text class="group-title">通知设置</text>
+          <t-cell title="新工单通知">
+            <t-switch 
+              slot="note"
+              value="{{settings.newTicketNotify}}"
+              bind:change="onNewTicketNotifyChange"
+            />
+          </t-cell>
+          <t-cell title="工单状态变更">
+            <t-switch 
+              slot="note"
+              value="{{settings.statusChangeNotify}}"
+              bind:change="onStatusChangeNotifyChange"
+            />
+          </t-cell>
+          <t-cell title="求助请求">
+            <t-switch 
+              slot="note"
+              value="{{settings.helpRequestNotify}}"
+              bind:change="onHelpRequestNotifyChange"
+            />
+          </t-cell>
+        </view>
+        
+        <!-- 工作设置 -->
+        <view class="setting-group">
+          <text class="group-title">工作设置</text>
+          <t-cell title="自动接单">
+            <t-switch 
+              slot="note"
+              value="{{settings.autoAccept}}"
+              bind:change="onAutoAcceptChange"
+            />
+          </t-cell>
+          <t-cell 
+            title="最大并行工单数"
+            note="{{settings.maxParallelTickets}}个"
+            arrow
+            bind:click="setMaxParallelTickets"
+          />
+          <t-cell title="显示地图导航">
+            <t-switch 
+              slot="note"
+              value="{{settings.showNavigation}}"
+              bind:change="onShowNavigationChange"
+            />
+          </t-cell>
+        </view>
+        
+        <!-- 界面设置 -->
+        <view class="setting-group">
+          <text class="group-title">界面设置</text>
+          <t-cell 
+            title="主题"
+            note="{{settings.theme === 'light' ? '浅色' : '深色'}}"
+            arrow
+            bind:click="selectTheme"
+          />
+          <t-cell 
+            title="字体大小"
+            note="{{settings.fontSize}}"
+            arrow
+            bind:click="selectFontSize"
+          />
+        </view>
+        
+        <!-- 隐私设置 -->
+        <view class="setting-group">
+          <text class="group-title">隐私设置</text>
+          <t-cell title="显示在线状态">
+            <t-switch 
+              slot="note"
+              value="{{settings.showOnlineStatus}}"
+              bind:change="onShowOnlineStatusChange"
+            />
+          </t-cell>
+          <t-cell 
+            title="清除缓存"
+            note="{{cacheSize}}"
+            arrow
+            bind:click="clearCache"
+          />
+        </view>
+      </view>
+    </view>
+  </t-popup>
+
+</view>

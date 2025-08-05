@@ -1,0 +1,387 @@
+<!-- 耗材管理页面 -->
+<view class="materials-container">
+  <!-- 统计卡片 -->
+  <view class="stats-section gradient-bg">
+    <view class="stats-card glass-effect">
+      <view class="stats-title">本月耗材使用</view>
+      <view class="stats-content">
+        <view class="stat-item">
+          <text class="stat-value">{{monthlyStats.total}}</text>
+          <text class="stat-label">总数量</text>
+        </view>
+        <view class="stat-divider"></view>
+        <view class="stat-item">
+          <text class="stat-value">{{monthlyStats.types}}</text>
+          <text class="stat-label">种类</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 功能tabs -->
+  <t-tabs 
+    value="{{activeTab}}" 
+    bind:change="onTabChange"
+    sticky
+    swipeable
+  >
+    <t-tab-panel label="快速记录" value="quick">
+      <!-- 常用耗材快速记录 -->
+      <view class="quick-record-section">
+        <view class="section-header">
+          <text class="section-title">常用耗材</text>
+          <text class="section-link" bindtap="manageCommon">管理</text>
+        </view>
+        
+        <view class="common-materials">
+          <view 
+            class="material-card" 
+            wx:for="{{commonMaterials}}" 
+            wx:key="id"
+          >
+            <view class="material-icon">
+              <text>{{item.icon}}</text>
+            </view>
+            <view class="material-info">
+              <text class="material-name">{{item.name}}</text>
+              <text class="material-spec">{{item.spec}}</text>
+            </view>
+            <view class="material-action">
+              <t-stepper 
+                value="{{item.quantity || 0}}"
+                min="0"
+                max="999"
+                bind:change="onQuantityChange"
+                data-id="{{item.id}}"
+              />
+            </view>
+          </view>
+        </view>
+        
+        <!-- 关联工单 -->
+        <view class="relate-ticket">
+          <t-cell 
+            title="关联工单"
+            note="{{relatedTicket ? relatedTicket.ticketNo : '选择工单（可选）'}}"
+            arrow
+            bind:click="selectTicket"
+          />
+        </view>
+        
+        <!-- 快速提交按钮 -->
+        <view class="submit-section">
+          <t-button 
+            theme="primary" 
+            size="large"
+            block
+            bind:click="quickSubmit"
+            disabled="{{!hasSelectedMaterials}}"
+          >
+            提交记录
+          </t-button>
+        </view>
+      </view>
+    </t-tab-panel>
+
+    <t-tab-panel label="使用记录" value="history">
+      <!-- 使用记录列表 -->
+      <view class="history-section">
+        <!-- 筛选栏 -->
+        <view class="filter-bar">
+          <t-search
+            model:value="{{searchKeyword}}"
+            placeholder="搜索耗材名称或工单号"
+            bind:change="onSearchChange"
+          />
+          <view class="filter-options">
+            <t-tag 
+              wx:for="{{timeFilters}}" 
+              wx:key="value"
+              theme="{{item.value === currentTimeFilter ? 'primary' : 'default'}}"
+              variant="{{item.value === currentTimeFilter ? 'dark' : 'outline'}}"
+              size="medium"
+              bind:click="onTimeFilterChange"
+              data-value="{{item.value}}"
+            >
+              {{item.label}}
+            </t-tag>
+          </view>
+        </view>
+        
+        <!-- 记录列表 -->
+        <view class="record-list" wx:if="{{recordList.length > 0}}">
+          <view 
+            class="record-card" 
+            wx:for="{{recordList}}" 
+            wx:key="id"
+            bindtap="viewRecordDetail"
+            data-id="{{item.id}}"
+          >
+            <view class="record-header">
+              <view class="record-date">
+                <text class="date-text">{{item.date}}</text>
+                <text class="time-text">{{item.time}}</text>
+              </view>
+              <t-tag 
+                wx:if="{{item.ticketNo}}"
+                theme="primary"
+                variant="light"
+                size="small"
+              >
+                {{item.ticketNo}}
+              </t-tag>
+            </view>
+            
+            <view class="record-content">
+              <view class="materials-summary">
+                <view 
+                  class="summary-item" 
+                  wx:for="{{item.materials}}" 
+                  wx:for-item="material"
+                  wx:key="id"
+                  wx:if="{{index < 3}}"
+                >
+                  <text class="item-name">{{material.name}}</text>
+                  <text class="item-quantity">×{{material.quantity}}</text>
+                </view>
+                <text wx:if="{{item.materials.length > 3}}" class="more-items">
+                  等{{item.materials.length}}项
+                </text>
+              </view>
+            </view>
+            
+            <view class="record-footer">
+              <view class="record-status">
+                <t-icon name="check-circle" size="32rpx" color="#10b981" />
+                <text class="status-text">已提交</text>
+              </view>
+            </view>
+          </view>
+        </view>
+        
+        <t-empty 
+          wx:else
+          icon="inbox"
+          description="暂无使用记录"
+        />
+        
+        <!-- 加载更多 -->
+        <view class="load-more" wx:if="{{hasMoreRecords}}">
+          <t-loading theme="dots" loading="{{loadingMore}}" text="加载中..." />
+        </view>
+      </view>
+    </t-tab-panel>
+
+    <t-tab-panel label="库存查询" value="inventory">
+      <!-- 库存查询 -->
+      <view class="inventory-section">
+        <!-- 分类选择 -->
+        <view class="category-selector">
+          <scroll-view scroll-x class="category-scroll">
+            <view class="category-list">
+              <view 
+                class="category-item {{item.value === currentCategory ? 'active' : ''}}"
+                wx:for="{{categories}}" 
+                wx:key="value"
+                bindtap="onCategoryChange"
+                data-value="{{item.value}}"
+              >
+                <text class="category-icon">{{item.icon}}</text>
+                <text class="category-name">{{item.label}}</text>
+              </view>
+            </view>
+          </scroll-view>
+        </view>
+        
+        <!-- 库存列表 -->
+        <view class="inventory-list">
+          <view 
+            class="inventory-card" 
+            wx:for="{{inventoryList}}" 
+            wx:key="id"
+          >
+            <view class="inventory-header">
+              <view class="inventory-info">
+                <text class="inventory-name">{{item.name}}</text>
+                <text class="inventory-spec">规格: {{item.spec}}</text>
+              </view>
+              <t-tag 
+                theme="{{getStockTheme(item.stock, item.minStock)}}"
+                variant="light"
+              >
+                {{getStockStatus(item.stock, item.minStock)}}
+              </t-tag>
+            </view>
+            
+            <view class="inventory-stats">
+              <t-progress 
+                percentage="{{getStockPercentage(item.stock, item.maxStock)}}"
+                theme="{{getStockTheme(item.stock, item.minStock)}}"
+              />
+              <view class="stock-numbers">
+                <text class="current-stock">当前库存: {{item.stock}} {{item.unit}}</text>
+                <text class="min-stock">最低库存: {{item.minStock}} {{item.unit}}</text>
+              </view>
+            </view>
+            
+            <view class="inventory-actions">
+              <t-button 
+                theme="primary"
+                variant="outline"
+                size="small"
+                bind:click="applyMaterial"
+                data-item="{{item}}"
+              >
+                申请领用
+              </t-button>
+              <t-button 
+                wx:if="{{item.stock < item.minStock}}"
+                theme="warning"
+                size="small"
+                bind:click="reportShortage"
+                data-item="{{item}}"
+              >
+                报告缺货
+              </t-button>
+            </view>
+          </view>
+        </view>
+      </view>
+    </t-tab-panel>
+
+    <t-tab-panel label="统计分析" value="analysis">
+      <!-- 统计分析 -->
+      <view class="analysis-section">
+        <!-- 时间选择器 -->
+        <view class="time-selector">
+          <t-cell 
+            title="统计时间"
+            note="{{analysisTimeRange}}"
+            arrow
+            bind:click="selectTimeRange"
+          />
+        </view>
+        
+        <!-- 统计图表 -->
+        <view class="chart-container">
+          <view class="chart-card">
+            <view class="chart-title">耗材使用趋势</view>
+            <!-- 这里可以集成图表组件 -->
+            <view class="chart-placeholder">
+              <t-icon name="chart-line" size="80rpx" color="#9ca3af" />
+              <text class="placeholder-text">图表展示区域</text>
+            </view>
+          </view>
+        </view>
+        
+        <!-- 排行榜 -->
+        <view class="ranking-section">
+          <view class="section-title">本月耗材使用TOP5</view>
+          <view class="ranking-list">
+            <view 
+              class="ranking-item" 
+              wx:for="{{topMaterials}}" 
+              wx:key="id"
+            >
+              <view class="ranking-index ranking-{{index + 1}}">
+                {{index + 1}}
+              </view>
+              <view class="ranking-info">
+                <text class="ranking-name">{{item.name}}</text>
+                <text class="ranking-spec">{{item.spec}}</text>
+              </view>
+              <view class="ranking-data">
+                <text class="ranking-quantity">{{item.quantity}} {{item.unit}}</text>
+              </view>
+            </view>
+          </view>
+        </view>
+        
+        <!-- 导出按钮 -->
+        <view class="export-section">
+          <t-button 
+            theme="primary"
+            variant="outline"
+            size="large"
+            block
+            bind:click="exportReport"
+          >
+            导出统计报表
+          </t-button>
+        </view>
+      </view>
+    </t-tab-panel>
+  </t-tabs>
+
+  <!-- 新增耗材记录弹窗 -->
+  <t-popup 
+    visible="{{addDialogVisible}}" 
+    placement="bottom"
+    bind:visible-change="handleAddDialogChange"
+  >
+    <view class="add-dialog">
+      <view class="dialog-header">
+        <text class="dialog-title">新增耗材记录</text>
+        <t-icon name="close" size="48rpx" bindtap="closeAddDialog" />
+      </view>
+      
+      <scroll-view scroll-y class="dialog-content">
+        <!-- 搜索耗材 -->
+        <view class="search-material">
+          <t-search
+            model:value="{{materialSearchKeyword}}"
+            placeholder="搜索耗材名称"
+            bind:change="onMaterialSearch"
+          />
+        </view>
+        
+        <!-- 耗材选择列表 -->
+        <view class="material-select-list">
+          <view 
+            class="select-item {{item.selected ? 'selected' : ''}}"
+            wx:for="{{searchedMaterials}}" 
+            wx:key="id"
+            bindtap="toggleMaterialSelect"
+            data-id="{{item.id}}"
+          >
+            <t-checkbox value="{{item.selected}}" />
+            <view class="select-info">
+              <text class="select-name">{{item.name}}</text>
+              <text class="select-spec">{{item.spec}}</text>
+            </view>
+            <t-stepper 
+              wx:if="{{item.selected}}"
+              value="{{item.quantity || 1}}"
+              min="1"
+              max="999"
+              bind:change="onSelectQuantityChange"
+              data-id="{{item.id}}"
+            />
+          </view>
+        </view>
+        
+        <!-- 备注 -->
+        <view class="remark-section">
+          <t-textarea
+            label="备注说明"
+            model:value="{{recordRemark}}"
+            placeholder="选填"
+            maxlength="200"
+          />
+        </view>
+      </scroll-view>
+      
+      <view class="dialog-actions">
+        <t-button theme="default" bind:click="closeAddDialog">取消</t-button>
+        <t-button theme="primary" bind:click="confirmAddRecord">确定</t-button>
+      </view>
+    </view>
+  </t-popup>
+
+  <!-- 悬浮按钮 -->
+  <t-fab 
+    icon="add"
+    bind:click="showAddDialog"
+    style="bottom: 120rpx; right: 32rpx;"
+  />
+</view>

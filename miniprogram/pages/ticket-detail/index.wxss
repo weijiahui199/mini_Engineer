@@ -1,0 +1,358 @@
+/* 工单详情页面样式 */
+.ticket-detail-container {
+  min-height: 100vh;
+  background: #f8fafc;
+  padding-bottom: 180rpx; /* 为底部操作栏留空间 */
+}
+
+/* 状态栏 */
+.status-bar {
+  padding: 24rpx 32rpx;
+  color: white;
+}
+
+.status-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.status-left {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.ticket-number {
+  font-size: 36rpx;
+  font-weight: 600;
+}
+
+.status-right {
+  display: flex;
+  gap: 12rpx;
+}
+
+/* 区块容器 */
+.section-container {
+  padding: 24rpx 32rpx;
+}
+
+.section-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 16rpx;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16rpx;
+}
+
+/* 描述框 */
+.description-box {
+  background: white;
+  border-radius: var(--radius-md);
+  padding: 24rpx;
+  box-shadow: var(--shadow-light);
+}
+
+.description-text {
+  font-size: 28rpx;
+  color: #374151;
+  line-height: 1.6;
+}
+
+/* 附件列表 */
+.attachment-list {
+  background: white;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-light);
+}
+
+.attachment-item {
+  display: flex;
+  align-items: center;
+  padding: 24rpx;
+  border-bottom: 1rpx solid #e5e7eb;
+}
+
+.attachment-item:last-child {
+  border-bottom: none;
+}
+
+.attachment-name {
+  flex: 1;
+  margin-left: 16rpx;
+  font-size: 28rpx;
+  color: #374151;
+}
+
+/* 时间线 */
+.timeline {
+  background: white;
+  border-radius: var(--radius-md);
+  padding: 24rpx;
+  box-shadow: var(--shadow-light);
+}
+
+.timeline-item {
+  display: flex;
+  padding-bottom: 32rpx;
+  position: relative;
+}
+
+.timeline-item:last-child {
+  padding-bottom: 0;
+}
+
+.timeline-item:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  left: 15rpx;
+  top: 40rpx;
+  bottom: 0;
+  width: 2rpx;
+  background: #e5e7eb;
+}
+
+.timeline-dot {
+  width: 32rpx;
+  height: 32rpx;
+  border-radius: 50%;
+  background: #e5e7eb;
+  flex-shrink: 0;
+  margin-right: 24rpx;
+  margin-top: 4rpx;
+}
+
+.timeline-dot.active {
+  background: var(--primary-color);
+}
+
+.timeline-content {
+  flex: 1;
+}
+
+.timeline-title {
+  font-size: 30rpx;
+  font-weight: 500;
+  color: #111827;
+  margin-bottom: 8rpx;
+}
+
+.timeline-time {
+  font-size: 26rpx;
+  color: #6b7280;
+  margin-bottom: 8rpx;
+}
+
+.timeline-desc {
+  font-size: 26rpx;
+  color: #9ca3af;
+}
+
+/* 解决方案框 */
+.solution-box {
+  background: white;
+  border-radius: var(--radius-md);
+  padding: 24rpx;
+  box-shadow: var(--shadow-light);
+}
+
+/* 耗材列表 */
+.material-list {
+  background: white;
+  border-radius: var(--radius-md);
+  padding: 16rpx;
+  box-shadow: var(--shadow-light);
+}
+
+.material-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16rpx;
+  border-bottom: 1rpx solid #f3f4f6;
+}
+
+.material-item:last-child {
+  border-bottom: none;
+}
+
+.material-info {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+}
+
+.material-name {
+  font-size: 28rpx;
+  color: #374151;
+}
+
+.material-quantity {
+  font-size: 26rpx;
+  color: #6b7280;
+}
+
+/* 底部操作栏 */
+.bottom-actions {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: white;
+  padding: 24rpx 32rpx;
+  box-shadow: 0 -4rpx 20rpx rgba(0, 0, 0, 0.08);
+  z-index: 100;
+}
+
+.action-group {
+  display: flex;
+  gap: 24rpx;
+}
+
+.action-group .t-button {
+  flex: 1;
+}
+
+/* 耗材弹窗 */
+.material-dialog,
+.help-dialog {
+  background: white;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  padding: 32rpx;
+  padding-bottom: calc(32rpx + env(safe-area-inset-bottom));
+}
+
+.dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32rpx;
+}
+
+.dialog-title {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #111827;
+}
+
+.dialog-content {
+  margin-bottom: 32rpx;
+}
+
+.quick-select {
+  margin-bottom: 32rpx;
+}
+
+.select-title {
+  font-size: 30rpx;
+  font-weight: 500;
+  color: #374151;
+  display: block;
+  margin-bottom: 16rpx;
+}
+
+.material-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.quantity-input {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+  margin-bottom: 32rpx;
+}
+
+.input-label {
+  font-size: 30rpx;
+  color: #374151;
+}
+
+.unit-text {
+  font-size: 28rpx;
+  color: #6b7280;
+}
+
+.remark-input {
+  margin-bottom: 32rpx;
+}
+
+.dialog-actions {
+  display: flex;
+  gap: 24rpx;
+}
+
+.dialog-actions .t-button {
+  flex: 1;
+}
+
+/* 协助选择 */
+.helper-select {
+  margin-top: 32rpx;
+}
+
+/* TDesign组件样式覆盖 */
+.ticket-detail-container .t-navbar {
+  background: var(--primary-color);
+}
+
+.ticket-detail-container .t-navbar__left,
+.ticket-detail-container .t-navbar__center {
+  color: white;
+}
+
+.ticket-detail-container .t-cell-group {
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-light);
+}
+
+.ticket-detail-container .t-cell-group__title {
+  padding-bottom: 16rpx;
+}
+
+.ticket-detail-container .t-tag {
+  padding: 8rpx 16rpx;
+}
+
+.ticket-detail-container .t-button--large {
+  height: 88rpx;
+  font-size: 32rpx;
+}
+
+.ticket-detail-container .t-button--small {
+  height: 56rpx;
+  font-size: 26rpx;
+  padding: 0 24rpx;
+}
+
+.ticket-detail-container .t-textarea__wrapper {
+  min-height: 200rpx;
+}
+
+.ticket-detail-container .t-stepper {
+  display: inline-flex;
+}
+
+.ticket-detail-container .t-empty {
+  padding: 32rpx 0;
+}
+
+.ticket-detail-container .t-radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.ticket-detail-container .t-radio {
+  padding: 12rpx 0;
+}

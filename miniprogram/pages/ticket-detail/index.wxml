@@ -1,0 +1,310 @@
+<!-- 工单详情页面 -->
+<view class="ticket-detail-container">
+  <!-- 自定义导航栏 -->
+  <t-navbar 
+    title="工单详情" 
+    left-arrow
+    bind:go-back="handleGoBack"
+  />
+
+  <!-- 工单状态条 -->
+  <view class="status-bar gradient-bg">
+    <view class="status-content">
+      <view class="status-left">
+        <text class="ticket-number">{{ticketInfo.ticketNo}}</text>
+        <t-tag 
+          theme="{{getStatusTheme(ticketInfo.status)}}"
+          variant="light"
+        >
+          {{statusText[ticketInfo.status]}}
+        </t-tag>
+      </view>
+      <view class="status-right">
+        <t-tag 
+          wx:if="{{ticketInfo.priority === 'urgent'}}"
+          theme="danger"
+          variant="light"
+        >
+          紧急
+        </t-tag>
+        <t-tag 
+          wx:elif="{{ticketInfo.priority === 'high'}}"
+          theme="warning"
+          variant="light"
+        >
+          高优先级
+        </t-tag>
+      </view>
+    </view>
+  </view>
+
+  <!-- 工单信息 -->
+  <view class="section-container">
+    <t-cell-group title="工单信息">
+      <t-cell title="问题标题" note="{{ticketInfo.title}}" />
+      <t-cell title="问题类型" note="{{ticketInfo.category}}" />
+      <t-cell title="提交人" note="{{ticketInfo.submitter}}" />
+      <t-cell title="联系电话" note="{{ticketInfo.phone || '未提供'}}" />
+      <t-cell title="所在位置" note="{{ticketInfo.location}}" />
+      <t-cell title="提交时间" note="{{ticketInfo.createTime}}" />
+    </t-cell-group>
+  </view>
+
+  <!-- 问题描述 -->
+  <view class="section-container">
+    <view class="section-title">问题描述</view>
+    <view class="description-box">
+      <text class="description-text">{{ticketInfo.description || '暂无描述'}}</text>
+    </view>
+  </view>
+
+  <!-- 附件信息 -->
+  <view class="section-container" wx:if="{{ticketInfo.attachments && ticketInfo.attachments.length > 0}}">
+    <view class="section-title">相关附件</view>
+    <view class="attachment-list">
+      <view 
+        class="attachment-item" 
+        wx:for="{{ticketInfo.attachments}}" 
+        wx:key="index"
+        bindtap="previewAttachment"
+        data-url="{{item}}"
+      >
+        <t-icon name="file" size="32rpx" />
+        <text class="attachment-name">附件{{index + 1}}</text>
+        <t-icon name="chevron-right" size="24rpx" />
+      </view>
+    </view>
+  </view>
+
+  <!-- 处理进度时间线 -->
+  <view class="section-container">
+    <view class="section-title">处理进度</view>
+    <view class="timeline">
+      <view 
+        class="timeline-item {{item.isActive ? 'active' : ''}}" 
+        wx:for="{{processTimeline}}" 
+        wx:key="id"
+      >
+        <view class="timeline-dot {{item.isActive ? 'active' : ''}}"></view>
+        <view class="timeline-content">
+          <view class="timeline-title">{{item.title}}</view>
+          <view class="timeline-time">{{item.time}}</view>
+          <view class="timeline-desc" wx:if="{{item.description}}">
+            {{item.description}}
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 解决方案 -->
+  <view class="section-container" wx:if="{{ticketInfo.status === 'processing' || ticketInfo.status === 'resolved'}}">
+    <view class="section-title">解决方案</view>
+    <view class="solution-box">
+      <t-textarea
+        model:value="{{solutionText}}"
+        placeholder="请描述您的解决方案..."
+        maxlength="500"
+        indicator
+        disabled="{{ticketInfo.status === 'resolved'}}"
+      />
+    </view>
+  </view>
+
+  <!-- 耗材记录 -->
+  <view class="section-container">
+    <view class="section-header">
+      <text class="section-title">耗材使用</text>
+      <t-button 
+        wx:if="{{ticketInfo.status === 'processing'}}"
+        theme="primary"
+        size="small"
+        bind:click="showMaterialDialog"
+      >
+        添加耗材
+      </t-button>
+    </view>
+    
+    <view class="material-list" wx:if="{{materials.length > 0}}">
+      <view class="material-item" wx:for="{{materials}}" wx:key="id">
+        <view class="material-info">
+          <text class="material-name">{{item.name}}</text>
+          <text class="material-quantity">×{{item.quantity}} {{item.unit}}</text>
+        </view>
+        <t-icon 
+          wx:if="{{ticketInfo.status === 'processing'}}"
+          name="delete"
+          size="32rpx"
+          color="#ef4444"
+          bindtap="removeMaterial"
+          data-id="{{item.id}}"
+        />
+      </view>
+    </view>
+    <t-empty 
+      wx:else
+      icon="box"
+      description="暂无耗材记录"
+      size="small"
+    />
+  </view>
+
+  <!-- 底部操作栏 -->
+  <view class="bottom-actions safe-bottom" wx:if="{{showActions}}">
+    <!-- 待处理状态 -->
+    <view wx:if="{{ticketInfo.status === 'pending'}}" class="action-group">
+      <t-button 
+        theme="default"
+        size="large"
+        bind:click="rejectTicket"
+      >
+        退回
+      </t-button>
+      <t-button 
+        theme="primary"
+        size="large"
+        bind:click="startProcessing"
+      >
+        开始处理
+      </t-button>
+    </view>
+    
+    <!-- 处理中状态 -->
+    <view wx:elif="{{ticketInfo.status === 'processing'}}" class="action-group">
+      <t-button 
+        theme="default"
+        size="large"
+        bind:click="pauseProcessing"
+      >
+        暂停
+      </t-button>
+      <t-button 
+        theme="warning"
+        size="large"
+        bind:click="requestHelp"
+      >
+        请求协助
+      </t-button>
+      <t-button 
+        theme="success"
+        size="large"
+        bind:click="completeTicket"
+      >
+        完成工单
+      </t-button>
+    </view>
+    
+    <!-- 已解决状态 -->
+    <view wx:elif="{{ticketInfo.status === 'resolved'}}" class="action-group">
+      <t-button 
+        theme="primary"
+        size="large"
+        block
+        bind:click="closeTicket"
+      >
+        关闭工单
+      </t-button>
+    </view>
+  </view>
+
+  <!-- 耗材添加弹窗 -->
+  <t-popup 
+    visible="{{materialDialogVisible}}" 
+    placement="bottom"
+    bind:visible-change="handleMaterialDialogChange"
+  >
+    <view class="material-dialog">
+      <view class="dialog-header">
+        <text class="dialog-title">添加耗材</text>
+        <t-icon name="close" size="48rpx" bindtap="closeMaterialDialog" />
+      </view>
+      
+      <view class="dialog-content">
+        <!-- 常用耗材快速选择 -->
+        <view class="quick-select">
+          <text class="select-title">常用耗材</text>
+          <view class="material-tags">
+            <t-tag 
+              wx:for="{{commonMaterials}}" 
+              wx:key="id"
+              theme="{{selectedMaterial.id === item.id ? 'primary' : 'default'}}"
+              variant="{{selectedMaterial.id === item.id ? 'dark' : 'outline'}}"
+              bind:click="selectMaterial"
+              data-item="{{item}}"
+            >
+              {{item.name}}
+            </t-tag>
+          </view>
+        </view>
+        
+        <!-- 数量输入 -->
+        <view class="quantity-input">
+          <text class="input-label">使用数量</text>
+          <t-stepper 
+            model:value="{{materialQuantity}}"
+            min="1"
+            max="100"
+          />
+          <text class="unit-text">{{selectedMaterial.unit || '个'}}</text>
+        </view>
+        
+        <!-- 备注 -->
+        <view class="remark-input">
+          <t-input
+            label="备注说明"
+            model:value="{{materialRemark}}"
+            placeholder="选填"
+          />
+        </view>
+      </view>
+      
+      <view class="dialog-actions">
+        <t-button theme="default" bind:click="closeMaterialDialog">取消</t-button>
+        <t-button theme="primary" bind:click="confirmAddMaterial">确定</t-button>
+      </view>
+    </view>
+  </t-popup>
+
+  <!-- 请求协助弹窗 -->
+  <t-popup 
+    visible="{{helpDialogVisible}}" 
+    placement="bottom"
+    bind:visible-change="handleHelpDialogChange"
+  >
+    <view class="help-dialog">
+      <view class="dialog-header">
+        <text class="dialog-title">请求协助</text>
+        <t-icon name="close" size="48rpx" bindtap="closeHelpDialog" />
+      </view>
+      
+      <view class="dialog-content">
+        <t-textarea
+          model:value="{{helpReason}}"
+          placeholder="请描述需要协助的原因..."
+          maxlength="200"
+          indicator
+        />
+        
+        <view class="helper-select">
+          <text class="select-title">选择协助人员</text>
+          <t-radio-group 
+            value="{{selectedHelper}}"
+            bind:change="onHelperChange"
+          >
+            <t-radio 
+              wx:for="{{availableHelpers}}" 
+              wx:key="id"
+              label="{{item.name}} - {{item.role}}"
+              value="{{item.id}}"
+            />
+          </t-radio-group>
+        </view>
+      </view>
+      
+      <view class="dialog-actions">
+        <t-button theme="default" bind:click="closeHelpDialog">取消</t-button>
+        <t-button theme="primary" bind:click="confirmRequestHelp">发送请求</t-button>
+      </view>
+    </view>
+  </t-popup>
+</view>
