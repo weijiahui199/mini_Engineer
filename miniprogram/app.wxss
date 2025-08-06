@@ -34,7 +34,10 @@
 .t-icon-folder-add:before { content: '📁' !important; }
 .t-icon-file:before { content: '📄' !important; }
 .t-icon-close:before { content: '✕' !important; }
-.t-icon-add:before { content: '+' !important; }
+.t-icon-add:before { content: '+' !important; color: #000 !important; }
+.t-icon-remove:before { content: '−' !important; color: #000 !important; font-weight: bold !important; }
+.t-icon-minus:before { content: '−' !important; color: #000 !important; font-weight: bold !important; }
+.t-icon-minus-circle:before { content: '⊖' !important; color: #000 !important; }
 .t-icon-refresh:before { content: '🔄' !important; }
 .t-icon-lightbulb:before { content: '💡' !important; }
 .t-icon-loading:before { content: '⟳' !important; }
@@ -61,6 +64,8 @@
 .t-icon-error-circle:before { content: '❌' !important; }
 .t-icon-warning:before { content: '⚠️' !important; }
 .t-icon-close-circle:before { content: '⊗' !important; }
+.t-icon-remove-rectangle:before { content: '-' !important; }
+.t-icon-add-rectangle:before { content: '+' !important; }
 
 /* CSS变量定义 */
 page {

@@ -7,8 +7,8 @@
 
 /* 状态栏 */
 .status-header {
-  padding: 32rpx;
-  padding-top: calc(32rpx + env(safe-area-inset-top));
+  padding: 16rpx 32rpx;
+  padding-top: calc(16rpx + env(safe-area-inset-top));
   color: white;
 }
 
@@ -24,6 +24,34 @@
   gap: 24rpx;
 }
 
+/* 头像样式 */
+.engineer-info .t-avatar {
+  position: relative;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.engineer-info .t-avatar:active {
+  transform: scale(0.95);
+  opacity: 0.8;
+}
+
+.engineer-info .t-avatar::after {
+  content: '📷';
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 28rpx;
+  height: 28rpx;
+  background: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
+}
+
 .engineer-details {
   flex: 1;
 }
@@ -31,9 +59,9 @@
 .engineer-name {
   display: flex;
   align-items: center;
-  font-size: 36rpx;
+  font-size: 34rpx;
   font-weight: 600;
-  margin-bottom: 8rpx;
+  margin-bottom: 4rpx;
 }
 
 .status-indicator {
@@ -83,21 +111,21 @@
 
 /* 章节容器 */
 .section-container {
-  padding: 32rpx;
+  padding: 16rpx 32rpx;
 }
 
 .section-title {
-  font-size: 36rpx;
+  font-size: 32rpx;
   font-weight: 600;
   color: #111827;
-  margin-bottom: 24rpx;
+  margin-bottom: 12rpx;
 }
 
 .section-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24rpx;
+  margin-bottom: 12rpx;
 }
 
 .section-more {
@@ -105,21 +133,54 @@
   color: var(--primary-color);
 }
 
-/* 统计项 */
-.stat-item {
+/* 今日工作概览 */
+.today-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12rpx;
+  padding: 4rpx 0;
+}
+
+.stat-card {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 24rpx;
+  padding: 16rpx 10rpx;
   background: white;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-light);
+  transition: all 0.3s;
+}
+
+.stat-card:active {
+  transform: scale(0.95);
+  box-shadow: var(--shadow-standard);
+}
+
+.stat-icon-wrapper {
+  width: 80rpx;
+  height: 80rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8rpx;
+}
+
+.stat-icon {
+  width: 68rpx;
+  height: 68rpx;
+  display: block;
 }
 
 .stat-value {
-  font-size: 48rpx;
+  font-size: 36rpx;
   font-weight: bold;
   margin-bottom: 8rpx;
+}
+
+.stat-label {
+  font-size: 24rpx;
+  color: #6b7280;
 }
 
 .text-orange { color: #faad14; }
@@ -128,16 +189,51 @@
 .text-red { color: #ff4d4f; }
 
 /* 快捷操作 */
-.quick-action-icon {
-  width: 120rpx;
-  height: 120rpx;
+.quick-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12rpx;
+  padding: 4rpx 0;
+}
+
+.quick-action-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16rpx 10rpx;
   background: white;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-light);
+  transition: all 0.3s;
+}
+
+.quick-action-item:active {
+  transform: scale(0.95);
+  box-shadow: var(--shadow-standard);
+}
+
+.quick-action-icon {
+  width: 100rpx;
+  height: 100rpx;
+  background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
   border-radius: var(--radius-lg);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: var(--shadow-standard);
-  margin-bottom: 16rpx;
+  margin-bottom: 8rpx;
+  padding: 12rpx;
+}
+
+.action-image-icon {
+  width: 100rpx;
+  height: 100rpx;
+  display: block;
+}
+
+.quick-action-text {
+  font-size: 26rpx;
+  color: #374151;
+  font-weight: 500;
 }
 
 .emoji-icon {
@@ -148,15 +244,17 @@
 .ticket-list {
   display: flex;
   flex-direction: column;
-  gap: 16rpx;
+  gap: 12rpx;
 }
 
 .ticket-card {
   background: white;
   border-radius: var(--radius-md);
-  padding: 24rpx;
+  padding: 20rpx;
+  padding-bottom: 60rpx;
   box-shadow: var(--shadow-standard);
   border-left: 6rpx solid transparent;
+  position: relative;
 }
 
 .ticket-card[data-priority="urgent"] {
@@ -171,7 +269,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16rpx;
+  margin-bottom: 12rpx;
 }
 
 .ticket-left {
@@ -186,7 +284,7 @@
 }
 
 .ticket-content {
-  margin-bottom: 16rpx;
+  margin-bottom: 12rpx;
 }
 
 .ticket-title {
@@ -214,9 +312,11 @@
 }
 
 .ticket-actions {
+  position: absolute;
+  bottom: 20rpx;
+  right: 20rpx;
   display: flex;
-  gap: 16rpx;
-  justify-content: flex-end;
+  gap: 12rpx;
 }
 
 /* 状态弹窗 */

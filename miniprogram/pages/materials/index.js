@@ -1,6 +1,11 @@
 // 耗材管理页面
 Page({
   data: {
+    // 用户信息
+    userInfo: {
+      isManager: false  // 从缓存或全局状态获取
+    },
+    
     // Tab相关
     activeTab: 'quick',
     
@@ -12,12 +17,12 @@ Page({
     
     // 常用耗材
     commonMaterials: [
-      { id: 1, name: '网线', type: 'network', spec: 'CAT6 超六类', icon: '🔌', quantity: 0, unit: '米' },
-      { id: 2, name: '电源线', type: 'cable', spec: '1.5米', icon: '🔋', quantity: 0, unit: '根' },
-      { id: 3, name: '鼠标', type: 'computer', spec: '无线', icon: '🖱️', quantity: 0, unit: '个' },
-      { id: 4, name: '键盘', type: 'computer', spec: '有线', icon: '⌨️', quantity: 0, unit: '个' },
-      { id: 5, name: '内存条', type: 'computer', spec: 'DDR4 8G', icon: '💾', quantity: 0, unit: '条' },
-      { id: 6, name: '硬盘', type: 'computer', spec: 'SSD 256G', icon: '💿', quantity: 0, unit: '个' }
+      { id: 1, name: '网线', type: 'network', spec: 'CAT6 超六类', photo: '', quantity: 0, unit: '米', stock: 100, minStock: 20 },
+      { id: 2, name: '电源线', type: 'cable', spec: '1.5米', photo: '', quantity: 0, unit: '根', stock: 50, minStock: 10 },
+      { id: 3, name: '鼠标', type: 'computer', spec: '无线', photo: '', quantity: 0, unit: '个', stock: 30, minStock: 5 },
+      { id: 4, name: '键盘', type: 'computer', spec: '有线', photo: '', quantity: 0, unit: '个', stock: 25, minStock: 5 },
+      { id: 5, name: '内存条', type: 'computer', spec: 'DDR4 8G', photo: '', quantity: 0, unit: '条', stock: 15, minStock: 3 },
+      { id: 6, name: '硬盘', type: 'computer', spec: 'SSD 256G', photo: '', quantity: 0, unit: '个', stock: 10, minStock: 2 }
     ],
     
     hasSelectedMaterials: false,
@@ -55,15 +60,54 @@ Page({
     addDialogVisible: false,
     materialSearchKeyword: '',
     searchedMaterials: [],
-    recordRemark: ''
+    recordRemark: '',
+    
+    // 管理功能相关
+    manageDialogVisible: false,
+    editingMaterial: null,
+    newMaterialName: '',
+    newMaterialSpec: '',
+    newMaterialType: 'network',
+    newMaterialMinStock: 10,
+    newMaterialMaxStock: 100,
+    newMaterialUnit: '个',
+    newMaterialPhoto: '',
+    newMaterialTypeLabel: '网络设备',  // 默认类型标签
+    newMaterialStock: 0,
+    materialTypes: [
+      { label: '网络设备', value: 'network' },
+      { label: '电脑配件', value: 'computer' },
+      { label: '办公用品', value: 'office' },
+      { label: '线材耗材', value: 'cable' }
+    ],
+    materialUnits: ['个', '根', '米', '条', '套', '台', 'GB']
   },
 
   onLoad() {
+    // 检查用户角色
+    const userRole = wx.getStorageSync('userRole') || 'engineer';
+    this.setData({
+      'userInfo.isManager': userRole === 'manager'
+    });
+    
+    this.loadUserInfo();
     this.loadInitialData();
+  },
+  
+  // 加载用户信息
+  loadUserInfo() {
+    const userInfo = wx.getStorageSync('userInfo') || { isManager: false };
+    this.setData({ userInfo });
   },
 
   // 加载初始数据
   loadInitialData() {
+    // 从本地存储加载耗材数据
+    const storedMaterials = wx.getStorageSync('materials');
+    if (storedMaterials && storedMaterials.length > 0) {
+      this.setData({ commonMaterials: storedMaterials });
+    }
+    
     this.loadRecordList();
     this.loadInventoryList();
     this.loadTopMaterials();
@@ -272,7 +316,10 @@ Page({
         stock: 200,
         minStock: 100,
         maxStock: 500,
-        unit: '米'
+        unit: '米',
+        type: 'network',
+        photo: '',
+        icon: '/assets/icons/unknown.png'
       },
       {
         id: 2,
@@ -281,7 +328,10 @@ Page({
         stock: 15,
         minStock: 20,
         maxStock: 100,
-        unit: '根'
+        unit: '根',
+        type: 'cable',
+        photo: '',
+        icon: '/assets/icons/unknown.png'
       },
       {
         id: 3,
@@ -290,7 +340,10 @@ Page({
         stock: 8,
         minStock: 10,
         maxStock: 50,
-        unit: '个'
+        unit: '个',
+        type: 'computer',
+        photo: '',
+        icon: '/assets/icons/unknown.png'
       },
       {
         id: 4,
@@ -299,7 +352,10 @@ Page({
         stock: 12,
         minStock: 10,
         maxStock: 50,
-        unit: '个'
+        unit: '个',
+        type: 'computer',
+        photo: '',
+        icon: '/assets/icons/unknown.png'
       }
     ];
     
@@ -509,6 +565,376 @@ Page({
   handleAddDialogChange(e) {
     this.setData({
       addDialogVisible: e.detail.visible
+    });
+  },
+  
+  // ========== 管理员功能 ==========
+  
+  // 显示管理弹窗
+  showManageDialog() {
+    this.setData({
+      manageDialogVisible: true,
+      editingMaterial: null,
+      newMaterialName: '',
+      newMaterialSpec: '',
+      newMaterialType: 'network',
+      newMaterialMinStock: 10,
+      newMaterialMaxStock: 100,
+      newMaterialUnit: '个',
+      newMaterialPhoto: ''
+    });
+  },
+  
+  // 关闭管理弹窗
+  closeManageDialog() {
+    this.setData({
+      manageDialogVisible: false
+    });
+  },
+  
+  // 处理管理弹窗变化
+  handleManageDialogChange(e) {
+    this.setData({
+      manageDialogVisible: e.detail.visible
+    });
+  },
+  
+  // 编辑耗材
+  editMaterial(e) {
+    const item = e.currentTarget.dataset.item;
+    this.setData({
+      manageDialogVisible: true,
+      editingMaterial: item,
+      newMaterialName: item.name,
+      newMaterialSpec: item.spec,
+      newMaterialType: item.type,
+      newMaterialMinStock: item.minStock,
+      newMaterialMaxStock: item.maxStock,
+      newMaterialUnit: item.unit,
+      newMaterialPhoto: item.photo || ''
+    });
+  },
+  
+  // 删除耗材
+  deleteMaterial(e) {
+    const item = e.currentTarget.dataset.item;
+    wx.showModal({
+      title: '确认删除',
+      content: `确定要删除"${item.name}"吗？`,
+      success: (res) => {
+        if (res.confirm) {
+          const inventoryList = this.data.inventoryList.filter(material => material.id !== item.id);
+          this.setData({ inventoryList });
+          wx.showToast({
+            title: '删除成功',
+            icon: 'success'
+          });
+        }
+      }
+    });
+  },
+  
+  // 调整库存
+  adjustStock(e) {
+    const item = e.currentTarget.dataset.item;
+    wx.showModal({
+      title: '调整库存',
+      editable: true,
+      placeholderText: `当前库存：${item.stock} ${item.unit}`,
+      success: (res) => {
+        if (res.confirm && res.content) {
+          const newStock = parseInt(res.content);
+          if (!isNaN(newStock) && newStock >= 0) {
+            const inventoryList = this.data.inventoryList.map(material => {
+              if (material.id === item.id) {
+                material.stock = newStock;
+              }
+              return material;
+            });
+            this.setData({ inventoryList });
+            wx.showToast({
+              title: '调整成功',
+              icon: 'success'
+            });
+          } else {
+            wx.showToast({
+              title: '请输入有效数字',
+              icon: 'none'
+            });
+          }
+        }
+      }
+    });
+  },
+  
+  // 选择耗材照片
+  chooseMaterialPhoto() {
+    wx.chooseImage({
+      count: 1,
+      sizeType: ['compressed'],
+      sourceType: ['album', 'camera'],
+      success: (res) => {
+        const tempFilePath = res.tempFilePaths[0];
+        this.setData({
+          newMaterialPhoto: tempFilePath
+        });
+      }
+    });
+  },
+  
+  // 选择耗材类型
+  selectMaterialType() {
+    const typeLabels = this.data.materialTypes.map(type => type.label);
+    wx.showActionSheet({
+      itemList: typeLabels,
+      success: (res) => {
+        this.setData({
+          newMaterialType: this.data.materialTypes[res.tapIndex].value
+        });
+      }
+    });
+  },
+  
+  // 选择单位
+  selectMaterialUnit() {
+    wx.showActionSheet({
+      itemList: this.data.materialUnits,
+      success: (res) => {
+        this.setData({
+          newMaterialUnit: this.data.materialUnits[res.tapIndex]
+        });
+      }
+    });
+  },
+  
+  // 显示添加耗材弹窗
+  showAddMaterialDialog() {
+    this.setData({
+      manageDialogVisible: true,
+      editingMaterial: null,
+      newMaterialName: '',
+      newMaterialSpec: '',
+      newMaterialType: 'network',
+      newMaterialTypeLabel: '网络设备',
+      newMaterialUnit: '个',
+      newMaterialStock: 0,
+      newMaterialMinStock: 10,
+      newMaterialMaxStock: 100,
+      newMaterialPhoto: ''
+    });
+  },
+  
+  // 编辑耗材
+  editMaterial(e) {
+    const item = e.currentTarget.dataset.item;
+    const typeLabel = this.data.materialTypes.find(t => t.value === item.type)?.label || '网络设备';
+    this.setData({
+      manageDialogVisible: true,
+      editingMaterial: item,
+      newMaterialName: item.name,
+      newMaterialSpec: item.spec,
+      newMaterialType: item.type,
+      newMaterialTypeLabel: typeLabel,
+      newMaterialUnit: item.unit,
+      newMaterialStock: item.stock || 0,
+      newMaterialMinStock: item.minStock || 10,
+      newMaterialMaxStock: item.maxStock || 100,
+      newMaterialPhoto: item.photo || ''
+    });
+  },
+  
+  // 删除耗材
+  deleteMaterial(e) {
+    const id = e.currentTarget.dataset.id;
+    wx.showModal({
+      title: '确认删除',
+      content: '确定要删除该耗材吗？',
+      success: (res) => {
+        if (res.confirm) {
+          const materials = this.data.commonMaterials.filter(item => item.id !== id);
+          this.setData({ commonMaterials: materials });
+          wx.setStorageSync('materials', materials);
+          wx.showToast({
+            title: '删除成功',
+            icon: 'success'
+          });
+        }
+      }
+    });
+  },
+  
+  // 选择耗材图片
+  chooseMaterialPhoto() {
+    wx.chooseImage({
+      count: 1,
+      sizeType: ['compressed'],
+      sourceType: ['album', 'camera'],
+      success: (res) => {
+        const tempFilePath = res.tempFilePaths[0];
+        // 在实际应用中，这里应该上传到服务器
+        // 现在仅保存到本地
+        this.setData({
+          newMaterialPhoto: tempFilePath
+        });
+      }
+    });
+  },
+  
+  // 点击耗材图片上传（管理列表中）
+  uploadMaterialPhoto(e) {
+    const id = e.currentTarget.dataset.id;
+    wx.chooseImage({
+      count: 1,
+      sizeType: ['compressed'],
+      sourceType: ['album', 'camera'],
+      success: (res) => {
+        const tempFilePath = res.tempFilePaths[0];
+        const materials = this.data.commonMaterials.map(item => {
+          if (item.id === id) {
+            return { ...item, photo: tempFilePath };
+          }
+          return item;
+        });
+        this.setData({ commonMaterials: materials });
+        wx.setStorageSync('materials', materials);
+        wx.showToast({
+          title: '图片更新成功',
+          icon: 'success'
+        });
+      }
+    });
+  },
+  
+  // 选择耗材类型
+  selectMaterialType() {
+    wx.showActionSheet({
+      itemList: this.data.materialTypes.map(item => item.label),
+      success: (res) => {
+        const type = this.data.materialTypes[res.tapIndex];
+        this.setData({
+          newMaterialType: type.value,
+          newMaterialTypeLabel: type.label
+        });
+      }
+    });
+  },
+  
+  // 关闭管理弹窗
+  closeManageDialog() {
+    this.setData({
+      manageDialogVisible: false
+    });
+  },
+  
+  // 弹窗状态变化
+  handleManageDialogChange(e) {
+    this.setData({
+      manageDialogVisible: e.detail.visible
+    });
+  },
+  
+  // 确认保存耗材
+  confirmManageMaterial() {
+    const { 
+      newMaterialName, 
+      newMaterialSpec, 
+      newMaterialType, 
+      newMaterialUnit,
+      newMaterialStock,
+      newMaterialMinStock, 
+      newMaterialMaxStock, 
+      newMaterialPhoto, 
+      editingMaterial 
+    } = this.data;
+    
+    if (!newMaterialName.trim()) {
+      wx.showToast({
+        title: '请输入耗材名称',
+        icon: 'none'
+      });
+      return;
+    }
+    
+    if (newMaterialMinStock >= newMaterialMaxStock) {
+      wx.showToast({
+        title: '最低库存应小于最高库存',
+        icon: 'none'
+      });
+      return;
+    }
+    
+    const materialData = {
+      name: newMaterialName.trim(),
+      spec: newMaterialSpec.trim(),
+      type: newMaterialType,
+      unit: newMaterialUnit,
+      stock: newMaterialStock,
+      minStock: newMaterialMinStock,
+      maxStock: newMaterialMaxStock,
+      photo: newMaterialPhoto || '',
+      quantity: 0
+    };
+    
+    let materials = [...this.data.commonMaterials];
+    
+    if (editingMaterial) {
+      // 编辑模式
+      materials = materials.map(item => {
+        if (item.id === editingMaterial.id) {
+          return { ...item, ...materialData };
+        }
+        return item;
+      });
+    } else {
+      // 新增模式
+      const newMaterial = {
+        ...materialData,
+        id: Date.now()
+      };
+      materials.push(newMaterial);
+    }
+    
+    this.setData({ 
+      commonMaterials: materials,
+      manageDialogVisible: false
+    });
+    
+    // 保存到本地存储
+    wx.setStorageSync('materials', materials);
+    
+    wx.showToast({
+      title: editingMaterial ? '编辑成功' : '添加成功',
+      icon: 'success'
+    });
+  },
+  
+  // 调整库存
+  adjustStock(e) {
+    const item = e.currentTarget.dataset.item;
+    wx.showModal({
+      title: '调整库存',
+      content: `当前库存: ${item.stock} ${item.unit}`,
+      editable: true,
+      placeholderText: '请输入新的库存数量',
+      success: (res) => {
+        if (res.confirm && res.content) {
+          const newStock = parseInt(res.content);
+          if (!isNaN(newStock) && newStock >= 0) {
+            const materials = this.data.commonMaterials.map(m => {
+              if (m.id === item.id) {
+                return { ...m, stock: newStock };
+              }
+              return m;
+            });
+            this.setData({ commonMaterials: materials });
+            wx.setStorageSync('materials', materials);
+            wx.showToast({
+              title: '库存调整成功',
+              icon: 'success'
+            });
+          }
+        }
+      }
     });
   }
 });

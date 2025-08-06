@@ -371,6 +371,28 @@ Page({
     });
   },
 
+  // 切换管理员模式（仅用于测试）
+  onManagerModeChange(e) {
+    const isManager = e.detail.value;
+    const updatedUserInfo = {
+      ...this.data.userInfo,
+      isManager,
+      roleText: isManager ? 'IT运维主管' : 'IT运维工程师'
+    };
+    
+    this.setData({
+      userInfo: updatedUserInfo
+    });
+    
+    // 保存到本地存储
+    wx.setStorageSync('userInfo', updatedUserInfo);
+    
+    wx.showToast({
+      title: isManager ? '已切换为管理员模式' : '已切换为普通用户模式',
+      icon: 'none'
+    });
+  },
+  
   // 分享
   onShareAppMessage() {
     return {

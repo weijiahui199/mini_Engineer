@@ -82,8 +82,10 @@
   background: white;
   border-radius: var(--radius-md);
   padding: 24rpx;
+  padding-bottom: 70rpx;
   box-shadow: var(--shadow-standard);
   border-left: 6rpx solid transparent;
+  position: relative;
 }
 
 .ticket-card.urgent-border {
@@ -149,9 +151,11 @@
 
 /* 卡片操作 */
 .card-actions {
+  position: absolute;
+  bottom: 24rpx;
+  right: 24rpx;
   display: flex;
-  gap: 16rpx;
-  justify-content: flex-end;
+  gap: 12rpx;
 }
 
 /* 加载更多 */

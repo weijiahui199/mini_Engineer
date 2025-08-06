@@ -1,0 +1,9 @@
+{
+  "name": "fileManager",
+  "version": "1.0.0",
+  "description": "文件管理云函数，支持工单文件的管理和统计",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+} 

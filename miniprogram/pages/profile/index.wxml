@@ -278,6 +278,18 @@
             bind:click="clearCache"
           />
         </view>
+        
+        <!-- 测试设置 -->
+        <view class="setting-group">
+          <text class="group-title">测试功能</text>
+          <t-cell title="管理员模式">
+            <t-switch 
+              slot="note"
+              value="{{userInfo.isManager}}"
+              bind:change="onManagerModeChange"
+            />
+          </t-cell>
+        </view>
       </view>
     </view>
   </t-popup>

@@ -27,10 +27,10 @@ Page({
     
     // 今日统计
     todayStats: [
-      { key: 'pending', label: '待处理', value: 3, colorClass: 'text-orange' },
-      { key: 'processing', label: '进行中', value: 5, colorClass: 'text-blue' },
-      { key: 'resolved', label: '已完成', value: 2, colorClass: 'text-green' },
-      { key: 'urgent', label: '紧急', value: 1, colorClass: 'text-red' }
+      { key: 'pending', label: '待处理', value: 3, colorClass: 'text-orange', icon: '/assets/icons/pending-icon.png' },
+      { key: 'processing', label: '进行中', value: 5, colorClass: 'text-blue', icon: '/assets/icons/processing-icon.png' },
+      { key: 'resolved', label: '已完成', value: 2, colorClass: 'text-green', icon: '/assets/icons/completed-icon.png' },
+      { key: 'urgent', label: '紧急', value: 1, colorClass: 'text-red', icon: '/assets/icons/urgent-icon.png' }
     ],
     
     // 紧急工单
@@ -38,10 +38,10 @@ Page({
     
     // 快捷操作
     quickActions: [
-      { key: 'my-tickets', title: '我的工单', icon: '📋' },
-      { key: 'materials', title: '耗材管理', icon: '📦' },
-      { key: 'help', title: '呼叫经理', icon: '📞' },
-      { key: 'stats', title: '工作统计', icon: '📊' }
+      { key: 'my-tickets', title: '我的工单', icon: '📋', imageIcon: '/assets/icons/ticket-icon.png' },
+      { key: 'materials', title: '耗材管理', icon: '📦', imageIcon: '/assets/icons/material-icon.png' },
+      { key: 'help', title: '呼叫经理', icon: '📞', imageIcon: '/assets/icons/call-icon.png' },
+      { key: 'stats', title: '工作统计', icon: '📊', imageIcon: '/assets/icons/stats-icon.png' }
     ],
     
     // 最新工单
@@ -279,22 +279,63 @@ Page({
     }
   },
 
+  // 更换头像
+  changeAvatar() {
+    wx.chooseImage({
+      count: 1,
+      sizeType: ['compressed'],
+      sourceType: ['album', 'camera'],
+      success: (res) => {
+        const tempFilePath = res.tempFilePaths[0];
+        // 这里应该上传到服务器，现在先保存在本地
+        this.uploadAvatar(tempFilePath);
+      }
+    });
+  },
+
+  // 上传头像
+  uploadAvatar(filePath) {
+    wx.showLoading({
+      title: '上传中...'
+    });
+    
+    // 模拟上传过程
+    setTimeout(() => {
+      // 更新头像
+      this.setData({
+        'engineerInfo.avatar': filePath
+      });
+      
+      // 保存到本地存储
+      wx.setStorageSync('userAvatar', filePath);
+      
+      wx.hideLoading();
+      wx.showToast({
+        title: '头像更新成功',
+        icon: 'success'
+      });
+    }, 1500);
+  },
+
   // 获取模拟数据
   getMockDashboardData() {
+    // 获取保存的头像
+    const savedAvatar = wx.getStorageSync('userAvatar') || '';
+    
     return {
       engineerInfo: {
         name: '张工程师',
-        avatar: '',
+        avatar: savedAvatar,
         status: 'online',
         currentTasks: 5,
         maxTasks: 10,
         location: '行政楼2楼'
       },
       todayStats: [
-        { key: 'pending', label: '待处理', value: 3, colorClass: 'text-orange' },
-        { key: 'processing', label: '进行中', value: 5, colorClass: 'text-blue' },
-        { key: 'resolved', label: '已完成', value: 2, colorClass: 'text-green' },
-        { key: 'urgent', label: '紧急', value: 1, colorClass: 'text-red' }
+        { key: 'pending', label: '待处理', value: 3, colorClass: 'text-orange', icon: '/assets/icons/pending-icon.png' },
+        { key: 'processing', label: '进行中', value: 5, colorClass: 'text-blue', icon: '/assets/icons/processing-icon.png' },
+        { key: 'resolved', label: '已完成', value: 2, colorClass: 'text-green', icon: '/assets/icons/completed-icon.png' },
+        { key: 'urgent', label: '紧急', value: 1, colorClass: 'text-red', icon: '/assets/icons/urgent-icon.png' }
       ],
       urgentTickets: [
         { id: 'TK001215', title: '电脑无法开机' }

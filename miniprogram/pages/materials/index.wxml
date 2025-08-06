@@ -40,7 +40,11 @@
             wx:key="id"
           >
             <view class="material-icon">
-              <text>{{item.icon}}</text>
+              <image 
+                src="{{item.photo || '/assets/icons/unknown.png'}}"
+                mode="aspectFill"
+                class="material-icon-image"
+              />
             </view>
             <view class="material-info">
               <text class="material-name">{{item.name}}</text>
@@ -243,6 +247,15 @@
               >
                 报告缺货
               </t-button>
+              <t-button 
+                wx:if="{{userInfo.isManager}}"
+                theme="primary"
+                size="small"
+                bind:click="editMaterial"
+                data-item="{{item}}"
+              >
+                编辑
+              </t-button>
             </view>
           </view>
         </view>
@@ -308,6 +321,165 @@
           >
             导出统计报表
           </t-button>
+        </view>
+      </view>
+    </t-tab-panel>
+    
+    <!-- 耗材管理页面（仅管理员可见） -->
+    <t-tab-panel wx:if="{{userInfo.isManager}}" label="耗材管理" value="manage">
+      <view class="manage-section">
+        <!-- 管理头部 -->
+        <view class="manage-header">
+          <view class="header-info">
+            <text class="header-title">耗材库存管理</text>
+            <text class="header-desc">管理所有耗材的库存信息和属性</text>
+          </view>
+          <t-button 
+            theme="primary" 
+            size="small"
+            bind:click="showManageDialog"
+          >
+            添加耗材
+          </t-button>
+        </view>
+        
+        <!-- 库存管理列表 -->
+        <view class="manage-list">
+          <view 
+            class="manage-item" 
+            wx:for="{{inventoryList}}" 
+            wx:key="id"
+          >
+            <view class="manage-item-header">
+              <view class="item-photo">
+                <image src="{{item.photo || item.icon}}" class="photo-image" />
+              </view>
+              <view class="item-info">
+                <text class="item-name">{{item.name}}</text>
+                <text class="item-spec">规格: {{item.spec}}</text>
+                <text class="item-type">类型: {{item.type === 'network' ? '网络设备' : item.type === 'computer' ? '电脑配件' : item.type === 'office' ? '办公用品' : '线材耗材'}}</text>
+              </view>
+              <t-tag 
+                theme="{{getStockTheme(item.stock, item.minStock)}}"
+                variant="light"
+              >
+                {{getStockStatus(item.stock, item.minStock)}}
+              </t-tag>
+            </view>
+            
+            <view class="manage-item-stats">
+              <view class="stock-info">
+                <text class="current-stock">当前库存: {{item.stock}} {{item.unit}}</text>
+                <text class="stock-range">库存区间: {{item.minStock}}-{{item.maxStock}} {{item.unit}}</text>
+              </view>
+              <t-progress 
+                percentage="{{getStockPercentage(item.stock, item.maxStock)}}"
+                theme="{{getStockTheme(item.stock, item.minStock)}}"
+              />
+            </view>
+            
+            <view class="manage-item-actions">
+              <t-button 
+                theme="primary"
+                variant="outline"
+                size="small"
+                bind:click="adjustStock"
+                data-item="{{item}}"
+              >
+                调整库存
+              </t-button>
+              <t-button 
+                theme="default"
+                variant="outline"
+                size="small"
+                bind:click="editMaterial"
+                data-item="{{item}}"
+              >
+                编辑
+              </t-button>
+              <t-button 
+                theme="danger"
+                variant="outline"
+                size="small"
+                bind:click="deleteMaterial"
+                data-item="{{item}}"
+              >
+                删除
+              </t-button>
+            </view>
+          </view>
+        </view>
+      </view>
+    </t-tab-panel>
+
+    <!-- 经理专属：耗材管理 -->
+    <t-tab-panel label="耗材管理" value="manage" wx:if="{{userInfo.isManager}}">
+      <view class="manage-section">
+        <!-- 操作按钮组 -->
+        <view class="manage-actions">
+          <t-button 
+            theme="primary"
+            size="large"
+            icon="add"
+            bind:click="showAddMaterialDialog"
+          >
+            添加新耗材
+          </t-button>
+        </view>
+        
+        <!-- 耗材列表 -->
+        <view class="manage-list">
+          <view class="list-header">
+            <text class="header-title">全部耗材</text>
+            <text class="header-count">共 {{commonMaterials.length}} 种</text>
+          </view>
+          
+          <view class="material-manage-list">
+            <view 
+              class="manage-item" 
+              wx:for="{{commonMaterials}}" 
+              wx:key="id"
+            >
+              <view class="manage-item-left">
+                <image 
+                  class="material-image"
+                  src="{{item.photo || '/assets/icons/unknown.png'}}"
+                  mode="aspectFill"
+                  bindtap="uploadMaterialPhoto"
+                  data-id="{{item.id}}"
+                />
+                <view class="material-details">
+                  <text class="material-name">{{item.name}}</text>
+                  <text class="material-spec">规格: {{item.spec}}</text>
+                  <view class="material-stock">
+                    <text class="stock-label">库存: </text>
+                    <text class="stock-value {{item.stock < item.minStock ? 'low-stock' : ''}}">{{item.stock}} {{item.unit}}</text>
+                    <text class="stock-min">(最低: {{item.minStock}})</text>
+                  </view>
+                </view>
+              </view>
+              <view class="manage-item-actions">
+                <t-button 
+                  theme="primary"
+                  variant="outline"
+                  size="small"
+                  bind:click="editMaterial"
+                  data-item="{{item}}"
+                >
+                  编辑
+                </t-button>
+                <t-button 
+                  theme="danger"
+                  variant="outline"
+                  size="small"
+                  bind:click="deleteMaterial"
+                  data-id="{{item.id}}"
+                >
+                  删除
+                </t-button>
+              </view>
+            </view>
+          </view>
         </view>
       </view>
     </t-tab-panel>
@@ -378,10 +550,192 @@
     </view>
   </t-popup>
 
+  <!-- 管理员添加/编辑耗材弹窗 -->
+  <t-popup 
+    wx:if="{{userInfo.isManager}}"
+    visible="{{manageDialogVisible}}" 
+    placement="bottom"
+    bind:visible-change="handleManageDialogChange"
+  >
+    <view class="manage-dialog">
+      <view class="dialog-header">
+        <text class="dialog-title">{{editingMaterial ? '编辑耗材' : '添加耗材'}}</text>
+        <t-icon name="close" size="48rpx" bindtap="closeManageDialog" />
+      </view>
+      
+      <scroll-view scroll-y class="dialog-content">
+        <!-- 耗材照片 -->
+        <view class="form-section">
+          <view class="section-title">耗材照片</view>
+          <view class="photo-selector" bindtap="chooseMaterialPhoto">
+            <image 
+              wx:if="{{newMaterialPhoto}}"
+              src="{{newMaterialPhoto}}" 
+              class="preview-image" 
+            />
+            <view wx:else class="photo-placeholder">
+              <t-icon name="camera" size="60rpx" color="#9ca3af" />
+              <text class="placeholder-text">点击添加照片</text>
+            </view>
+          </view>
+        </view>
+        
+        <!-- 基本信息 -->
+        <view class="form-section">
+          <t-input
+            label="耗材名称"
+            model:value="{{newMaterialName}}"
+            placeholder="请输入耗材名称"
+            bind:change="onMaterialNameChange"
+            required
+          />
+          <t-input
+            label="规格型号"
+            model:value="{{newMaterialSpec}}"
+            placeholder="请输入规格型号"
+            bind:change="onMaterialSpecChange"
+          />
+        </view>
+        
+        <!-- 类型和单位 -->
+        <view class="form-section">
+          <t-cell 
+            title="耗材类型"
+            note="{{newMaterialTypeLabel || '请选择'}}"
+            arrow
+            bind:click="selectMaterialType"
+          />
+          <t-cell 
+            title="计量单位"
+            note="{{newMaterialUnit}}"
+            arrow
+            bind:click="selectMaterialUnit"
+          />
+        </view>
+        
+        <!-- 库存设置 -->
+        <view class="form-section">
+          <view class="section-title">库存设置</view>
+          <t-input
+            label="最低库存"
+            type="number"
+            model:value="{{newMaterialMinStock}}"
+            placeholder="请输入最低库存"
+            bind:change="onMinStockChange"
+            required
+          />
+          <t-input
+            label="最高库存"
+            type="number"
+            model:value="{{newMaterialMaxStock}}"
+            placeholder="请输入最高库存"
+            bind:change="onMaxStockChange"
+            required
+          />
+        </view>
+      </scroll-view>
+      
+      <view class="dialog-actions">
+        <t-button theme="default" bind:click="closeManageDialog">取消</t-button>
+        <t-button theme="primary" bind:click="saveMaterial">保存</t-button>
+      </view>
+    </view>
+  </t-popup>
+
+  <!-- 经理专属：新增/编辑耗材弹窗 -->
+  <t-popup 
+    visible="{{manageDialogVisible}}" 
+    placement="bottom"
+    bind:visible-change="handleManageDialogChange"
+  >
+    <view class="manage-dialog">
+      <view class="dialog-header">
+        <text class="dialog-title">{{editingMaterial ? '编辑耗材' : '添加新耗材'}}</text>
+        <t-icon name="close" size="48rpx" bindtap="closeManageDialog" />
+      </view>
+      
+      <scroll-view scroll-y class="dialog-content">
+        <!-- 耗材图片 -->
+        <view class="photo-section">
+          <text class="field-label">耗材图片</text>
+          <view class="photo-upload" bindtap="chooseMaterialPhoto">
+            <image 
+              wx:if="{{newMaterialPhoto}}"
+              src="{{newMaterialPhoto}}"
+              mode="aspectFill"
+              class="preview-image"
+            />
+            <view wx:else class="upload-placeholder">
+              <t-icon name="photo" size="64rpx" color="#9ca3af" />
+              <text class="upload-text">点击上传图片</text>
+            </view>
+          </view>
+        </view>
+        
+        <!-- 基本信息 -->
+        <view class="form-section">
+          <t-input
+            label="耗材名称"
+            model:value="{{newMaterialName}}"
+            placeholder="请输入耗材名称"
+            clearable
+          />
+          <t-input
+            label="规格型号"
+            model:value="{{newMaterialSpec}}"
+            placeholder="请输入规格型号"
+            clearable
+          />
+          <t-cell 
+            title="耗材类型"
+            note="{{materialTypes[newMaterialType] || '请选择'}}"
+            arrow
+            bind:click="selectMaterialType"
+          />
+          <t-input
+            label="单位"
+            model:value="{{newMaterialUnit}}"
+            placeholder="例如：个、根、米"
+            clearable
+          />
+        </view>
+        
+        <!-- 库存设置 -->
+        <view class="form-section">
+          <text class="section-title">库存设置</text>
+          <t-input
+            label="当前库存"
+            type="number"
+            model:value="{{newMaterialStock}}"
+            placeholder="请输入当前库存数量"
+          />
+          <t-input
+            label="最低库存"
+            type="number"
+            model:value="{{newMaterialMinStock}}"
+            placeholder="请输入最低库存警戒值"
+          />
+          <t-input
+            label="最高库存"
+            type="number"
+            model:value="{{newMaterialMaxStock}}"
+            placeholder="请输入最高库存限制"
+          />
+        </view>
+      </scroll-view>
+      
+      <view class="dialog-actions">
+        <t-button theme="default" bind:click="closeManageDialog">取消</t-button>
+        <t-button theme="primary" bind:click="confirmManageMaterial">确定</t-button>
+      </view>
+    </view>
+  </t-popup>
+
   <!-- 悬浮按钮 -->
-  <t-fab 
-    icon="add"
-    bind:click="showAddDialog"
-    style="bottom: 120rpx; right: 32rpx;"
-  />
+  <view 
+    class="custom-fab"
+    bindtap="showAddDialog"
+  >
+    <text class="fab-icon">+</text>
+  </view>
 </view>

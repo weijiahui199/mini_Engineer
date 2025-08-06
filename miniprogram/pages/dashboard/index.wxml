@@ -8,6 +8,7 @@
           size="large" 
           image="{{engineerInfo.avatar}}"
           icon="user"
+          bindtap="changeAvatar"
         />
         <view class="engineer-details">
           <view class="engineer-name">
@@ -30,20 +31,25 @@
   <!-- 今日工作概览 -->
   <view class="section-container">
     <view class="section-title">今日工作概览</view>
-    <t-grid column="{{4}}" border="{{false}}">
-      <t-grid-item 
+    <view class="today-stats-grid">
+      <view 
+        class="stat-card" 
         wx:for="{{todayStats}}" 
         wx:key="key"
-        text="{{item.label}}"
-        description=""
-        bind:click="onStatClick"
+        bindtap="onStatClick"
         data-type="{{item.key}}"
       >
-        <view slot="image" class="stat-item">
-          <view class="stat-value {{item.colorClass}}">{{item.value}}</view>
+        <view class="stat-icon-wrapper">
+          <image 
+            src="{{item.icon}}" 
+            mode="aspectFit"
+            class="stat-icon"
+          />
         </view>
-      </t-grid-item>
-    </t-grid>
+        <view class="stat-value {{item.colorClass}}">{{item.value}}</view>
+        <text class="stat-label">{{item.label}}</text>
+      </view>
+    </view>
   </view>
 
   <!-- 紧急工单提醒 -->
@@ -60,19 +66,24 @@
   <!-- 快捷操作 -->
   <view class="section-container">
     <view class="section-title">快捷操作</view>
-    <t-grid column="{{2}}" border="{{false}}" align="center">
-      <t-grid-item 
+    <view class="quick-actions-grid">
+      <view 
+        class="quick-action-item" 
         wx:for="{{quickActions}}" 
         wx:key="key"
-        text="{{item.title}}"
-        bind:click="onQuickAction"
+        bindtap="onQuickAction"
         data-action="{{item.key}}"
       >
-        <view slot="image" class="quick-action-icon">
-          <text class="emoji-icon">{{item.icon}}</text>
+        <view class="quick-action-icon">
+          <image 
+            src="{{item.imageIcon}}" 
+            mode="aspectFit"
+            class="action-image-icon"
+          />
         </view>
-      </t-grid-item>
-    </t-grid>
+        <text class="quick-action-text">{{item.title}}</text>
+      </view>
+    </view>
   </view>
 
   <!-- 最新工单 -->
