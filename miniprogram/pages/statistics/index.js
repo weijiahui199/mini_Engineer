@@ -62,11 +62,11 @@ Page({
     // 从缓存或服务器获取用户角色
     const userInfo = wx.getStorageSync('userInfo') || {};
     this.setData({
-      isManager: userInfo.role === 'manager'
+      isManager: userInfo.roleGroup === '经理'
     });
     
     // 如果是管理员，加载团队数据
-    if (userInfo.role === 'manager') {
+    if (userInfo.roleGroup === '经理') {
       this.loadTeamRanking();
     }
   },

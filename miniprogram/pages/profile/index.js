@@ -1,4 +1,6 @@
 // 个人中心页面
+const testManager = require('../../utils/test-manager');
+
 Page({
   data: {
     // 用户信息
@@ -61,13 +63,26 @@ Page({
     updateInfo: {
       version: '1.0.1',
       description: '1. 优化工单处理流程\n2. 新增语音输入功能\n3. 修复已知问题'
-    }
+    },
+    
+    // 显示测试功能区域（仅开发环境）
+    showTestSection: false
   },
 
   onLoad() {
+    // 获取app实例和数据库
+    this.app = getApp();
+    this.db = this.app.globalData.db || wx.cloud.database();
+    
     this.loadUserInfo();
     this.loadStats();
     this.checkUpdate();
+    
+    // 判断是否显示测试功能（只在开发环境显示）
+    const accountInfo = wx.getAccountInfoSync();
+    this.setData({
+      showTestSection: accountInfo.miniProgram.envVersion !== 'release'
+    });
   },
 
   onShow() {
@@ -76,31 +91,198 @@ Page({
   },
 
   // 加载用户信息
-  loadUserInfo() {
-    const userInfo = wx.getStorageSync('userInfo');
-    if (userInfo) {
+  async loadUserInfo() {
+    try {
+      const app = getApp();
+      let userInfo = app.globalData.userInfo;
+      
+      // 如果全局没有用户信息，尝试从数据库获取
+      if (!userInfo && app.globalData.openid) {
+        const res = await this.db.collection('users').where({
+          openid: app.globalData.openid
+        }).get();
+        
+        if (res.data.length > 0) {
+          userInfo = res.data[0];
+          app.globalData.userInfo = userInfo;
+        }
+      }
+      
+      // 如果还是没有用户信息，创建默认工程师
+      if (!userInfo) {
+        userInfo = {
+          name: '新工程师',
+          role: 'engineer',
+          avatar: '',
+          department: '技术部',
+          phone: '',
+          email: '',
+          status: 'online'
+        };
+      }
+      
+      // 获取本地保存的头像
+      const savedAvatar = wx.getStorageSync('userAvatar') || userInfo.avatar || '';
+      
       this.setData({
         userInfo: {
-          ...this.data.userInfo,
-          ...userInfo,
-          roleText: userInfo.isManager ? 'IT运维主管' : 'IT运维工程师'
+          avatar: savedAvatar,
+          name: userInfo.name || '工程师',
+          roleText: userInfo.roleGroup === '经理' ? 'IT运维主管' : 'IT运维工程师',
+          roleGroup: userInfo.roleGroup || '工程师',
+          department: userInfo.department || '技术部',
+          isManager: userInfo.roleGroup === '经理',
+          isOnline: userInfo.status === 'online',
+          phone: userInfo.phone || '',
+          email: userInfo.email || ''
+        }
+      });
+    } catch (error) {
+      console.error('加载用户信息失败:', error);
+      // 使用默认信息
+      this.setData({
+        userInfo: {
+          avatar: wx.getStorageSync('userAvatar') || '',
+          name: '默认工程师',
+          roleText: 'IT运维工程师',
+          department: '技术部',
+          isManager: false,
+          isOnline: true
         }
       });
     }
   },
 
   // 加载统计数据
-  loadStats() {
-    // 模拟加载统计数据
-    // 实际应用中从服务器获取
+  async loadStats() {
+    try {
+      const app = getApp();
+      const openid = app.globalData.openid;
+      
+      if (!openid) {
+        console.log('等待用户openid...');
+        return;
+      }
+      
+      const _ = this.db.command;
+      const now = new Date();
+      const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      
+      // 查询条件：分配给当前工程师的工单
+      const baseQuery = _.or([
+        { assignedTo: openid },
+        { assigneeOpenid: openid }
+      ]);
+      
+      // 并行获取统计数据
+      const [totalCompleted, monthCompleted, processingCount] = await Promise.all([
+        // 总完成数
+        this.db.collection('tickets').where(_.and([
+          baseQuery,
+          { status: _.in(['resolved', 'closed']) }
+        ])).count(),
+        
+        // 本月完成数
+        this.db.collection('tickets').where(_.and([
+          baseQuery,
+          { status: _.in(['resolved', 'closed']) },
+          _.or([
+            { updateTime: _.gte(thisMonth) },
+            { resolveTime: _.gte(thisMonth) }
+          ])
+        ])).count(),
+        
+        // 进行中的工单数
+        this.db.collection('tickets').where(_.and([
+          baseQuery,
+          { status: 'processing' }
+        ])).count()
+      ]);
+      
+      // 计算平均处理时间（这里用模拟数据）
+      const avgTime = 2.5;
+      
+      // 更新统计数据
+      this.setData({
+        stats: {
+          totalCompleted: totalCompleted.total || 0,
+          monthCompleted: monthCompleted.total || 0,
+          rating: 4.8  // 评分暂时用模拟数据
+        },
+        ticketStats: {
+          completed: totalCompleted.total || 0,
+          processing: processingCount.total || 0,
+          avgTime: avgTime
+        }
+      });
+      
+      // 加载物料统计
+      await this.loadMaterialStats();
+    } catch (error) {
+      console.error('加载统计数据失败:', error);
+      // 使用默认数据
+      this.setData({
+        stats: {
+          totalCompleted: 0,
+          monthCompleted: 0,
+          rating: 4.8
+        },
+        ticketStats: {
+          completed: 0,
+          processing: 0,
+          avgTime: 2.5
+        }
+      });
+    }
+  },
+  
+  // 加载物料统计
+  async loadMaterialStats() {
+    try {
+      const app = getApp();
+      const openid = app.globalData.openid;
+      
+      if (!openid) return;
+      
+      // 获取物料使用记录数
+      const materialCount = await this.db.collection('worklog').where({
+        engineerOpenid: openid,
+        type: 'material'
+      }).count();
+      
+      // 获取物料种类数（从materials集合）
+      const typesCount = await this.db.collection('materials').count();
+      
+      this.setData({
+        materialStats: {
+          total: materialCount.total || 0,
+          types: typesCount.total || 0
+        }
+      });
+    } catch (error) {
+      console.error('加载物料统计失败:', error);
+    }
   },
 
   // 加载未读消息数
-  loadUnreadCount() {
-    // 模拟加载未读消息
-    this.setData({
-      unreadCount: Math.floor(Math.random() * 10)
-    });
+  async loadUnreadCount() {
+    try {
+      const app = getApp();
+      const openid = app.globalData.openid;
+      
+      if (!openid) return;
+      
+      // 由于notifications集合还不存在，暂时返回0
+      // 后续可以创建notifications集合来管理通知
+      this.setData({
+        unreadCount: 0
+      });
+    } catch (error) {
+      console.error('加载未读消息失败:', error);
+      this.setData({
+        unreadCount: 0
+      });
+    }
   },
 
   // 检查更新
@@ -123,22 +305,57 @@ Page({
   },
 
   // 上传头像
-  uploadAvatar(filePath) {
+  async uploadAvatar(filePath) {
     wx.showLoading({
       title: '上传中...'
     });
     
-    // 模拟上传
-    setTimeout(() => {
+    try {
+      // 上传到云存储
+      const cloudPath = `avatars/${this.app.globalData.openid}_${Date.now()}.jpg`;
+      const uploadRes = await wx.cloud.uploadFile({
+        cloudPath: cloudPath,
+        filePath: filePath
+      });
+      
+      // 更新数据库中的用户头像
+      if (this.app.globalData.userInfo && this.app.globalData.userInfo._id) {
+        await this.db.collection('users').doc(this.app.globalData.userInfo._id).update({
+          data: {
+            avatar: uploadRes.fileID,
+            updateTime: new Date()
+          }
+        });
+      }
+      
+      // 更新页面显示
       this.setData({
         'userInfo.avatar': filePath
       });
+      
+      // 保存到本地存储
+      wx.setStorageSync('userAvatar', filePath);
+      
       wx.hideLoading();
       wx.showToast({
-        title: '更换成功',
+        title: '头像更新成功',
         icon: 'success'
       });
-    }, 1500);
+    } catch (error) {
+      console.error('上传头像失败:', error);
+      wx.hideLoading();
+      
+      // 即使上传失败，也保存到本地
+      this.setData({
+        'userInfo.avatar': filePath
+      });
+      wx.setStorageSync('userAvatar', filePath);
+      
+      wx.showToast({
+        title: '头像已保存',
+        icon: 'success'
+      });
+    }
   },
 
   // 快捷入口跳转
@@ -399,5 +616,64 @@ Page({
       title: 'IT工程师助手',
       path: '/pages/dashboard/index'
     };
+  },
+  
+  // =========================
+  // 测试功能区域
+  // =========================
+  
+  // 切换为经理角色
+  async switchToManager() {
+    wx.showLoading({
+      title: '切换中...'
+    });
+    
+    const success = await testManager.testSetAsManager();
+    wx.hideLoading();
+    
+    if (success) {
+      // 重新加载用户信息
+      this.loadUserInfo();
+    }
+  },
+  
+  // 切换为工程师角色
+  async switchToEngineer() {
+    wx.showLoading({
+      title: '切换中...'
+    });
+    
+    const success = await testManager.testSetAsEngineer();
+    wx.hideLoading();
+    
+    if (success) {
+      // 重新加载用户信息
+      this.loadUserInfo();
+    }
+  },
+  
+  // 创建测试数据
+  async createTestData() {
+    wx.showModal({
+      title: '创建测试数据',
+      content: '将创建3个测试工单，其中2个分配给当前用户',
+      success: async (res) => {
+        if (res.confirm) {
+          wx.showLoading({
+            title: '创建中...'
+          });
+          
+          const success = await testManager.createTestTickets();
+          wx.hideLoading();
+          
+          if (success) {
+            wx.showToast({
+              title: '创建成功',
+              icon: 'success'
+            });
+          }
+        }
+      }
+    });
   }
 });

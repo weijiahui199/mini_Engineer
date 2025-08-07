@@ -294,7 +294,7 @@
             <t-radio 
               wx:for="{{availableHelpers}}" 
               wx:key="id"
-              label="{{item.name}} - {{item.role}}"
+              label="{{item.name}} - {{item.roleGroup}}"
               value="{{item.id}}"
             />
           </t-radio-group>

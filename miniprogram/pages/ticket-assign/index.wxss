@@ -485,3 +485,170 @@
 .gradient-bg {
   background: linear-gradient(135deg, var(--primary-color), #06b6d4);
 }
+
+/* 快速分配模式样式 */
+.quick-assign-section {
+  padding: 32rpx;
+}
+
+.ticket-detail-card {
+  background: white;
+  border-radius: 16rpx;
+  padding: 32rpx;
+  margin-bottom: 32rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.05);
+}
+
+.ticket-detail-card .card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24rpx;
+  padding-bottom: 24rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.ticket-detail-card .ticket-no {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #1f2937;
+}
+
+.ticket-detail-card .card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.ticket-detail-card .info-row {
+  display: flex;
+  align-items: flex-start;
+  min-height: 40rpx;
+}
+
+.ticket-detail-card .info-label {
+  font-size: 28rpx;
+  color: #6b7280;
+  min-width: 140rpx;
+  flex-shrink: 0;
+}
+
+.ticket-detail-card .info-value {
+  font-size: 28rpx;
+  color: #1f2937;
+  flex: 1;
+  word-break: break-all;
+}
+
+.engineer-select-section {
+  background: white;
+  border-radius: 16rpx;
+  padding: 32rpx;
+  margin-bottom: 32rpx;
+}
+
+.engineer-select-section .section-title {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #1f2937;
+  margin-bottom: 24rpx;
+}
+
+.engineer-select-section .engineer-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.engineer-select-section .engineer-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20rpx;
+  border: 2rpx solid #e5e7eb;
+  border-radius: 12rpx;
+  background: #fff;
+  transition: all 0.3s;
+}
+
+.engineer-select-section .engineer-item.selected {
+  border-color: var(--primary-color);
+  background: linear-gradient(to right, rgba(0, 82, 217, 0.05), rgba(0, 82, 217, 0.02));
+}
+
+.engineer-select-section .engineer-info {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  flex: 1;
+}
+
+.engineer-select-section .engineer-details {
+  flex: 1;
+}
+
+.engineer-select-section .engineer-name {
+  font-size: 30rpx;
+  font-weight: 500;
+  color: #1f2937;
+  display: block;
+  margin-bottom: 8rpx;
+}
+
+.engineer-select-section .engineer-status {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  font-size: 24rpx;
+  color: #6b7280;
+}
+
+.engineer-select-section .status-dot {
+  width: 12rpx;
+  height: 12rpx;
+  border-radius: 50%;
+  background: #10b981;
+}
+
+.engineer-select-section .status-dot.offline {
+  background: #ef4444;
+}
+
+.engineer-select-section .status-dot.busy {
+  background: #f59e0b;
+}
+
+.engineer-select-section .match-score {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 20rpx;
+}
+
+.engineer-select-section .score-text {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: var(--primary-color);
+}
+
+.engineer-select-section .score-label {
+  font-size: 20rpx;
+  color: #9ca3af;
+  margin-top: 4rpx;
+}
+
+.quick-assign-section .action-buttons {
+  display: flex;
+  gap: 24rpx;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 32rpx;
+  background: white;
+  box-shadow: 0 -4rpx 12rpx rgba(0, 0, 0, 0.05);
+}
+
+.quick-assign-section .action-buttons .t-button {
+  flex: 1;
+}

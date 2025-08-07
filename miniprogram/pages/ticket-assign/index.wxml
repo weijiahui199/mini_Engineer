@@ -2,35 +2,132 @@
 <view class="assign-container">
   <!-- 自定义导航栏 -->
   <t-navbar 
-    title="工单分配"
+    title="{{quickAssignMode ? '快速分配' : '工单分配'}}"
     left-arrow
     bind:go-back="onBack"
   />
 
-  <!-- 统计卡片 -->
-  <view class="stats-section">
-    <view class="stats-card gradient-bg">
-      <view class="stats-grid">
-        <view class="stat-item">
-          <text class="stat-value">{{stats.unassigned}}</text>
-          <text class="stat-label">待分配</text>
+  <!-- 快速分配模式 -->
+  <block wx:if="{{quickAssignMode && quickAssignTicket}}">
+    <view class="quick-assign-section">
+      <!-- 工单信息卡片 -->
+      <view class="ticket-detail-card">
+        <view class="card-header">
+          <text class="ticket-no">{{quickAssignTicket.ticketNo}}</text>
+          <t-tag 
+            theme="{{quickAssignTicket.priority === 'urgent' ? 'danger' : quickAssignTicket.priority === 'high' ? 'warning' : 'default'}}"
+            size="medium"
+          >
+            {{quickAssignTicket.priorityText}}
+          </t-tag>
         </view>
-        <view class="stat-divider"></view>
-        <view class="stat-item">
-          <text class="stat-value">{{stats.todayAssigned}}</text>
-          <text class="stat-label">今日已分配</text>
+        <view class="card-info">
+          <view class="info-row">
+            <text class="info-label">报修人：</text>
+            <text class="info-value">{{quickAssignTicket.userName}}</text>
+          </view>
+          <view class="info-row">
+            <text class="info-label">部门：</text>
+            <text class="info-value">{{quickAssignTicket.department}}</text>
+          </view>
+          <view class="info-row">
+            <text class="info-label">位置：</text>
+            <text class="info-value">{{quickAssignTicket.location}}</text>
+          </view>
+          <view class="info-row">
+            <text class="info-label">问题类型：</text>
+            <text class="info-value">{{quickAssignTicket.issueType}}</text>
+          </view>
+          <view class="info-row">
+            <text class="info-label">问题描述：</text>
+            <text class="info-value">{{quickAssignTicket.description}}</text>
+          </view>
         </view>
-        <view class="stat-divider"></view>
-        <view class="stat-item">
-          <text class="stat-value">{{stats.avgWaitTime}}</text>
-          <text class="stat-label">平均等待(分)</text>
+      </view>
+
+      <!-- 选择工程师 -->
+      <view class="engineer-select-section">
+        <view class="section-title">选择工程师</view>
+        <view class="engineer-list">
+          <view 
+            class="engineer-item {{quickAssignTicket.selectedEngineerId === item.id ? 'selected' : ''}}"
+            wx:for="{{availableEngineers}}"
+            wx:key="id"
+            data-ticket-id="{{quickAssignTicket.id}}"
+            data-engineer-id="{{item.id}}"
+            bindtap="selectEngineer"
+          >
+            <view class="engineer-info">
+              <t-avatar 
+                size="medium"
+                image="{{item.avatar || ''}}"
+                text="{{!item.avatar ? item.name[0] : ''}}"
+              />
+              <view class="engineer-details">
+                <text class="engineer-name">{{item.name}}</text>
+                <view class="engineer-status">
+                  <view class="status-dot {{item.statusClass}}"></view>
+                  <text class="task-count">任务: {{item.currentTasks}}/{{item.maxTasks}}</text>
+                  <text class="distance" wx:if="{{item.distance}}"> | {{item.distance}}km</text>
+                </view>
+              </view>
+            </view>
+            <view class="match-score" wx:if="{{item.matchScore}}">
+              <text class="score-text">{{item.matchScore}}%</text>
+              <text class="score-label">匹配度</text>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 操作按钮 -->
+      <view class="action-buttons">
+        <t-button 
+          theme="primary"
+          size="large"
+          disabled="{{!quickAssignTicket.selectedEngineerId}}"
+          data-id="{{quickAssignTicket.id}}"
+          bind:click="confirmAssign"
+        >
+          确认分配
+        </t-button>
+        <t-button 
+          theme="default"
+          size="large"
+          bind:click="onBack"
+        >
+          取消
+        </t-button>
+      </view>
+    </view>
+  </block>
+
+  <!-- 普通列表模式 -->
+  <block wx:else>
+    <!-- 统计卡片 -->
+    <view class="stats-section">
+      <view class="stats-card gradient-bg">
+        <view class="stats-grid">
+          <view class="stat-item">
+            <text class="stat-value">{{stats.unassigned}}</text>
+            <text class="stat-label">待分配</text>
+          </view>
+          <view class="stat-divider"></view>
+          <view class="stat-item">
+            <text class="stat-value">{{stats.todayAssigned}}</text>
+            <text class="stat-label">今日已分配</text>
+          </view>
+          <view class="stat-divider"></view>
+          <view class="stat-item">
+            <text class="stat-value">{{stats.avgWaitTime}}</text>
+            <text class="stat-label">平均等待(分)</text>
+          </view>
         </view>
       </view>
     </view>
-  </view>
 
-  <!-- 快速操作 -->
-  <view class="quick-actions">
+    <!-- 快速操作 -->
+    <view class="quick-actions">
     <t-button 
       theme="primary"
       size="medium"
@@ -411,4 +508,5 @@
       </view>
     </view>
   </t-popup>
+  </block>
 </view>

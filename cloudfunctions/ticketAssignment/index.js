@@ -17,6 +17,10 @@ exports.main = async (event, context) => {
     switch (action) {
       case 'assignEngineer':
         return await assignEngineer(event, wxContext)
+      case 'assignTicket':
+        return await assignTicket(event, wxContext)
+      case 'unassignTicket':
+        return await unassignTicket(event, wxContext)
       case 'acceptTicket':
         return await acceptTicket(event, wxContext)
       case 'rejectTicket':
@@ -45,6 +49,128 @@ exports.main = async (event, context) => {
   }
 }
 
+// 分配工单（简化版本，用于快速分配）
+async function assignTicket(event, wxContext) {
+  const { ticketId, engineerId, engineerName } = event
+  
+  try {
+    // 检查权限（经理可以分配）
+    const user = await getUserInfo(wxContext.OPENID)
+    if (user.role !== 'manager' && user.roleGroup !== '经理') {
+      return {
+        success: false,
+        code: 403,
+        message: '无权限执行此操作'
+      }
+    }
+    
+    // 更新工单信息
+    const result = await db.collection('tickets')
+      .doc(ticketId)
+      .update({
+        data: {
+          assignedTo: engineerId,
+          assignedToName: engineerName,
+          assignedBy: wxContext.OPENID,
+          assignedTime: db.serverDate(),
+          status: 'pending', // 保持pending状态，等待工程师接受
+          updateTime: db.serverDate(),
+          statusHistory: _.push({
+            status: 'assigned',
+            timestamp: db.serverDate(),
+            operator: wxContext.OPENID,
+            operatorName: user.name || user.displayName,
+            comment: `分配给 ${engineerName}`
+          })
+        }
+      })
+    
+    // 更新工程师任务数
+    await updateEngineerTaskCount(engineerId, 1)
+    
+    // 发送通知给工程师
+    await sendNotification(engineerId, {
+      type: 'ticket_assigned',
+      ticketId,
+      message: `您有新的工单需要处理`
+    })
+    
+    return {
+      success: true,
+      code: 200,
+      message: '工单分配成功'
+    }
+  } catch (error) {
+    console.error('分配工单失败:', error)
+    return {
+      success: false,
+      code: 500,
+      message: '分配失败',
+      error: error.message
+    }
+  }
+}
+
+// 取消分配工单
+async function unassignTicket(event, wxContext) {
+  const { ticketId } = event
+  
+  try {
+    // 检查权限
+    const user = await getUserInfo(wxContext.OPENID)
+    if (user.role !== 'manager' && user.roleGroup !== '经理') {
+      return {
+        success: false,
+        code: 403,
+        message: '无权限执行此操作'
+      }
+    }
+    
+    // 获取工单当前信息
+    const ticketRes = await db.collection('tickets').doc(ticketId).get()
+    const ticket = ticketRes.data
+    const previousEngineerId = ticket.assignedTo
+    
+    // 更新工单信息
+    await db.collection('tickets')
+      .doc(ticketId)
+      .update({
+        data: {
+          assignedTo: _.remove(),
+          assignedToName: _.remove(),
+          assignedTime: _.remove(),
+          updateTime: db.serverDate(),
+          statusHistory: _.push({
+            status: 'unassigned',
+            timestamp: db.serverDate(),
+            operator: wxContext.OPENID,
+            operatorName: user.name || user.displayName,
+            comment: '取消分配'
+          })
+        }
+      })
+    
+    // 更新工程师任务数
+    if (previousEngineerId) {
+      await updateEngineerTaskCount(previousEngineerId, -1)
+    }
+    
+    return {
+      success: true,
+      code: 200,
+      message: '已取消分配'
+    }
+  } catch (error) {
+    console.error('取消分配失败:', error)
+    return {
+      success: false,
+      code: 500,
+      message: '取消分配失败',
+      error: error.message
+    }
+  }
+}
+
 // 分配工程师（经理权限）
 async function assignEngineer(event, wxContext) {
   const { ticketId, engineerId, reason } = event
@@ -52,7 +178,7 @@ async function assignEngineer(event, wxContext) {
   try {
     // 检查权限
     const user = await getUserInfo(wxContext.OPENID)
-    if (user.role !== 'manager') {
+    if (user.role !== 'manager' && user.roleGroup !== '经理') {
       return {
         success: false,
         code: 403,
@@ -218,7 +344,7 @@ async function transferTicket(event, wxContext) {
     const ticket = await db.collection('tickets').doc(ticketId).get()
     const user = await getUserInfo(wxContext.OPENID)
     
-    if (ticket.data.assignedTo !== wxContext.OPENID && user.role !== 'manager') {
+    if (ticket.data.assignedTo !== wxContext.OPENID && user.role !== 'manager' && user.roleGroup !== '经理') {
       return {
         success: false,
         code: 403,
@@ -324,37 +450,60 @@ async function getAssignedTickets(event, wxContext) {
 // 获取可用的工程师列表（经理权限）
 async function getAvailableEngineers(event, wxContext) {
   try {
-    // 检查权限
+    // 检查权限 - 放宽权限，允许所有用户查看（用于分配页面）
+    // 如果需要严格权限控制，可以恢复下面的检查
+    /*
     const user = await getUserInfo(wxContext.OPENID)
-    if (user.role !== 'manager') {
+    if (user.role !== 'manager' && user.roleGroup !== '经理') {
       return {
         success: false,
         code: 403,
         message: '无权限查看工程师列表'
       }
     }
+    */
     
-    // 获取所有工程师
+    // 获取所有工程师和经理（经理也可以被分配工单）
     const result = await db.collection('users')
-      .where({
-        role: 'engineer',
-        'engineerInfo.workingStatus': _.in(['available', 'busy'])
-      })
+      .where(_.or([
+        {
+          role: 'engineer',
+          'engineerInfo.workingStatus': _.in(['available', 'busy'])
+        },
+        {
+          roleGroup: '经理',
+          'engineerInfo.workingStatus': _.in(['available', 'busy'])
+        },
+        {
+          roleGroup: '工程师',
+          'engineerInfo.workingStatus': _.in(['available', 'busy'])
+        }
+      ]))
       .field({
         openid: true,
         name: true,
         department: true,
         engineerInfo: true,
-        avatar: true
+        avatar: true,
+        roleGroup: true
       })
       .get()
     
     // 计算每个工程师的负载
-    const engineers = result.data.map(engineer => ({
-      ...engineer,
-      workload: engineer.engineerInfo.currentTasks / engineer.engineerInfo.maxTasks,
-      canAssign: engineer.engineerInfo.currentTasks < engineer.engineerInfo.maxTasks
-    }))
+    const engineers = result.data.map(engineer => {
+      // 确保 engineerInfo 存在
+      const engineerInfo = engineer.engineerInfo || {
+        currentTasks: 0,
+        maxTasks: 10
+      }
+      
+      return {
+        ...engineer,
+        displayName: `${engineer.name}${engineer.roleGroup === '经理' ? ' (经理)' : ''}`,
+        workload: engineerInfo.currentTasks / engineerInfo.maxTasks,
+        canAssign: engineerInfo.currentTasks < engineerInfo.maxTasks
+      }
+    })
     
     // 按负载排序，负载低的优先
     engineers.sort((a, b) => a.workload - b.workload)

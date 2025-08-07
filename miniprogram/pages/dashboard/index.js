@@ -57,7 +57,15 @@ Page({
   },
 
   onLoad() {
-    this.loadDashboardData();
+    // 获取app实例
+    this.app = getApp();
+    this.db = this.app.globalData.db || wx.cloud.database();
+    
+    // 延迟加载数据，等待app初始化完成
+    setTimeout(() => {
+      this.loadDashboardData();
+    }, 500);
+    
     this.startAutoRefresh();
   },
 
@@ -77,9 +85,27 @@ Page({
     });
 
     try {
-      // 模拟数据加载
-      const mockData = this.getMockDashboardData();
+      // 并行获取所有数据
+      const [userInfo, ticketStats, urgentTickets, latestTickets, notifications] = await Promise.all([
+        this.loadUserInfo(),
+        this.loadTicketStats(),
+        this.loadUrgentTickets(),
+        this.loadLatestTickets(),
+        this.loadNotifications()
+      ]);
       
+      // 更新页面数据
+      this.setData({
+        engineerInfo: userInfo,
+        todayStats: ticketStats,
+        urgentTickets: urgentTickets,
+        latestTickets: latestTickets,
+        lastUpdateTime: this.formatTime(new Date())
+      });
+    } catch (error) {
+      console.error('加载数据失败:', error);
+      // 如果数据库加载失败，使用模拟数据
+      const mockData = this.getMockDashboardData();
       this.setData({
         engineerInfo: mockData.engineerInfo,
         todayStats: mockData.todayStats,
@@ -87,23 +113,30 @@ Page({
         latestTickets: mockData.latestTickets,
         lastUpdateTime: this.formatTime(new Date())
       });
-    } catch (error) {
-      console.error('加载数据失败:', error);
-      wx.showToast({
-        title: '数据加载失败',
-        icon: 'error'
-      });
     } finally {
       wx.hideLoading();
     }
   },
 
   // 刷新数据
-  refreshDashboardData() {
-    this.setData({
-      lastUpdateTime: this.formatTime(new Date())
-    });
-    // 这里可以调用API刷新数据
+  async refreshDashboardData() {
+    try {
+      // 刷新统计数据
+      const [ticketStats, urgentTickets, latestTickets] = await Promise.all([
+        this.loadTicketStats(),
+        this.loadUrgentTickets(),
+        this.loadLatestTickets()
+      ]);
+      
+      this.setData({
+        todayStats: ticketStats,
+        urgentTickets: urgentTickets,
+        latestTickets: latestTickets,
+        lastUpdateTime: this.formatTime(new Date())
+      });
+    } catch (error) {
+      console.error('刷新数据失败:', error);
+    }
   },
 
   // 开始自动刷新
@@ -205,8 +238,18 @@ Page({
     });
 
     try {
-      // 这里调用API更新状态
-      // await api.updateTicketStatus(ticketId, status);
+      // 获取当前用户信息
+      const userInfo = this.app.globalData.userInfo;
+      
+      // 更新工单状态
+      await this.db.collection('tickets').doc(ticketId).update({
+        data: {
+          status: status,
+          assigneeOpenid: userInfo.openid || this.app.globalData.openid,
+          assigneeName: userInfo.name || this.data.engineerInfo.name,
+          updateTime: new Date()
+        }
+      });
       
       wx.showToast({
         title: '操作成功',
@@ -216,6 +259,7 @@ Page({
       // 刷新数据
       this.loadDashboardData();
     } catch (error) {
+      console.error('更新工单状态失败:', error);
       wx.showToast({
         title: '操作失败',
         icon: 'error'
@@ -317,6 +361,323 @@ Page({
     }, 1500);
   },
 
+  // 加载用户信息
+  async loadUserInfo() {
+    try {
+      const app = getApp();
+      let userInfo = app.globalData.userInfo;
+      
+      // 如果全局没有用户信息，尝试从数据库获取
+      if (!userInfo && app.globalData.openid) {
+        const res = await this.db.collection('users').where({
+          openid: app.globalData.openid
+        }).get();
+        
+        if (res.data.length > 0) {
+          userInfo = res.data[0];
+          app.globalData.userInfo = userInfo;
+        }
+      }
+      
+      // 获取分配给当前用户的进行中工单数
+      const processingCount = await this.db.collection('tickets').where({
+        assigneeOpenid: app.globalData.openid || 'test_engineer_001',
+        status: 'processing'
+      }).count();
+      
+      // 获取保存的头像
+      const savedAvatar = wx.getStorageSync('userAvatar') || '';
+      
+      return {
+        name: userInfo?.name || '张工程师',
+        avatar: savedAvatar || userInfo?.avatar || '',
+        status: userInfo?.status || 'online',
+        currentTasks: processingCount.total || 5,
+        maxTasks: 10,
+        location: userInfo?.department || '技术部',
+        phone: userInfo?.phone || '',
+        email: userInfo?.email || ''
+      };
+    } catch (error) {
+      console.error('加载用户信息失败:', error);
+      // 返回默认信息
+      return {
+        name: '张工程师',
+        avatar: wx.getStorageSync('userAvatar') || '',
+        status: 'online',
+        currentTasks: 5,
+        maxTasks: 10,
+        location: '技术部'
+      };
+    }
+  },
+  
+  // 加载工单统计
+  async loadTicketStats() {
+    try {
+      const app = getApp();
+      const openid = app.globalData.openid;
+      const userInfo = app.globalData.userInfo;
+      
+      if (!openid) {
+        console.log('等待用户openid...');
+        return this.getDefaultStats();
+      }
+      
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const db = this.db;
+      const _ = db.command;
+      
+      // 构建查询条件
+      let baseQuery;
+      
+      // 经理可以看到所有工单和分配给自己的工单
+      if (userInfo?.roleGroup === '经理') {
+        // 经理看到所有工单的统计 + 分配给自己的工单
+        baseQuery = {}; // 不限制，看到所有工单
+      } else {
+        // 工程师只看分配给自己的工单
+        baseQuery = _.or([
+          { assignedTo: openid },
+          { assigneeOpenid: openid }
+        ]);
+      }
+      
+      // 并行获取各种状态的工单数量
+      let pending, processing, resolved, urgent;
+      
+      if (userInfo?.roleGroup === '经理') {
+        // 经理看到两部分数据：全部工单 + 分配给自己的工单
+        const myQuery = _.or([
+          { assignedTo: openid },
+          { assigneeOpenid: openid }
+        ]);
+        
+        [pending, processing, resolved, urgent] = await Promise.all([
+          // 待处理：全部待处理 + 分配给我的待处理
+          db.collection('tickets').where(_.or([
+            { status: 'pending' },
+            _.and([myQuery, { status: 'pending' }])
+          ])).count(),
+          
+          // 进行中：全部进行中 + 我正在处理的
+          db.collection('tickets').where(_.or([
+            { status: 'processing' },
+            _.and([myQuery, { status: 'processing' }])
+          ])).count(),
+          
+          // 今日完成
+          db.collection('tickets').where(_.and([
+            { status: _.in(['resolved', 'closed']) },
+            { updateTime: _.gte(today) }
+          ])).count(),
+          
+          // 紧急工单
+          db.collection('tickets').where(_.and([
+            { priority: 'urgent' },
+            { status: _.in(['pending', 'processing']) }
+          ])).count()
+        ]);
+      } else {
+        // 工程师只看分配给自己的
+        [pending, processing, resolved, urgent] = await Promise.all([
+          db.collection('tickets').where(_.and([
+            baseQuery,
+            { status: 'pending' }
+          ])).count(),
+          
+          db.collection('tickets').where(_.and([
+            baseQuery,
+            { status: 'processing' }
+          ])).count(),
+          
+          db.collection('tickets').where(_.and([
+            baseQuery,
+            { status: _.in(['resolved', 'closed']) },
+            { updateTime: _.gte(today) }
+          ])).count(),
+          
+          db.collection('tickets').where(_.and([
+            baseQuery,
+            { priority: 'urgent' },
+            { status: _.in(['pending', 'processing']) }
+          ])).count()
+        ]);
+      }
+      
+      return [
+        { key: 'pending', label: '待处理', value: pending.total || 0, colorClass: 'text-orange', icon: '/assets/icons/pending-icon.png' },
+        { key: 'processing', label: '进行中', value: processing.total || 0, colorClass: 'text-blue', icon: '/assets/icons/processing-icon.png' },
+        { key: 'resolved', label: '已完成', value: resolved.total || 0, colorClass: 'text-green', icon: '/assets/icons/completed-icon.png' },
+        { key: 'urgent', label: '紧急', value: urgent.total || 0, colorClass: 'text-red', icon: '/assets/icons/urgent-icon.png' }
+      ];
+    } catch (error) {
+      console.error('加载工单统计失败:', error);
+      // 返回默认统计
+      return this.getDefaultStats();
+    }
+  },
+  
+  // 获取默认统计数据
+  getDefaultStats() {
+    return [
+      { key: 'pending', label: '待处理', value: 0, colorClass: 'text-orange', icon: '/assets/icons/pending-icon.png' },
+      { key: 'processing', label: '进行中', value: 0, colorClass: 'text-blue', icon: '/assets/icons/processing-icon.png' },
+      { key: 'resolved', label: '已完成', value: 0, colorClass: 'text-green', icon: '/assets/icons/completed-icon.png' },
+      { key: 'urgent', label: '紧急', value: 0, colorClass: 'text-red', icon: '/assets/icons/urgent-icon.png' }
+    ];
+  },
+  
+  // 加载紧急工单
+  async loadUrgentTickets() {
+    try {
+      const app = getApp();
+      const openid = app.globalData.openid;
+      const userInfo = app.globalData.userInfo;
+      
+      if (!openid) {
+        return [];
+      }
+      
+      const db = this.db;
+      const _ = db.command;
+      
+      let whereCondition;
+      
+      if (userInfo?.roleGroup === '经理') {
+        // 经理看到所有紧急工单
+        whereCondition = _.and([
+          { priority: 'urgent' },
+          { status: _.in(['pending', 'processing']) }
+        ]);
+      } else {
+        // 工程师只看分配给自己的紧急工单
+        whereCondition = _.and([
+          _.or([
+            { assignedTo: openid },
+            { assigneeOpenid: openid }
+          ]),
+          { priority: 'urgent' },
+          { status: _.in(['pending', 'processing']) }
+        ]);
+      }
+      
+      const res = await db.collection('tickets')
+        .where(whereCondition)
+        .orderBy('createTime', 'desc')
+        .limit(3)
+        .get();
+      
+      return res.data.map(ticket => ({
+        id: ticket._id,
+        title: ticket.title || ticket.description || '紧急工单'
+      }));
+    } catch (error) {
+      console.error('加载紧急工单失败:', error);
+      return [];
+    }
+  },
+  
+  // 加载最新工单
+  async loadLatestTickets() {
+    try {
+      const app = getApp();
+      const openid = app.globalData.openid;
+      const userInfo = app.globalData.userInfo;
+      
+      if (!openid) {
+        console.log('等待用户openid...');
+        return this.getDefaultLatestTickets();
+      }
+      
+      const db = this.db;
+      const _ = db.command;
+      
+      let whereCondition;
+      
+      if (userInfo?.roleGroup === '经理') {
+        // 经理看到所有最新工单
+        whereCondition = {};
+      } else {
+        // 工程师只看分配给自己的
+        whereCondition = _.or([
+          { assignedTo: openid },
+          { assigneeOpenid: openid }
+        ]);
+      }
+      
+      // 获取最新工单
+      const res = await db.collection('tickets')
+        .where(whereCondition)
+        .orderBy('createTime', 'desc')
+        .limit(5)
+        .get();
+      
+      if (res.data.length === 0) {
+        return this.getDefaultLatestTickets();
+      }
+      
+      return res.data.map(ticket => ({
+        id: ticket._id,
+        ticketNo: ticket.ticketNo ? '#' + ticket.ticketNo : '#' + ticket._id.slice(-6).toUpperCase(),
+        title: ticket.title || ticket.description || '工单',
+        priority: ticket.priority || 'medium',
+        status: ticket.status || 'pending',
+        submitter: ticket.submitterName || ticket.userName || '用户',
+        location: ticket.location || ticket.department || '未知位置',
+        createTime: this.formatTime(ticket.createTime || ticket.createdAt)
+      }));
+    } catch (error) {
+      console.error('加载最新工单失败:', error);
+      // 返回默认数据
+      return this.getDefaultLatestTickets();
+    }
+  },
+  
+  // 获取默认最新工单
+  getDefaultLatestTickets() {
+    return [
+      {
+        id: 'default_1',
+        ticketNo: '#暂无',
+        title: '暂无待处理工单',
+        priority: 'low',
+        status: 'pending',
+        submitter: '-',
+        location: '-',
+        createTime: '-'
+      }
+    ];
+  },
+  
+  // 加载通知消息
+  async loadNotifications() {
+    try {
+      const app = getApp();
+      const openid = app.globalData.openid || 'test_engineer_001';
+      
+      // 获取未读通知数
+      const unreadCount = await this.db.collection('notifications')
+        .where({
+          userOpenid: openid,
+          isRead: false
+        })
+        .count();
+      
+      // 更新未读通知数（如果需要显示）
+      if (unreadCount.total > 0) {
+        // 可以在页面上显示未读消息提示
+        console.log('未读通知数：', unreadCount.total);
+      }
+      
+      return unreadCount.total;
+    } catch (error) {
+      console.error('加载通知失败:', error);
+      return 0;
+    }
+  },
+  
   // 获取模拟数据
   getMockDashboardData() {
     // 获取保存的头像

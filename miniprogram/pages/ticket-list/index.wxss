@@ -1,9 +1,10 @@
 /* 工单列表页面样式 */
 .ticket-list-container {
-  min-height: 100vh;
+  height: 100vh;
   background: #f8fafc;
   display: flex;
   flex-direction: column;
+  position: relative;
 }
 
 /* 搜索容器 */
@@ -18,6 +19,27 @@
   background: white;
   padding: 0 32rpx 24rpx;
   border-bottom: 1rpx solid #e5e7eb;
+}
+
+/* 负责人显示 */
+.assignee-display {
+  display: flex;
+  align-items: center;
+  padding: 16rpx 0;
+  border-bottom: 1rpx solid #f3f4f6;
+  margin-bottom: 16rpx;
+}
+
+.assignee-label {
+  font-size: 28rpx;
+  color: #6b7280;
+  margin-right: 12rpx;
+}
+
+.assignee-value {
+  font-size: 28rpx;
+  color: #111827;
+  font-weight: 500;
 }
 
 .filter-scroll {
@@ -66,7 +88,7 @@
 /* 工单滚动区域 */
 .ticket-scroll {
   flex: 1;
-  height: 100%;
+  overflow: hidden;
 }
 
 /* 工单列表 */

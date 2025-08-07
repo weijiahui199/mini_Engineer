@@ -1,4 +1,4 @@
-<!-- 工单列表页面 - 工程师视图 -->
+<!-- 工单列表页面 -->
 <view class="ticket-list-container">
   <!-- 搜索栏 -->
   <view class="search-container">
@@ -12,6 +12,20 @@
 
   <!-- 筛选栏 -->
   <view class="filter-container">
+    <!-- 负责人显示 -->
+    <view class="assignee-display" wx:if="{{userRoleGroup === '经理' || currentAssignee === 'my'}}">
+      <text class="assignee-label">负责人：</text>
+      <text class="assignee-value">
+        <block wx:if="{{currentAssignee === 'all'}}">全部</block>
+        <block wx:elif="{{currentAssignee === 'my'}}">我负责的</block>
+        <block wx:else>
+          <block wx:for="{{assigneeOptions}}" wx:key="value">
+            <text wx:if="{{item.value === currentAssignee}}">{{item.label}}</text>
+          </block>
+        </block>
+      </text>
+    </view>
+    
     <scroll-view scroll-x class="filter-scroll">
       <view class="filter-tabs">
         <t-tag 
@@ -31,8 +45,8 @@
           variant="outline"
           bind:click="showMoreFilters"
         >
-          <text class="filter-icon">🔽</text>
-          筛选
+          <text class="filter-icon">⚙️</text>
+          更多
         </t-tag>
       </view>
     </scroll-view>
@@ -48,12 +62,15 @@
 
   <!-- 工单列表 -->
   <scroll-view 
-    scroll-y 
+    scroll-y="{{true}}"
     class="ticket-scroll"
     bindscrolltolower="onLoadMore"
     refresher-enabled="{{true}}"
     refresher-triggered="{{refreshing}}"
     bindrefresherrefresh="onPullDownRefresh"
+    enhanced="{{true}}"
+    bounces="{{true}}"
+    show-scrollbar="{{false}}"
   >
     <view class="ticket-list" wx:if="{{ticketList.length > 0}}">
       <t-swipe-cell 
@@ -119,6 +136,10 @@
               <text class="info-icon">⏰</text>
               <text class="info-text">{{item.createTime}}</text>
             </view>
+            <view class="info-item" wx:if="{{item.assigneeName && userRoleGroup === '经理' && currentAssignee === 'all'}}">
+              <text class="info-icon">👷</text>
+              <text class="info-text">{{item.assigneeName}}</text>
+            </view>
           </view>
           
           <!-- 操作按钮 -->
@@ -153,7 +174,7 @@
             
             <!-- 经理特有的分配按钮 -->
             <t-button 
-              wx:if="{{userRole === 'manager' && item.status === 'pending'}}"
+              wx:if="{{userRoleGroup === '经理' && currentAssignee === 'all' && item.status === 'pending'}}"
               theme="primary"
               variant="outline"
               size="small"
@@ -196,7 +217,7 @@
   >
     <view class="filter-popup">
       <view class="popup-header">
-        <text class="popup-title">高级筛选</text>
+        <text class="popup-title">更多选项</text>
         <view class="popup-actions">
           <text class="reset-btn" bindtap="resetFilters">重置</text>
           <t-button theme="primary" size="small" bind:click="applyFilters">
@@ -205,34 +226,19 @@
         </view>
       </view>
       
-      <view class="filter-section">
-        <text class="filter-label">工单状态</text>
-        <t-checkbox-group 
-          value="{{tempFilters.status}}"
-          bind:change="onStatusFilterChange"
+      <view class="filter-section" wx:if="{{assigneeOptions.length > 0}}">
+        <text class="filter-label">负责人</text>
+        <t-radio-group 
+          value="{{tempFilters.assignee}}"
+          bind:change="onAssigneeFilterChange"
         >
-          <t-checkbox 
-            wx:for="{{statusOptions}}" 
+          <t-radio 
+            wx:for="{{assigneeOptions}}" 
             wx:key="value"
             label="{{item.label}}"
             value="{{item.value}}"
           />
-        </t-checkbox-group>
-      </view>
-      
-      <view class="filter-section">
-        <text class="filter-label">优先级</text>
-        <t-checkbox-group 
-          value="{{tempFilters.priority}}"
-          bind:change="onPriorityFilterChange"
-        >
-          <t-checkbox 
-            wx:for="{{priorityOptions}}" 
-            wx:key="value"
-            label="{{item.label}}"
-            value="{{item.value}}"
-          />
-        </t-checkbox-group>
+        </t-radio-group>
       </view>
       
       <view class="filter-section">

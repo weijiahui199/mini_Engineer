@@ -1,0 +1,43 @@
+<!-- 测试功能区域 - 仅用于开发测试 -->
+<view class="test-section" wx:if="{{showTestSection}}">
+  <view class="section-title">
+    <text>开发测试工具</text>
+    <text class="test-hint">（仅开发环境可见）</text>
+  </view>
+  
+  <view class="test-buttons">
+    <t-button 
+      theme="primary" 
+      variant="outline"
+      size="medium"
+      bind:click="switchToManager"
+    >
+      切换为经理角色
+    </t-button>
+    
+    <t-button 
+      theme="default" 
+      variant="outline"
+      size="medium"
+      bind:click="switchToEngineer"
+    >
+      切换为工程师角色
+    </t-button>
+    
+    <t-button 
+      theme="warning" 
+      variant="outline"
+      size="medium"
+      bind:click="createTestData"
+    >
+      创建测试工单
+    </t-button>
+  </view>
+  
+  <view class="current-role-info">
+    <text class="info-label">当前角色：</text>
+    <t-tag theme="{{userInfo.roleGroup === '经理' ? 'success' : 'primary'}}">
+      {{userInfo.roleGroup || '未设置'}}
+    </t-tag>
+  </view>
+</view>

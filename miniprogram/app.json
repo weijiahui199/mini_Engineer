@@ -35,18 +35,6 @@
         "selectedIconPath": "assets/tabbar/ticket-active.png"
       },
       {
-        "pagePath": "pages/materials/index",
-        "text": "耗材",
-        "iconPath": "assets/tabbar/materials.png",
-        "selectedIconPath": "assets/tabbar/materials-active.png"
-      },
-      {
-        "pagePath": "pages/statistics/index",
-        "text": "统计",
-        "iconPath": "assets/tabbar/stats.png",
-        "selectedIconPath": "assets/tabbar/stats-active.png"
-      },
-      {
         "pagePath": "pages/profile/index",
         "text": "我的",
         "iconPath": "assets/tabbar/profile.png",

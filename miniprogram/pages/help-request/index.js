@@ -56,7 +56,7 @@ Page({
   // 检查用户角色
   checkUserRole() {
     const userInfo = wx.getStorageSync('userInfo') || {};
-    const isManager = userInfo.role === 'manager';
+    const isManager = userInfo.roleGroup === '经理';
     
     this.setData({
       isManager,
