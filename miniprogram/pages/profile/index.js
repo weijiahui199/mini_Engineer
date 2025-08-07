@@ -1,5 +1,6 @@
 // 个人中心页面
 const testManager = require('../../utils/test-manager');
+const avatarManager = require('../../utils/avatar-manager');
 
 Page({
   data: {
@@ -108,16 +109,16 @@ Page({
         }
       }
       
-      // 如果还是没有用户信息，创建默认工程师
+      // 如果还是没有用户信息，创建默认用户
       if (!userInfo) {
         userInfo = {
-          name: '新工程师',
-          role: 'engineer',
+          nickName: '微信用户',  // 默认用户名
           avatar: '',
           department: '技术部',
           phone: '',
           email: '',
-          status: 'online'
+          status: 'online',
+          roleGroup: '用户'
         };
       }
       
@@ -127,9 +128,9 @@ Page({
       this.setData({
         userInfo: {
           avatar: savedAvatar,
-          name: userInfo.name || '工程师',
-          roleText: userInfo.roleGroup === '经理' ? 'IT运维主管' : 'IT运维工程师',
-          roleGroup: userInfo.roleGroup || '工程师',
+          name: userInfo.nickName || '微信用户',  // 使用nickName字段
+          roleText: userInfo.roleGroup === '经理' ? 'IT运维主管' : userInfo.roleGroup === '工程师' ? 'IT运维工程师' : '普通用户',
+          roleGroup: userInfo.roleGroup || '用户',
           department: userInfo.department || '技术部',
           isManager: userInfo.roleGroup === '经理',
           isOnline: userInfo.status === 'online',
@@ -143,8 +144,8 @@ Page({
       this.setData({
         userInfo: {
           avatar: wx.getStorageSync('userAvatar') || '',
-          name: '默认工程师',
-          roleText: 'IT运维工程师',
+          name: '微信用户',  // 默认用户名
+          roleText: '普通用户',
           department: '技术部',
           isManager: false,
           isOnline: true
@@ -291,114 +292,79 @@ Page({
   },
 
   // 更换头像
-  changeAvatar() {
-    wx.chooseImage({
-      count: 1,
-      sizeType: ['compressed'],
-      sourceType: ['album', 'camera'],
-      success: (res) => {
-        const tempFilePath = res.tempFilePaths[0];
-        // 上传头像到服务器
-        this.uploadAvatar(tempFilePath);
-      }
-    });
-  },
-
-  // 上传头像
-  async uploadAvatar(filePath) {
+  async changeAvatar() {
     wx.showLoading({
-      title: '上传中...'
+      title: '处理中...',
+      mask: true
     });
     
     try {
-      // 上传到云存储
-      const cloudPath = `avatars/${this.app.globalData.openid}_${Date.now()}.jpg`;
-      const uploadRes = await wx.cloud.uploadFile({
-        cloudPath: cloudPath,
-        filePath: filePath
+      // 使用头像管理器选择并上传头像
+      const result = await avatarManager.chooseAndUploadAvatar({
+        maxSize: 400,     // 最大尺寸400x400
+        quality: 0.8,     // 压缩质量80%
+        sourceType: ['album', 'camera']
       });
       
-      // 更新数据库中的用户头像
-      if (this.app.globalData.userInfo && this.app.globalData.userInfo._id) {
-        await this.db.collection('users').doc(this.app.globalData.userInfo._id).update({
-          data: {
-            avatar: uploadRes.fileID,
-            updateTime: new Date()
-          }
+      wx.hideLoading();
+      
+      if (result.success) {
+        // 获取临时URL用于显示
+        const tempUrl = await avatarManager.getTempAvatarUrl(result.fileID);
+        
+        // 更新页面显示
+        this.setData({
+          'userInfo.avatar': tempUrl
+        });
+        
+        // 更新全局数据
+        if (this.app.globalData.userInfo) {
+          this.app.globalData.userInfo.avatar = result.fileID;
+        }
+        
+        // 更新本地存储（存储云文件ID）
+        wx.setStorageSync('userAvatar', result.fileID);
+        
+        wx.showToast({
+          title: '头像更新成功',
+          icon: 'success'
+        });
+      } else {
+        wx.showToast({
+          title: result.error || '上传失败',
+          icon: 'none'
         });
       }
-      
-      // 更新页面显示
-      this.setData({
-        'userInfo.avatar': filePath
-      });
-      
-      // 保存到本地存储
-      wx.setStorageSync('userAvatar', filePath);
-      
-      wx.hideLoading();
-      wx.showToast({
-        title: '头像更新成功',
-        icon: 'success'
-      });
     } catch (error) {
-      console.error('上传头像失败:', error);
       wx.hideLoading();
-      
-      // 即使上传失败，也保存到本地
-      this.setData({
-        'userInfo.avatar': filePath
-      });
-      wx.setStorageSync('userAvatar', filePath);
-      
+      console.error('更换头像失败:', error);
       wx.showToast({
-        title: '头像已保存',
-        icon: 'success'
+        title: '更换头像失败',
+        icon: 'none'
       });
     }
   },
 
+
   // 快捷入口跳转
-  goToTicketStats() {
-    wx.navigateTo({
-      url: '/pages/statistics/index?tab=ticket'
+  navigateToTickets() {
+    wx.switchTab({
+      url: '/pages/ticket-list/index'
     });
   },
 
   goToMaterialStats() {
-    wx.navigateTo({
-      url: '/pages/materials/index?tab=analysis'
+    wx.showToast({
+      title: '功能开发中',
+      icon: 'none'
     });
   },
 
   // 功能页面跳转
   goToUserInfo() {
-    wx.navigateTo({
-      url: '/pages/user-info/index'
-    });
-  },
-
-  goToWorkHistory() {
-    wx.navigateTo({
-      url: '/pages/work-history/index'
-    });
-  },
-
-  goToTeamManage() {
-    wx.navigateTo({
-      url: '/pages/team-manage/index'
-    });
-  },
-
-  goToScheduleManage() {
-    wx.navigateTo({
-      url: '/pages/schedule-manage/index'
-    });
-  },
-
-  goToReports() {
-    wx.navigateTo({
-      url: '/pages/reports/index'
+    wx.showToast({
+      title: '功能开发中',
+      icon: 'none'
     });
   },
 
@@ -575,14 +541,35 @@ Page({
       content: '确定要退出登录吗？',
       success: (res) => {
         if (res.confirm) {
-          // 清除登录信息
+          // 清除所有登录相关的本地存储
           wx.removeStorageSync('token');
           wx.removeStorageSync('userInfo');
+          wx.removeStorageSync('openid');
+          wx.removeStorageSync('isGuest');
+          wx.removeStorageSync('userAvatar');
+          wx.removeStorageSync('userRoleGroup');
           
-          // 跳转到登录页
-          wx.reLaunch({
-            url: '/pages/login/index'
+          // 重置全局变量
+          const app = getApp();
+          app.globalData.isLogin = false;
+          app.globalData.userInfo = null;
+          app.globalData.openid = null;
+          app.globalData.token = null;
+          app.globalData.isGuest = false;
+          
+          // 提示退出成功
+          wx.showToast({
+            title: '已退出登录',
+            icon: 'success',
+            duration: 1500
           });
+          
+          // 延迟跳转到登录页
+          setTimeout(() => {
+            wx.reLaunch({
+              url: '/pages/login/index'
+            });
+          }, 1500);
         }
       }
     });
@@ -594,7 +581,7 @@ Page({
     const updatedUserInfo = {
       ...this.data.userInfo,
       isManager,
-      roleText: isManager ? 'IT运维主管' : 'IT运维工程师'
+      roleText: isManager ? 'IT运维主管' : '普通用户'
     };
     
     this.setData({

@@ -22,7 +22,6 @@ async function testSetAsManager() {
     }).update({
       data: {
         roleGroup: '经理',
-        role: 'manager',
         name: '测试经理',
         department: '管理部',
         engineerInfo: {
@@ -38,7 +37,6 @@ async function testSetAsManager() {
     app.globalData.userInfo = {
       ...app.globalData.userInfo,
       roleGroup: '经理',
-      role: 'manager',
       name: '测试经理',
       department: '管理部'
     };
@@ -91,7 +89,6 @@ async function testSetAsEngineer() {
     }).update({
       data: {
         roleGroup: '工程师',
-        role: 'engineer',
         name: '测试工程师',
         department: '技术部',
         engineerInfo: {
@@ -107,7 +104,6 @@ async function testSetAsEngineer() {
     app.globalData.userInfo = {
       ...app.globalData.userInfo,
       roleGroup: '工程师',
-      role: 'engineer',
       name: '测试工程师',
       department: '技术部'
     };

@@ -13,8 +13,6 @@
         <view class="engineer-details">
           <view class="engineer-name">
             <text>{{engineerInfo.name || '工程师'}}</text>
-            <view class="status-indicator {{engineerInfo.status}}"></view>
-            <text class="status-text">{{statusText[engineerInfo.status]}}</text>
           </view>
           <view class="workload">
             工作量: {{engineerInfo.currentTasks}}/{{engineerInfo.maxTasks}}
@@ -173,29 +171,4 @@
     />
   </view>
 
-  <!-- 工作状态切换 -->
-  <t-popup 
-    visible="{{statusPopupVisible}}" 
-    placement="bottom"
-    bind:visible-change="handleStatusPopupChange"
-  >
-    <view class="status-popup">
-      <view class="popup-header">
-        <text class="popup-title">切换工作状态</text>
-        <t-icon name="close" size="48rpx" bindtap="closeStatusPopup" />
-      </view>
-      <t-radio-group 
-        value="{{engineerInfo.status}}"
-        bind:change="onStatusChange"
-      >
-        <t-radio 
-          wx:for="{{statusOptions}}" 
-          wx:key="value"
-          label="{{item.label}}"
-          value="{{item.value}}"
-          icon="circle"
-        />
-      </t-radio-group>
-    </view>
-  </t-popup>
 </view>

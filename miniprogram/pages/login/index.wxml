@@ -1,0 +1,95 @@
+<!-- 登录页面 -->
+<view class="login-container">
+  <!-- 背景渐变 -->
+  <view class="gradient-bg"></view>
+  
+  <!-- 磨砂玻璃效果容器 -->
+  <view class="glass-container">
+    <!-- Logo区域 -->
+    <view class="logo-section">
+      <view class="logo-wrapper">
+        <image class="logo" src="/assets/logo.png" mode="aspectFit" />
+      </view>
+      <text class="app-name">IT工程师工作台</text>
+      <text class="app-desc">高效管理，智能协作</text>
+    </view>
+
+    <!-- 登录表单 -->
+    <view class="login-form">
+      <!-- 欢迎语 -->
+      <view class="welcome-text">
+        <text class="welcome-title">欢迎使用</text>
+        <text class="welcome-subtitle">请登录以继续</text>
+      </view>
+
+      <!-- 用户信息展示（获取后显示） -->
+      <view class="user-info-preview" wx:if="{{userInfo}}">
+        <image class="user-avatar" src="{{userInfo.avatarUrl || '/assets/default-avatar.png'}}" />
+        <text class="user-nickname">{{userInfo.nickName}}</text>
+      </view>
+
+      <!-- 登录按钮 -->
+      <view class="button-group">
+        <!-- 微信登录按钮（主要方式） -->
+        <button 
+          class="login-btn primary-btn"
+          bindtap="getUserProfile"
+          wx:if="{{!hasUserInfo && canUseGetUserProfile}}"
+        >
+          <t-icon name="wechat" size="40rpx" />
+          <text>微信快捷登录</text>
+        </button>
+
+        <!-- 确认登录按钮（已获取用户信息后） -->
+        <button 
+          class="login-btn secondary-btn"
+          bindtap="manualLogin"
+          wx:if="{{hasUserInfo}}"
+          loading="{{loading}}"
+        >
+          <t-icon name="check-circle" size="40rpx" />
+          <text>确认登录</text>
+        </button>
+
+        <!-- 快速体验按钮（不需要授权） -->
+        <button 
+          class="login-btn info-btn"
+          bindtap="quickLogin"
+          wx:if="{{!hasUserInfo}}"
+        >
+          <t-icon name="rocket" size="40rpx" />
+          <text>快速体验</text>
+        </button>
+
+        <!-- 游客模式 -->
+        <view class="guest-mode" bindtap="guestLogin">
+          <text>游客模式</text>
+        </view>
+      </view>
+
+      <!-- 协议条款 -->
+      <view class="agreement">
+        <checkbox-group bindchange="onAgreementChange">
+          <label class="agreement-label">
+            <checkbox value="agree" checked="{{agreed}}" color="#0ea5e9" />
+            <text>我已阅读并同意</text>
+            <text class="link" bindtap="showUserAgreement">《用户协议》</text>
+            <text>和</text>
+            <text class="link" bindtap="showPrivacyPolicy">《隐私政策》</text>
+          </label>
+        </checkbox-group>
+      </view>
+    </view>
+
+    <!-- 底部信息 -->
+    <view class="footer">
+      <text class="copyright">© 2024 IT工程师工作台</text>
+      <text class="version">版本号: v1.0.0</text>
+    </view>
+  </view>
+
+  <!-- 加载遮罩 -->
+  <view class="loading-mask" wx:if="{{loading}}">
+    <t-loading theme="circular" loading size="50rpx" text="登录中..." />
+  </view>
+</view>

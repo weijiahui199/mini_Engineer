@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <!-- 背景圆 -->
+  <circle cx="100" cy="100" r="90" fill="#0ea5e9"/>
+  
+  <!-- IT文字 -->
+  <text x="100" y="90" font-family="Arial, sans-serif" font-size="48" font-weight="bold" text-anchor="middle" fill="white">IT</text>
+  
+  <!-- 工程师图标 - 齿轮 -->
+  <g transform="translate(100, 130)">
+    <path d="M-8,0 L-8,-3 L-5,-3 L-5,-6 L-3,-6 L-3,-8 L0,-8 L3,-8 L3,-6 L5,-6 L5,-3 L8,-3 L8,0 L8,3 L5,3 L5,6 L3,6 L3,8 L0,8 L-3,8 L-3,6 L-5,6 L-5,3 L-8,3 Z" fill="white" transform="scale(2)"/>
+    <circle cx="0" cy="0" r="6" fill="#0ea5e9"/>
+  </g>
+  
+  <!-- 底部文字 -->
+  <text x="100" y="165" font-family="Arial, sans-serif" font-size="14" text-anchor="middle" fill="white">工程师平台</text>
+</svg>

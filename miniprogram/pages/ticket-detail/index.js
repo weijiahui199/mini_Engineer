@@ -37,20 +37,13 @@ Page({
       },
       {
         id: 2,
-        title: '工单分配',
-        time: '2024-01-15 09:35',
-        description: '分配给张工程师',
-        isActive: true
-      },
-      {
-        id: 3,
         title: '开始处理',
         time: '',
         description: '',
         isActive: false
       },
       {
-        id: 4,
+        id: 3,
         title: '完成',
         time: '',
         description: '',
@@ -61,34 +54,6 @@ Page({
     // 解决方案
     solutionText: '',
     
-    // 耗材记录
-    materials: [],
-    
-    // 常用耗材
-    commonMaterials: [
-      { id: 1, name: '网线', unit: '米' },
-      { id: 2, name: '电源线', unit: '根' },
-      { id: 3, name: '内存条', unit: '条' },
-      { id: 4, name: '硬盘', unit: '个' },
-      { id: 5, name: '鼠标', unit: '个' },
-      { id: 6, name: '键盘', unit: '个' }
-    ],
-    
-    // 耗材弹窗
-    materialDialogVisible: false,
-    selectedMaterial: {},
-    materialQuantity: 1,
-    materialRemark: '',
-    
-    // 协助弹窗
-    helpDialogVisible: false,
-    helpReason: '',
-    selectedHelper: '',
-    availableHelpers: [
-      { id: 'manager1', name: '李经理', role: 'IT经理' },
-      { id: 'engineer2', name: '王工程师', role: '高级工程师' },
-      { id: 'engineer3', name: '赵工程师', role: '网络工程师' }
-    ],
     
     // 显示操作按钮
     showActions: true
@@ -294,137 +259,7 @@ Page({
     });
   },
 
-  // 显示耗材弹窗
-  showMaterialDialog() {
-    this.setData({
-      materialDialogVisible: true,
-      selectedMaterial: {},
-      materialQuantity: 1,
-      materialRemark: ''
-    });
-  },
 
-  // 关闭耗材弹窗
-  closeMaterialDialog() {
-    this.setData({
-      materialDialogVisible: false
-    });
-  },
-
-  // 选择耗材
-  selectMaterial(e) {
-    const item = e.currentTarget.dataset.item;
-    this.setData({
-      selectedMaterial: item
-    });
-  },
-
-  // 确认添加耗材
-  confirmAddMaterial() {
-    const { selectedMaterial, materialQuantity, materialRemark } = this.data;
-    
-    if (!selectedMaterial.id) {
-      wx.showToast({
-        title: '请选择耗材',
-        icon: 'none'
-      });
-      return;
-    }
-
-    const newMaterial = {
-      id: Date.now(),
-      name: selectedMaterial.name,
-      quantity: materialQuantity,
-      unit: selectedMaterial.unit,
-      remark: materialRemark,
-      time: new Date().toLocaleString('zh-CN')
-    };
-
-    this.setData({
-      materials: [...this.data.materials, newMaterial],
-      materialDialogVisible: false
-    });
-
-    wx.showToast({
-      title: '添加成功',
-      icon: 'success'
-    });
-  },
-
-  // 移除耗材
-  removeMaterial(e) {
-    const id = e.currentTarget.dataset.id;
-    wx.showModal({
-      title: '确认删除',
-      content: '确定要删除这条耗材记录吗？',
-      success: (res) => {
-        if (res.confirm) {
-          const materials = this.data.materials.filter(item => item.id !== id);
-          this.setData({ materials });
-        }
-      }
-    });
-  },
-
-  // 请求协助
-  requestHelp() {
-    this.setData({
-      helpDialogVisible: true,
-      helpReason: '',
-      selectedHelper: ''
-    });
-  },
-
-  // 关闭协助弹窗
-  closeHelpDialog() {
-    this.setData({
-      helpDialogVisible: false
-    });
-  },
-
-  // 选择协助人员
-  onHelperChange(e) {
-    this.setData({
-      selectedHelper: e.detail.value
-    });
-  },
-
-  // 确认请求协助
-  confirmRequestHelp() {
-    const { helpReason, selectedHelper } = this.data;
-    
-    if (!helpReason) {
-      wx.showToast({
-        title: '请填写协助原因',
-        icon: 'none'
-      });
-      return;
-    }
-    
-    if (!selectedHelper) {
-      wx.showToast({
-        title: '请选择协助人员',
-        icon: 'none'
-      });
-      return;
-    }
-
-    // 发送协助请求
-    wx.showLoading({
-      title: '发送中...'
-    });
-
-    setTimeout(() => {
-      wx.hideLoading();
-      this.setData({
-        helpDialogVisible: false
-      });
-      wx.showToast({
-        title: '请求已发送',
-        icon: 'success'
-      });
-    }, 1000);
-  },
 
   // 预览附件
   previewAttachment(e) {
@@ -436,18 +271,6 @@ Page({
     });
   },
 
-  // 处理弹窗变化
-  handleMaterialDialogChange(e) {
-    this.setData({
-      materialDialogVisible: e.detail.visible
-    });
-  },
-
-  handleHelpDialogChange(e) {
-    this.setData({
-      helpDialogVisible: e.detail.visible
-    });
-  },
 
   // 获取状态主题
   getStatusTheme(status) {
@@ -486,20 +309,13 @@ Page({
         },
         {
           id: 2,
-          title: '工单分配',
-          time: '2024-01-15 09:35',
-          description: '分配给张工程师',
-          isActive: true
-        },
-        {
-          id: 3,
           title: '开始处理',
           time: '',
           description: '',
           isActive: false
         },
         {
-          id: 4,
+          id: 3,
           title: '完成',
           time: '',
           description: '',

@@ -50,17 +50,13 @@
   <view class="quick-entries">
     <view class="section-title">快捷入口</view>
     <view class="entries-grid">
-      <view class="entry-item" bindtap="goToTicketStats">
+      <view class="entry-item" bindtap="navigateToTickets">
         <t-icon name="task" size="48rpx" color="#0ea5e9" />
-        <text class="entry-label">工单统计</text>
+        <text class="entry-label">我的工单</text>
       </view>
       <view class="entry-item" bindtap="goToMaterialStats">
         <t-icon name="box" size="48rpx" color="#10b981" />
-        <text class="entry-label">耗材统计</text>
-      </view>
-      <view class="entry-item" bindtap="goToWorkHistory">
-        <t-icon name="history" size="48rpx" color="#f59e0b" />
-        <text class="entry-label">工作记录</text>
+        <text class="entry-label">耗材管理</text>
       </view>
       <view class="entry-item" bindtap="goToSettings">
         <t-icon name="setting" size="48rpx" color="#8b5cf6" />
@@ -79,55 +75,8 @@
         arrow
         bind:click="goToUserInfo"
       />
-      <t-cell 
-        title="工单统计" 
-        note="{{ticketStats ? '本月完成 ' + ticketStats.completed + ' 单' : '查看工单统计'}}"
-        left-icon="task"
-        arrow
-        bind:click="goToTicketStats"
-      />
-      <t-cell 
-        title="耗材统计" 
-        note="{{materialStats ? '本月使用 ' + materialStats.total + ' 项' : '查看耗材统计'}}"
-        left-icon="box"
-        arrow
-        bind:click="goToMaterialStats"
-      />
-      <t-cell 
-        title="工作记录" 
-        note="查看历史工单记录"
-        left-icon="history"
-        arrow
-        bind:click="goToWorkHistory"
-      />
     </t-cell-group>
 
-    <t-cell-group theme="card">
-      <t-cell 
-        title="团队管理" 
-        note="管理团队成员"
-        left-icon="usergroup"
-        arrow
-        bind:click="goToTeamManage"
-        wx:if="{{userInfo.isManager}}"
-      />
-      <t-cell 
-        title="排班管理" 
-        note="安排工作排班"
-        left-icon="calendar-event"
-        arrow
-        bind:click="goToScheduleManage"
-        wx:if="{{userInfo.isManager}}"
-      />
-      <t-cell 
-        title="数据报表" 
-        note="查看团队统计报表"
-        left-icon="chart-bubble"
-        arrow
-        bind:click="goToReports"
-        wx:if="{{userInfo.isManager}}"
-      />
-    </t-cell-group>
 
     <t-cell-group theme="card">
       <t-cell 
@@ -171,10 +120,10 @@
   <!-- 退出登录按钮 -->
   <view class="logout-section">
     <t-button 
-      theme="default" 
+      theme="danger" 
       size="large"
       block
-      bind:click="logout"
+      bind:tap="logout"
     >
       退出登录
     </t-button>

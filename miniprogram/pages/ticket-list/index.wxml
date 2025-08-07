@@ -55,7 +55,7 @@
   <!-- 统计信息 -->
   <view class="stats-bar" wx:if="{{showStats}}">
     <view class="stats-content">
-      <text class="stats-text">今日分配: {{todayStats.assigned}}个工单</text>
+      <text class="stats-text">今日工单: {{todayStats.assigned}}个</text>
       <text class="stats-highlight">完成率: {{todayStats.completionRate}}%</text>
     </view>
   </view>
@@ -172,17 +172,6 @@
               继续处理
             </t-button>
             
-            <!-- 经理特有的分配按钮 -->
-            <t-button 
-              wx:if="{{userRoleGroup === '经理' && currentAssignee === 'all' && item.status === 'pending'}}"
-              theme="primary"
-              variant="outline"
-              size="small"
-              bind:click="assignTicket"
-              data-id="{{item.id}}"
-            >
-              分配
-            </t-button>
           </view>
         </view>
       </t-swipe-cell>

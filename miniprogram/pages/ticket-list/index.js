@@ -96,7 +96,7 @@ Page({
   getUserRole() {
     // 从全局用户信息获取角色
     const userInfo = this.app.globalData.userInfo;
-    const roleGroup = userInfo?.roleGroup || wx.getStorageSync('userRoleGroup') || '工程师';
+    const roleGroup = userInfo?.roleGroup || wx.getStorageSync('userRoleGroup') || '用户';
     this.setData({
       userRoleGroup: roleGroup
     });
@@ -308,17 +308,9 @@ Page({
     });
   },
 
-  // 分配工单（经理功能）
-  assignTicket(e) {
-    e.stopPropagation();
-    const id = e.currentTarget.dataset.id;
-    wx.navigateTo({
-      url: `/pages/ticket-assign/index?id=${id}`
-    });
-  },
 
-  // 更新工单分配
-  async updateTicketAssignment(ticketId) {
+  // 更新工单状态
+  async updateTicketStatus(ticketId) {
     wx.showLoading({
       title: '处理中...'
     });

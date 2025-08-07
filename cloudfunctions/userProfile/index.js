@@ -49,7 +49,7 @@ async function getUserProfile(event, wxContext) {
       const profile = result.data[0]
       // 添加默认角色和工程师信息
       if (!profile.roleGroup) {
-        profile.roleGroup = '工程师' // 默认为工程师
+        profile.roleGroup = '用户' // 默认为普通用户
       }
       if (!profile.engineerInfo) {
         profile.engineerInfo = {
@@ -71,7 +71,7 @@ async function getUserProfile(event, wxContext) {
           email: profile.email || '',
           employeeId: profile.employeeId || '',
           avatar: profile.avatar || '',
-          roleGroup: profile.roleGroup || '工程师',
+          roleGroup: profile.roleGroup || '用户',
           lastUpdateTime: profile.updateTime,
           createTime: profile.createTime
         }
@@ -88,7 +88,7 @@ async function getUserProfile(event, wxContext) {
           email: '',
           employeeId: '',
           avatar: '',
-          roleGroup: '工程师',
+          roleGroup: '用户',
           lastUpdateTime: null,
           createTime: null
         }

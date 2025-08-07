@@ -1,13 +1,10 @@
 {
   "pages": [
+    "pages/login/index",
     "pages/dashboard/index",
     "pages/ticket-list/index",
     "pages/ticket-detail/index",
-    "pages/materials/index",
-    "pages/statistics/index",
-    "pages/profile/index",
-    "pages/ticket-assign/index",
-    "pages/help-request/index"
+    "pages/profile/index"
   ],
   "window": {
     "backgroundTextStyle": "light",

@@ -9,7 +9,10 @@ App({
       env: "cloud1-1gp11xbgcf2738ca",
       userInfo: null,
       openid: null,
-      db: null
+      db: null,
+      isLogin: false,
+      isGuest: false,
+      token: null
     };
     
     if (!wx.cloud) {
@@ -33,8 +36,8 @@ App({
         
         console.log('云开发环境初始化成功:', this.globalData.env);
         
-        // 获取用户openid
-        this.getOpenid();
+        // 检查登录状态
+        this.checkLoginStatus();
       } catch (error) {
         console.error('云开发初始化失败:', error);
         wx.showModal({
@@ -42,6 +45,40 @@ App({
           content: '云开发环境初始化失败，部分功能可能无法使用',
           showCancel: false
         });
+      }
+    }
+  },
+  
+  // 检查登录状态
+  checkLoginStatus() {
+    const token = wx.getStorageSync('token');
+    const userInfo = wx.getStorageSync('userInfo');
+    const openid = wx.getStorageSync('openid');
+    const isGuest = wx.getStorageSync('isGuest');
+    
+    if (token && userInfo && openid) {
+      // 已登录
+      this.globalData.isLogin = true;
+      this.globalData.token = token;
+      this.globalData.userInfo = userInfo;
+      this.globalData.openid = openid;
+      console.log('用户已登录:', userInfo);
+    } else if (isGuest) {
+      // 游客模式
+      this.globalData.isGuest = true;
+      this.globalData.userInfo = userInfo;
+      console.log('游客模式');
+    } else {
+      // 未登录，跳转到登录页
+      console.log('用户未登录');
+      const pages = getCurrentPages();
+      if (pages.length > 0) {
+        const currentPage = pages[pages.length - 1];
+        if (currentPage.route !== 'pages/login/index') {
+          wx.reLaunch({
+            url: '/pages/login/index'
+          });
+        }
       }
     }
   },
@@ -80,9 +117,9 @@ App({
       this.globalData.openid = 'test_openid_' + Date.now();
       this.globalData.userInfo = {
         openid: this.globalData.openid,
-        name: '测试工程师',
-        roleGroup: '工程师',
-        engineerNo: 'ENG' + Date.now().toString().slice(-6)
+        nickName: '微信用户',  // 使用nickName
+        roleGroup: '用户',
+        engineerNo: 'USER' + Date.now().toString().slice(-6)
       };
     }
   },
@@ -108,8 +145,8 @@ App({
       // 如果数据库操作失败，创建本地默认用户
       this.globalData.userInfo = {
         openid: this.globalData.openid,
-        name: '默认工程师',
-        roleGroup: '工程师',
+        nickName: '微信用户',  // 使用nickName
+        roleGroup: '用户',
         avatar: '',
         status: 'online',
         department: '技术部',
@@ -129,8 +166,8 @@ App({
     const engineerNo = 'ENG' + Date.now().toString().slice(-6);
     const newUser = {
       openid: this.globalData.openid,
-      name: '工程师' + engineerNo,
-      roleGroup: '工程师',
+      nickName: '微信用户',  // 默认用户名
+      roleGroup: '用户',
       avatar: '',
       status: 'online',
       department: '技术部',

@@ -5,7 +5,6 @@ Page({
     engineerInfo: {
       name: '张工程师',
       avatar: '',
-      status: 'online', // online, busy, offline
       currentTasks: 5,
       maxTasks: 10,
       location: '行政楼2楼'
@@ -13,9 +12,6 @@ Page({
     
     // 状态文本映射
     statusText: {
-      online: '在线',
-      busy: '忙碌',
-      offline: '离线',
       pending: '待处理',
       processing: '处理中',
       resolved: '已解决',
@@ -45,15 +41,7 @@ Page({
     ],
     
     // 最新工单
-    latestTickets: [],
-    
-    // 状态切换弹窗
-    statusPopupVisible: false,
-    statusOptions: [
-      { label: '在线', value: 'online' },
-      { label: '忙碌', value: 'busy' },
-      { label: '离线', value: 'offline' }
-    ]
+    latestTickets: []
   },
 
   onLoad() {
@@ -164,23 +152,25 @@ Page({
   // 快捷操作点击
   onQuickAction(e) {
     const action = e.currentTarget.dataset.action;
+    
+    // 这些功能开发中
+    if (action === 'materials' || action === 'stats' || action === 'help') {
+      wx.showToast({
+        title: '功能开发中',
+        icon: 'none',
+        duration: 2000
+      });
+      return;
+    }
+    
     const routes = {
-      'my-tickets': '/pages/ticket-list/index',
-      'materials': '/pages/materials/index',
-      'help': '/pages/help-request/index',
-      'stats': '/pages/statistics/index'
+      'my-tickets': '/pages/ticket-list/index'
     };
     
     if (routes[action]) {
-      if (action === 'stats') {
-        wx.switchTab({
-          url: routes[action]
-        });
-      } else {
-        wx.navigateTo({
-          url: routes[action]
-        });
-      }
+      wx.navigateTo({
+        url: routes[action]
+      });
     }
   },
 
@@ -267,34 +257,6 @@ Page({
     }
   },
 
-  // 切换工作状态
-  onStatusChange(e) {
-    const newStatus = e.detail.value;
-    this.setData({
-      'engineerInfo.status': newStatus,
-      statusPopupVisible: false
-    });
-    
-    // 这里调用API更新状态
-    wx.showToast({
-      title: `已切换至${this.data.statusText[newStatus]}`,
-      icon: 'success'
-    });
-  },
-
-  // 处理状态弹窗变化
-  handleStatusPopupChange(e) {
-    this.setData({
-      statusPopupVisible: e.detail.visible
-    });
-  },
-
-  // 关闭状态弹窗
-  closeStatusPopup() {
-    this.setData({
-      statusPopupVisible: false
-    });
-  },
 
   // 获取状态主题
   getStatusTheme(status) {
@@ -389,7 +351,7 @@ Page({
       const savedAvatar = wx.getStorageSync('userAvatar') || '';
       
       return {
-        name: userInfo?.name || '张工程师',
+        name: userInfo?.nickName || '微信用户',  // 使用nickName字段
         avatar: savedAvatar || userInfo?.avatar || '',
         status: userInfo?.status || 'online',
         currentTasks: processingCount.total || 5,
@@ -402,7 +364,7 @@ Page({
       console.error('加载用户信息失败:', error);
       // 返回默认信息
       return {
-        name: '张工程师',
+        name: '微信用户',  // 默认用户名
         avatar: wx.getStorageSync('userAvatar') || '',
         status: 'online',
         currentTasks: 5,

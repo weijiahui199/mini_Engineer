@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <!-- 背景 -->
+  <rect width="200" height="200" fill="#e5e7eb"/>
+  
+  <!-- 头部圆形 -->
+  <circle cx="100" cy="80" r="35" fill="#9ca3af"/>
+  
+  <!-- 身体 -->
+  <ellipse cx="100" cy="180" rx="60" ry="50" fill="#9ca3af"/>
+</svg>
