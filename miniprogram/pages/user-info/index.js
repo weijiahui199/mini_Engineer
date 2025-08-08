@@ -24,7 +24,49 @@ Page({
   onLoad() {
     this.app = getApp();
     this.db = this.app.globalData.db || wx.cloud.database();
+    
+    // 注册头像更新事件监听，保存监听器ID
+    this.avatarListenerId = this.app.eventBus.on(
+      this.app.EVENTS.AVATAR_UPDATED, 
+      this.handleAvatarUpdate.bind(this), 
+      this
+    );
+    console.log('[UserInfo] 已注册头像更新事件监听, ID:', this.avatarListenerId);
+    
     this.loadUserInfo();
+  },
+  
+  onUnload() {
+    // 移除事件监听，使用监听器ID
+    if (this.app && this.app.eventBus && this.avatarListenerId) {
+      this.app.eventBus.off(this.app.EVENTS.AVATAR_UPDATED, this.avatarListenerId);
+      console.log('[UserInfo] 已移除头像更新事件监听, ID:', this.avatarListenerId);
+    }
+  },
+  
+  /**
+   * 处理头像更新事件
+   * @param {Object} data 更新数据
+   */
+  handleAvatarUpdate(data) {
+    console.log('[UserInfo] 收到头像更新通知:', data);
+    
+    // 优先使用本地路径，其次是临时URL，最后是文件ID
+    const avatarUrl = data.localPath || data.tempUrl || data.fileID;
+    
+    if (avatarUrl) {
+      // 更新页面显示
+      this.setData({
+        'userInfo.avatar': avatarUrl
+      });
+      console.log('[UserInfo] 头像已更新为:', avatarUrl);
+      
+      // 更新原始数据，避免被认为是修改
+      if (this.data.originalUserInfo) {
+        this.data.originalUserInfo.avatar = data.fileID || avatarUrl;
+        this.data.originalUserInfo.localAvatar = data.localPath || avatarUrl;
+      }
+    }
   },
 
   // 加载用户信息

@@ -307,7 +307,22 @@ class UserCache {
     try {
       console.log('[UserCache.updateAvatarCache] 开始更新头像缓存');
       console.log('[UserCache.updateAvatarCache] 新头像ID:', avatarFileID);
-      await this.cacheAvatar(avatarFileID);
+      
+      // 缓存头像
+      const localPath = await this.cacheAvatar(avatarFileID);
+      
+      // 触发全局头像更新事件
+      const app = getApp();
+      if (app && app.eventBus) {
+        app.eventBus.emit(app.EVENTS.AVATAR_UPDATED, {
+          fileID: avatarFileID,
+          localPath: localPath,
+          timestamp: Date.now(),
+          source: 'UserCache'
+        });
+        console.log('[UserCache.updateAvatarCache] 已触发头像更新事件');
+      }
+      
       console.log('[UserCache.updateAvatarCache] 头像缓存更新完成');
     } catch (error) {
       console.error('[UserCache] 更新头像缓存失败:', error);
@@ -402,6 +417,19 @@ class UserCache {
       wx.setStorageSync(this.CACHE_KEYS.avatarFileID, cloudFileID);
       wx.setStorageSync(this.CACHE_KEYS.userAvatar, savedFile.savedFilePath);
       wx.setStorageSync(this.CACHE_KEYS.avatarCacheTime, Date.now());
+      
+      // 触发全局头像更新事件
+      const app = getApp();
+      if (app && app.eventBus) {
+        app.eventBus.emit(app.EVENTS.AVATAR_UPDATED, {
+          fileID: cloudFileID,
+          localPath: savedFile.savedFilePath,
+          tempUrl: tempUrl,
+          timestamp: Date.now(),
+          source: 'UserCache.download'
+        });
+        console.log('[UserCache.downloadAndCacheAvatar] 已触发头像更新事件');
+      }
       
       return savedFile.savedFilePath;
     } catch (error) {

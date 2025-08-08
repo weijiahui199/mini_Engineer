@@ -43,6 +43,21 @@ async function chooseAndUploadAvatar(options = {}) {
     // 4. 上传到云存储
     const uploadResult = await uploadToCloud(compressedPath)
     
+    // 5. 触发头像更新事件
+    const app = getApp()
+    if (app && app.eventBus) {
+      // 获取临时URL以便立即显示
+      const tempUrl = await getTempAvatarUrl(uploadResult.fileID)
+      
+      app.eventBus.emit(app.EVENTS.AVATAR_UPDATED, {
+        fileID: uploadResult.fileID,
+        tempUrl: tempUrl,
+        localPath: compressedPath,
+        timestamp: Date.now()
+      })
+      console.log('[AvatarManager] 已触发头像更新事件')
+    }
+    
     return {
       success: true,
       fileID: uploadResult.fileID,

@@ -51,6 +51,14 @@ Page({
     this.app = getApp();
     this.db = this.app.globalData.db || wx.cloud.database();
     
+    // 注册头像更新事件监听，保存监听器ID
+    this.avatarListenerId = this.app.eventBus.on(
+      this.app.EVENTS.AVATAR_UPDATED, 
+      this.handleAvatarUpdate.bind(this), 
+      this
+    );
+    console.log('[Dashboard] 已注册头像更新事件监听, ID:', this.avatarListenerId);
+    
     // 延迟加载数据，等待app初始化完成
     setTimeout(() => {
       this.loadDashboardData();
@@ -65,6 +73,12 @@ Page({
 
   onUnload() {
     this.stopAutoRefresh();
+    
+    // 移除事件监听，使用监听器ID
+    if (this.app && this.app.eventBus && this.avatarListenerId) {
+      this.app.eventBus.off(this.app.EVENTS.AVATAR_UPDATED, this.avatarListenerId);
+      console.log('[Dashboard] 已移除头像更新事件监听, ID:', this.avatarListenerId);
+    }
   },
 
   // 下拉刷新处理
@@ -780,5 +794,33 @@ Page({
         }
       ]
     };
+  },
+  
+  /**
+   * 处理头像更新事件
+   * @param {Object} data 更新数据
+   */
+  handleAvatarUpdate(data) {
+    console.log('[Dashboard] 收到头像更新通知:', data);
+    
+    // 优先使用本地路径，其次是临时URL，最后是文件ID
+    const avatarUrl = data.localPath || data.tempUrl || data.fileID;
+    
+    if (avatarUrl) {
+      // 更新页面显示
+      this.setData({
+        'engineerInfo.avatar': avatarUrl
+      });
+      console.log('[Dashboard] 头像已更新为:', avatarUrl);
+      
+      // 更新缓存中的用户信息
+      const cachedUserInfo = wx.getStorageSync('cached_user_info');
+      if (cachedUserInfo) {
+        cachedUserInfo.avatar = data.fileID || avatarUrl;
+        cachedUserInfo.localAvatar = data.localPath || avatarUrl;
+        wx.setStorageSync('cached_user_info', cachedUserInfo);
+        console.log('[Dashboard] 已更新缓存中的头像信息');
+      }
+    }
   }
 });
