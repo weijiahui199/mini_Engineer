@@ -1,0 +1,192 @@
+/* 个人信息编辑页面样式 */
+.container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 20rpx;
+}
+
+/* 头像区域 */
+.avatar-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40rpx 0;
+}
+
+.avatar-wrapper {
+  position: relative;
+  width: 180rpx;
+  height: 180rpx;
+}
+
+.avatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 4rpx solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.2);
+}
+
+.avatar-edit-icon {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 50rpx;
+  height: 50rpx;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.15);
+}
+
+.avatar-edit-icon .icon {
+  font-size: 24rpx;
+}
+
+.avatar-tip {
+  margin-top: 16rpx;
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* 表单区域 */
+.form-section {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 24rpx;
+  padding: 32rpx;
+  margin-bottom: 32rpx;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.1);
+}
+
+.form-item {
+  display: flex;
+  align-items: center;
+  padding: 28rpx 0;
+  border-bottom: 1rpx solid rgba(0, 0, 0, 0.05);
+}
+
+.form-item:last-child {
+  border-bottom: none;
+}
+
+.form-label {
+  width: 160rpx;
+  font-size: 30rpx;
+  color: #333;
+  font-weight: 500;
+}
+
+.form-input {
+  flex: 1;
+  font-size: 30rpx;
+  color: #333;
+  text-align: right;
+  padding: 0 20rpx;
+}
+
+.form-value {
+  flex: 1;
+  font-size: 30rpx;
+  color: #333;
+  text-align: right;
+  padding: 0 20rpx;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.form-value.readonly {
+  color: #999;
+}
+
+.form-value.with-arrow {
+  padding-right: 0;
+}
+
+.arrow {
+  font-size: 32rpx;
+  color: #999;
+  margin-left: 10rpx;
+}
+
+/* 状态点 */
+.status-dot {
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: 50%;
+  margin-right: 12rpx;
+  display: inline-block;
+}
+
+.status-dot.online {
+  background: #52c41a;
+}
+
+.status-dot.offline {
+  background: #999;
+}
+
+.status-dot.busy {
+  background: #faad14;
+}
+
+/* 按钮区域 */
+.button-section {
+  padding: 0 32rpx 40rpx;
+}
+
+.save-btn {
+  width: 100%;
+  height: 96rpx;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-size: 32rpx;
+  font-weight: 500;
+  border-radius: 48rpx;
+  border: 2rpx solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 10rpx 30rpx rgba(102, 126, 234, 0.5), 
+              0 4rpx 12rpx rgba(102, 126, 234, 0.3);
+  margin-bottom: 24rpx;
+  transition: all 0.3s ease;
+}
+
+.save-btn:active {
+  transform: translateY(2rpx);
+  box-shadow: 0 6rpx 20rpx rgba(102, 126, 234, 0.4), 
+              0 2rpx 8rpx rgba(102, 126, 234, 0.2);
+}
+
+.save-btn[disabled] {
+  opacity: 0.5;
+  box-shadow: none;
+  border: 2rpx solid rgba(255, 255, 255, 0.2);
+}
+
+.cancel-btn {
+  width: 100%;
+  height: 96rpx;
+  background: rgba(255, 255, 255, 0.95);
+  color: #666;
+  font-size: 32rpx;
+  font-weight: 500;
+  border-radius: 48rpx;
+  border: 2rpx solid rgba(102, 126, 234, 0.3);
+  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.1), 
+              0 3rpx 8rpx rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+}
+
+.cancel-btn:active {
+  transform: translateY(2rpx);
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.08), 
+              0 1rpx 4rpx rgba(0, 0, 0, 0.04);
+}
+
+/* 输入框占位符样式 */
+input::-webkit-input-placeholder {
+  color: #ccc;
+  font-size: 28rpx;
+}

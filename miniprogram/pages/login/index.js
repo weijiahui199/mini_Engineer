@@ -213,8 +213,8 @@ Page({
           // 设置游客身份
           const guestInfo = {
             nickName: '游客用户',
-            avatar: '/assets/default-avatar.png',
             isGuest: true
+            // 不设置avatar，避免覆盖
           };
           
           wx.setStorageSync('userInfo', guestInfo);
@@ -274,14 +274,14 @@ Page({
       success: async (res) => {
         if (res.code) {
           try {
-            // 调用云函数，使用默认用户信息
+            // 调用云函数，不传递头像以保留已有的头像
             const result = await wx.cloud.callFunction({
               name: 'login',
               data: {
                 code: res.code,
                 userInfo: {
-                  nickName: '用户',
-                  avatar: '/assets/default-avatar.png'
+                  nickName: '用户'
+                  // 不传递avatar字段，让云函数保留数据库中已有的头像
                 }
               }
             });

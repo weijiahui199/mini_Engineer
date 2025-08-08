@@ -1,6 +1,7 @@
 // 个人中心页面
 const testManager = require('../../utils/test-manager');
 const avatarManager = require('../../utils/avatar-manager');
+const UserCache = require('../../utils/user-cache');
 
 Page({
   data: {
@@ -13,29 +14,6 @@ Page({
       isManager: false,
       isOnline: true
     },
-    
-    // 统计数据
-    stats: {
-      totalCompleted: 1280,
-      monthCompleted: 128,
-      rating: 4.8
-    },
-    
-    // 工单统计
-    ticketStats: {
-      completed: 45,
-      processing: 3,
-      avgTime: 2.5
-    },
-    
-    // 耗材统计
-    materialStats: {
-      total: 23,
-      types: 8
-    },
-    
-    // 消息未读数
-    unreadCount: 3,
     
     // 版本号
     version: '1.0.0',
@@ -84,51 +62,135 @@ Page({
     this.setData({
       showTestSection: accountInfo.miniProgram.envVersion !== 'release'
     });
+    
+    // 开发环境下，打印缓存调试信息
+    if (accountInfo.miniProgram.envVersion !== 'release') {
+      this.printCacheDebugInfo();
+    }
+  },
+  
+  // 打印缓存调试信息
+  printCacheDebugInfo() {
+    console.log('========== 页面加载时的缓存状态 ==========');
+    const info = wx.getStorageInfoSync();
+    console.log('缓存大小:', info.currentSize, 'KB');
+    console.log('缓存键:', info.keys);
+    
+    // 关键缓存值
+    console.log('\n关键缓存值:');
+    console.log('- userAvatar:', wx.getStorageSync('userAvatar'));
+    console.log('- cached_avatar_file_id:', wx.getStorageSync('cached_avatar_file_id')); 
+    console.log('- cached_user_avatar:', wx.getStorageSync('cached_user_avatar'));
+    
+    const userInfo = wx.getStorageSync('cached_user_info');
+    if (userInfo) {
+      console.log('- cached_user_info.avatar:', userInfo.avatar);
+      console.log('- cached_user_info.nickName:', userInfo.nickName);
+    }
+    
+    console.log('- openid:', wx.getStorageSync('openid'));
+    console.log('==========================================');
   },
 
   onShow() {
     // 刷新未读消息数
     this.loadUnreadCount();
+    // 刷新用户信息（使用缓存）
+    this.loadUserInfo();
   },
 
-  // 加载用户信息
-  async loadUserInfo() {
+  // 下拉刷新处理
+  async onPullDownRefresh() {
+    console.log('[Profile] 用户下拉刷新');
+    
     try {
-      const app = getApp();
-      let userInfo = app.globalData.userInfo;
+      // 强制刷新用户信息（清除缓存）
+      await this.loadUserInfo(true);
       
-      // 如果全局没有用户信息，尝试从数据库获取
-      if (!userInfo && app.globalData.openid) {
-        const res = await this.db.collection('users').where({
-          openid: app.globalData.openid
-        }).get();
-        
-        if (res.data.length > 0) {
-          userInfo = res.data[0];
-          app.globalData.userInfo = userInfo;
+      wx.showToast({
+        title: '刷新成功',
+        icon: 'success',
+        duration: 1500
+      });
+    } catch (error) {
+      console.error('刷新失败:', error);
+      wx.showToast({
+        title: '刷新失败',
+        icon: 'none'
+      });
+    } finally {
+      // 停止下拉刷新动画
+      wx.stopPullDownRefresh();
+    }
+  },
+
+  // 加载用户信息（使用缓存）
+  async loadUserInfo(forceRefresh = false) {
+    console.log('[Profile.loadUserInfo] 开始加载用户信息, forceRefresh:', forceRefresh);
+    try {
+      // 使用缓存管理器获取用户信息
+      const userInfo = await UserCache.getUserInfo(forceRefresh);
+      console.log('[Profile.loadUserInfo] 获取到的用户信息:', userInfo);
+      
+      if (!userInfo) {
+        console.log('[Profile.loadUserInfo] 用户信息为空，使用默认值');
+        // 如果没有用户信息，使用默认值
+        this.setData({
+          userInfo: {
+            avatar: '',
+            name: '微信用户',
+            roleText: '普通用户',
+            department: '技术部',
+            isManager: false,
+            isOnline: true
+          }
+        });
+        return;
+      }
+      
+      // 实现三级头像优先级
+      let avatarUrl = '';
+      
+      // 1. 优先使用本地缓存的非默认头像
+      if (userInfo.localAvatar && !userInfo.localAvatar.includes('thirdwx.qlogo.cn')) {
+        avatarUrl = userInfo.localAvatar;
+        console.log('[Profile.loadUserInfo] 使用本地缓存头像:', avatarUrl);
+      }
+      // 2. 如果没有本地缓存但有云存储头像，尝试下载并缓存
+      else if (userInfo.avatar && userInfo.avatar.startsWith('cloud://')) {
+        console.log('[Profile.loadUserInfo] 检测到云存储头像，尝试获取本地缓存或下载');
+        // 如果UserCache没有自动下载（比如是刷新场景），这里手动下载
+        if (!userInfo.localAvatar || userInfo.localAvatar.includes('thirdwx.qlogo.cn')) {
+          console.log('[Profile.loadUserInfo] 本地无有效缓存，开始下载云存储头像');
+          const localPath = await UserCache.downloadAndCacheAvatar(userInfo.avatar);
+          if (localPath) {
+            avatarUrl = localPath;
+            console.log('[Profile.loadUserInfo] 云存储头像已下载到本地:', localPath);
+          } else {
+            // 下载失败，使用云存储URL（会触发临时链接获取）
+            avatarUrl = userInfo.avatar;
+            console.log('[Profile.loadUserInfo] 下载失败，使用云存储URL');
+          }
+        } else {
+          avatarUrl = userInfo.localAvatar;
+          console.log('[Profile.loadUserInfo] 使用已缓存的云存储头像');
         }
       }
-      
-      // 如果还是没有用户信息，创建默认用户
-      if (!userInfo) {
-        userInfo = {
-          nickName: '微信用户',  // 默认用户名
-          avatar: '',
-          department: '技术部',
-          phone: '',
-          email: '',
-          status: 'online',
-          roleGroup: '用户'
-        };
+      // 3. 都没有则使用默认
+      else {
+        avatarUrl = userInfo.avatar || '';
+        console.log('[Profile.loadUserInfo] 使用默认头像或空');
       }
       
-      // 获取本地保存的头像
-      const savedAvatar = wx.getStorageSync('userAvatar') || userInfo.avatar || '';
+      console.log('[Profile.loadUserInfo] 决定使用的头像URL:', avatarUrl);
+      console.log('[Profile.loadUserInfo] - localAvatar:', userInfo.localAvatar);
+      console.log('[Profile.loadUserInfo] - avatar:', userInfo.avatar);
       
       this.setData({
         userInfo: {
-          avatar: savedAvatar,
+          avatar: avatarUrl,
           name: userInfo.nickName || '微信用户',  // 使用nickName字段
+          nickName: userInfo.nickName || '微信用户',  // 同时保留nickName字段
           roleText: userInfo.roleGroup === '经理' ? 'IT运维主管' : userInfo.roleGroup === '工程师' ? 'IT运维工程师' : '普通用户',
           roleGroup: userInfo.roleGroup || '用户',
           department: userInfo.department || '技术部',
@@ -138,13 +200,15 @@ Page({
           email: userInfo.email || ''
         }
       });
+      console.log('[Profile.loadUserInfo] 页面数据已更新，头像:', this.data.userInfo.avatar);
     } catch (error) {
       console.error('加载用户信息失败:', error);
       // 使用默认信息
       this.setData({
         userInfo: {
-          avatar: wx.getStorageSync('userAvatar') || '',
+          avatar: '',
           name: '微信用户',  // 默认用户名
+          nickName: '微信用户',  // 同时保留nickName字段
           roleText: '普通用户',
           department: '技术部',
           isManager: false,
@@ -293,6 +357,7 @@ Page({
 
   // 更换头像
   async changeAvatar() {
+    console.log('[Profile.changeAvatar] 开始更换头像');
     wx.showLoading({
       title: '处理中...',
       mask: true
@@ -306,24 +371,41 @@ Page({
         sourceType: ['album', 'camera']
       });
       
+      console.log('[Profile.changeAvatar] 上传结果:', result);
       wx.hideLoading();
       
       if (result.success) {
+        console.log('[Profile.changeAvatar] 上传成功，fileID:', result.fileID);
+        
         // 获取临时URL用于显示
         const tempUrl = await avatarManager.getTempAvatarUrl(result.fileID);
+        console.log('[Profile.changeAvatar] 获取到的临时URL:', tempUrl);
         
         // 更新页面显示
         this.setData({
           'userInfo.avatar': tempUrl
         });
+        console.log('[Profile.changeAvatar] 页面头像已更新为:', tempUrl);
         
         // 更新全局数据
         if (this.app.globalData.userInfo) {
           this.app.globalData.userInfo.avatar = result.fileID;
+          console.log('[Profile.changeAvatar] 全局数据头像已更新为:', result.fileID);
         }
         
-        // 更新本地存储（存储云文件ID）
-        wx.setStorageSync('userAvatar', result.fileID);
+        // 清除旧的临时文件缓存
+        const oldUserAvatar = wx.getStorageSync('userAvatar');
+        if (oldUserAvatar && oldUserAvatar.startsWith('http://tmp/')) {
+          console.log('[Profile.changeAvatar] 清除旧的临时文件缓存:', oldUserAvatar);
+          wx.removeStorageSync('userAvatar');
+        }
+        
+        // 不再使用userAvatar存储，统一使用缓存管理器
+        console.log('[Profile.changeAvatar] 不再单独存储userAvatar，使用统一缓存管理');
+        
+        // 使用专门的头像缓存更新方法
+        await UserCache.updateAvatarCache(result.fileID);
+        console.log('[Profile.changeAvatar] 头像缓存已更新');
         
         wx.showToast({
           title: '头像更新成功',
@@ -362,9 +444,8 @@ Page({
 
   // 功能页面跳转
   goToUserInfo() {
-    wx.showToast({
-      title: '功能开发中',
-      icon: 'none'
+    wx.navigateTo({
+      url: '/pages/user-info/index'
     });
   },
 
@@ -525,15 +606,6 @@ Page({
     wx.setStorageSync('settings', this.data.settings);
   },
 
-  // 应用主题
-  applyTheme(theme) {
-    // 这里可以调用全局方法来切换主题
-    wx.showToast({
-      title: `已切换到${theme === 'light' ? '浅色' : '深色'}主题`,
-      icon: 'none'
-    });
-  },
-
   // 退出登录
   logout() {
     wx.showModal({
@@ -548,6 +620,9 @@ Page({
           wx.removeStorageSync('isGuest');
           wx.removeStorageSync('userAvatar');
           wx.removeStorageSync('userRoleGroup');
+          
+          // 清除用户缓存
+          UserCache.clearCache();
           
           // 重置全局变量
           const app = getApp();
@@ -574,28 +649,6 @@ Page({
       }
     });
   },
-
-  // 切换管理员模式（仅用于测试）
-  onManagerModeChange(e) {
-    const isManager = e.detail.value;
-    const updatedUserInfo = {
-      ...this.data.userInfo,
-      isManager,
-      roleText: isManager ? 'IT运维主管' : '普通用户'
-    };
-    
-    this.setData({
-      userInfo: updatedUserInfo
-    });
-    
-    // 保存到本地存储
-    wx.setStorageSync('userInfo', updatedUserInfo);
-    
-    wx.showToast({
-      title: isManager ? '已切换为管理员模式' : '已切换为普通用户模式',
-      icon: 'none'
-    });
-  },
   
   // 分享
   onShareAppMessage() {
@@ -605,62 +658,138 @@ Page({
     };
   },
   
-  // =========================
-  // 测试功能区域
-  // =========================
+  // ========== 缓存调试方法 ==========
   
-  // 切换为经理角色
-  async switchToManager() {
-    wx.showLoading({
-      title: '切换中...'
-    });
+  // 显示缓存信息
+  showCacheInfo() {
+    const info = wx.getStorageInfoSync();
+    const userAvatar = wx.getStorageSync('userAvatar');
+    const cachedAvatarFileID = wx.getStorageSync('cached_avatar_file_id');
+    const cachedUserAvatar = wx.getStorageSync('cached_user_avatar');
+    const cachedUserInfo = wx.getStorageSync('cached_user_info');
+    const cacheTime = wx.getStorageSync('user_cache_time');
     
-    const success = await testManager.testSetAsManager();
-    wx.hideLoading();
+    let message = `缓存大小: ${info.currentSize}KB\n`;
+    message += `缓存键数: ${info.keys.length}\n\n`;
     
-    if (success) {
-      // 重新加载用户信息
-      this.loadUserInfo();
+    message += `头像缓存:\n`;
+    message += `- userAvatar: ${userAvatar ? '有' : '无'}\n`;
+    message += `- cached_avatar_file_id: ${cachedAvatarFileID ? '有' : '无'}\n`;
+    message += `- cached_user_avatar: ${cachedUserAvatar ? '有' : '无'}\n\n`;
+    
+    if (cachedUserInfo) {
+      message += `用户信息缓存:\n`;
+      message += `- nickName: ${cachedUserInfo.nickName}\n`;
+      message += `- avatar: ${cachedUserInfo.avatar ? '有' : '无'}\n`;
+      message += `- department: ${cachedUserInfo.department}\n`;
     }
-  },
-  
-  // 切换为工程师角色
-  async switchToEngineer() {
-    wx.showLoading({
-      title: '切换中...'
-    });
     
-    const success = await testManager.testSetAsEngineer();
-    wx.hideLoading();
-    
-    if (success) {
-      // 重新加载用户信息
-      this.loadUserInfo();
+    if (cacheTime) {
+      const age = Date.now() - cacheTime;
+      const hours = Math.floor(age / (1000 * 60 * 60));
+      message += `\n缓存年龄: ${hours}小时`;
     }
-  },
-  
-  // 创建测试数据
-  async createTestData() {
+    
     wx.showModal({
-      title: '创建测试数据',
-      content: '将创建3个测试工单，其中2个分配给当前用户',
-      success: async (res) => {
+      title: '缓存信息',
+      content: message,
+      showCancel: false
+    });
+    
+    // 同时在控制台打印详细信息
+    console.log('========== 详细缓存信息 ==========');
+    console.log('userAvatar:', userAvatar);
+    console.log('cached_avatar_file_id:', cachedAvatarFileID);
+    console.log('cached_user_avatar:', cachedUserAvatar);
+    console.log('cached_user_info:', cachedUserInfo);
+    console.log('====================================');
+  },
+  
+  // 清除头像缓存
+  clearAvatarCache() {
+    wx.showModal({
+      title: '确认清除',
+      content: '确定要清除所有头像相关缓存吗？这将清理所有混乱的头像数据。',
+      success: (res) => {
         if (res.confirm) {
-          wx.showLoading({
-            title: '创建中...'
+          // 清除所有可能的头像缓存
+          console.log('[清理头像缓存] 开始清理...');
+          
+          // 1. 清除旧的userAvatar（可能是临时文件）
+          const oldUserAvatar = wx.getStorageSync('userAvatar');
+          if (oldUserAvatar) {
+            console.log('[清理头像缓存] 清除userAvatar:', oldUserAvatar);
+            wx.removeStorageSync('userAvatar');
+          }
+          
+          // 2. 清除缓存的头像文件ID
+          const cachedFileID = wx.getStorageSync('cached_avatar_file_id');
+          if (cachedFileID) {
+            console.log('[清理头像缓存] 清除cached_avatar_file_id:', cachedFileID);
+            wx.removeStorageSync('cached_avatar_file_id');
+          }
+          
+          // 3. 清除缓存的本地头像路径
+          const cachedAvatar = wx.getStorageSync('cached_user_avatar');
+          if (cachedAvatar) {
+            console.log('[清理头像缓存] 清除cached_user_avatar:', cachedAvatar);
+            wx.removeStorageSync('cached_user_avatar');
+          }
+          
+          // 4. 清除头像缓存时间
+          wx.removeStorageSync('avatar_cache_time');
+          
+          // 5. 清除用户信息缓存中的头像
+          const cachedUserInfo = wx.getStorageSync('cached_user_info');
+          if (cachedUserInfo && cachedUserInfo.avatar) {
+            console.log('[清理头像缓存] 清除cached_user_info中的头像');
+            delete cachedUserInfo.avatar;
+            delete cachedUserInfo.localAvatar;
+            wx.setStorageSync('cached_user_info', cachedUserInfo);
+          }
+          
+          console.log('[清理头像缓存] 清理完成');
+          
+          wx.showToast({
+            title: '头像缓存已清除',
+            icon: 'success'
           });
           
-          const success = await testManager.createTestTickets();
-          wx.hideLoading();
-          
-          if (success) {
-            wx.showToast({
-              title: '创建成功',
-              icon: 'success'
-            });
-          }
+          // 重新加载用户信息
+          setTimeout(() => {
+            this.loadUserInfo(true); // 强制刷新
+          }, 1500);
         }
       }
     });
+  },
+  
+  // 强制刷新用户信息
+  async forceRefreshUser() {
+    wx.showLoading({
+      title: '刷新中...'
+    });
+    
+    try {
+      // 清除用户信息缓存
+      wx.removeStorageSync('cached_user_info');
+      wx.removeStorageSync('user_cache_time');
+      
+      // 强制从数据库重新加载
+      await this.loadUserInfo(true);
+      
+      wx.hideLoading();
+      wx.showToast({
+        title: '刷新成功',
+        icon: 'success'
+      });
+    } catch (error) {
+      wx.hideLoading();
+      console.error('强制刷新失败:', error);
+      wx.showToast({
+        title: '刷新失败',
+        icon: 'none'
+      });
+    }
   }
 });

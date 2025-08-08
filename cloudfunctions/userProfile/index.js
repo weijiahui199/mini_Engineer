@@ -67,7 +67,7 @@ async function getUserProfile(event, wxContext) {
           company: profile.company || '',
           department: profile.department || '',
           phone: profile.phone || '',
-          name: profile.name || '',
+          nickName: profile.nickName || '',
           email: profile.email || '',
           employeeId: profile.employeeId || '',
           avatar: profile.avatar || '',
@@ -84,7 +84,7 @@ async function getUserProfile(event, wxContext) {
           company: '',
           department: '',
           phone: '',
-          name: '',
+          nickName: '',
           email: '',
           employeeId: '',
           avatar: '',
@@ -105,7 +105,7 @@ async function getUserProfile(event, wxContext) {
 
 // 更新用户信息
 async function updateUserProfile(event, wxContext) {
-  const { company, department, phone, name, email, employeeId, source = 'manual' } = event
+  const { company, department, phone, nickName, email, employeeId, source = 'manual' } = event
   
   try {
     console.log('更新用户信息请求:', {
@@ -113,7 +113,7 @@ async function updateUserProfile(event, wxContext) {
       company,
       department,
       phone,
-      name,
+      nickName,
       email,
       employeeId,
       source
@@ -141,7 +141,7 @@ async function updateUserProfile(event, wxContext) {
       if (company !== undefined) updateData.company = company || ''
       if (department !== undefined) updateData.department = department || ''
       if (phone !== undefined) updateData.phone = phone || ''
-      if (name !== undefined) updateData.name = name || ''
+      if (nickName !== undefined) updateData.nickName = nickName || ''
       if (email !== undefined) updateData.email = email || ''
       if (employeeId !== undefined) updateData.employeeId = employeeId || ''
       

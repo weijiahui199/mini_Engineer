@@ -122,28 +122,54 @@ function compressImage(filePath, options = {}) {
 async function uploadToCloud(filePath) {
   const app = getApp()
   const openid = app.globalData.openid
+  const db = app.globalData.db
   
   if (!openid) {
     throw new Error('用户未登录')
   }
   
-  // 生成云存储路径
-  const date = new Date()
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const timestamp = date.getTime()
-  const ext = filePath.split('.').pop().toLowerCase() || 'jpg'
-  
-  const cloudPath = `user-avatars/${year}/${month}/${openid}_${timestamp}.${ext}`
-  
   try {
-    // 直接上传文件到云存储
+    // 获取用户信息以获取用户ID
+    const userResult = await db.collection('users').where({
+      openid: openid
+    }).get()
+    
+    if (userResult.data.length === 0) {
+      throw new Error('用户信息不存在')
+    }
+    
+    const userId = userResult.data[0]._id
+    const oldAvatarUrl = userResult.data[0].avatar
+    
+    // 使用用户ID作为文件名，避免重复存储
+    const ext = filePath.split('.').pop().toLowerCase() || 'jpg'
+    const cloudPath = `user-avatars/${userId}.${ext}`
+    
+    // 如果存在旧头像且路径不同，先删除旧头像
+    if (oldAvatarUrl && oldAvatarUrl.startsWith('cloud://')) {
+      // 提取旧文件的路径
+      const oldCloudPath = oldAvatarUrl.split('/').slice(3).join('/')
+      if (oldCloudPath !== cloudPath) {
+        console.log('删除旧头像:', oldAvatarUrl)
+        try {
+          await wx.cloud.deleteFile({
+            fileList: [oldAvatarUrl]
+          })
+        } catch (error) {
+          console.error('删除旧头像失败:', error)
+          // 删除失败不影响上传
+        }
+      }
+    }
+    
+    // 上传新头像（会覆盖同名文件）
     const uploadResult = await wx.cloud.uploadFile({
       cloudPath: cloudPath,
       filePath: filePath
     })
     
     console.log('上传成功:', {
+      userId: userId,
       cloudPath: cloudPath,
       fileID: uploadResult.fileID
     })
@@ -194,10 +220,7 @@ async function updateUserAvatar(avatar) {
         }
       })
       
-      // 删除旧头像（如果是云存储文件）
-      if (oldAvatarUrl && oldAvatarUrl.startsWith('cloud://')) {
-        deleteOldAvatar(oldAvatarUrl)
-      }
+      // 旧头像已在uploadToCloud中处理，这里不需要再删除
       
       console.log('用户头像更新成功')
     } else {

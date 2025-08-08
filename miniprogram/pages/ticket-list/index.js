@@ -322,7 +322,7 @@ Page({
       await this.db.collection('tickets').doc(ticketId).update({
         data: {
           assigneeOpenid: userInfo?.openid || this.app.globalData.openid,
-          assigneeName: userInfo?.name || '工程师',
+          assigneeName: userInfo?.nickName || '工程师',
           status: 'processing',
           updateTime: new Date()
         }
@@ -679,7 +679,7 @@ Page({
       const _ = this.db.command;
       const userRoleGroup = this.data.userRoleGroup;
       const currentUserOpenid = this.app.globalData.openid;
-      const currentUserName = this.app.globalData.userInfo?.name || '我';
+      const currentUserName = this.app.globalData.userInfo?.nickName || '我';
       
       let options = [];
       
@@ -699,7 +699,7 @@ Page({
         res.data.forEach(user => {
           if (user.openid !== currentUserOpenid) {
             options.push({
-              label: user.name || '未命名',
+              label: user.nickName || '未命名',
               value: user.openid
             });
           }

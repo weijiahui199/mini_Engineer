@@ -1,4 +1,6 @@
 // 工程师工作台页面
+const UserCache = require('../../utils/user-cache');
+
 Page({
   data: {
     // 工程师信息
@@ -63,6 +65,45 @@ Page({
 
   onUnload() {
     this.stopAutoRefresh();
+  },
+
+  // 下拉刷新处理
+  async onPullDownRefresh() {
+    console.log('[Dashboard] 用户下拉刷新');
+    
+    try {
+      // 强制刷新用户信息（清除缓存）
+      const [userInfo, ticketStats, urgentTickets, latestTickets] = await Promise.all([
+        this.loadUserInfo(true),  // 传入true强制刷新
+        this.loadTicketStats(),
+        this.loadUrgentTickets(),
+        this.loadLatestTickets()
+      ]);
+      
+      // 更新页面数据
+      this.setData({
+        engineerInfo: userInfo,
+        todayStats: ticketStats,
+        urgentTickets: urgentTickets,
+        latestTickets: latestTickets,
+        lastUpdateTime: this.formatTime(new Date())
+      });
+      
+      wx.showToast({
+        title: '刷新成功',
+        icon: 'success',
+        duration: 1500
+      });
+    } catch (error) {
+      console.error('刷新失败:', error);
+      wx.showToast({
+        title: '刷新失败',
+        icon: 'none'
+      });
+    } finally {
+      // 停止下拉刷新动画
+      wx.stopPullDownRefresh();
+    }
   },
 
   // 加载工作台数据
@@ -236,7 +277,7 @@ Page({
         data: {
           status: status,
           assigneeOpenid: userInfo.openid || this.app.globalData.openid,
-          assigneeName: userInfo.name || this.data.engineerInfo.name,
+          assigneeName: userInfo.nickName || this.data.engineerInfo.name,
           updateTime: new Date()
         }
       });
@@ -323,51 +364,94 @@ Page({
     }, 1500);
   },
 
-  // 加载用户信息
-  async loadUserInfo() {
+  // 加载用户信息（使用缓存）
+  async loadUserInfo(forceRefresh = false) {
+    console.log('[Dashboard.loadUserInfo] 开始加载用户信息, forceRefresh:', forceRefresh);
     try {
       const app = getApp();
-      let userInfo = app.globalData.userInfo;
       
-      // 如果全局没有用户信息，尝试从数据库获取
-      if (!userInfo && app.globalData.openid) {
-        const res = await this.db.collection('users').where({
-          openid: app.globalData.openid
-        }).get();
-        
-        if (res.data.length > 0) {
-          userInfo = res.data[0];
-          app.globalData.userInfo = userInfo;
-        }
+      // 使用缓存管理器获取用户信息
+      const userInfo = await UserCache.getUserInfo(forceRefresh);
+      console.log('[Dashboard.loadUserInfo] 获取到的用户信息:', userInfo);
+      
+      if (!userInfo) {
+        console.log('[Dashboard.loadUserInfo] 用户信息为空，返回默认值');
+        // 如果没有用户信息，返回默认值
+        return {
+          name: '微信用户',
+          avatar: '',
+          status: 'online',
+          currentTasks: 0,
+          maxTasks: 10,
+          location: '技术部'
+        };
       }
       
       // 获取分配给当前用户的进行中工单数
       const processingCount = await this.db.collection('tickets').where({
-        assigneeOpenid: app.globalData.openid || 'test_engineer_001',
+        assigneeOpenid: app.globalData.openid || userInfo.openid,
         status: 'processing'
       }).count();
       
-      // 获取保存的头像
-      const savedAvatar = wx.getStorageSync('userAvatar') || '';
+      // 实现三级头像优先级
+      let avatarUrl = '';
       
-      return {
-        name: userInfo?.nickName || '微信用户',  // 使用nickName字段
-        avatar: savedAvatar || userInfo?.avatar || '',
-        status: userInfo?.status || 'online',
-        currentTasks: processingCount.total || 5,
+      // 1. 优先使用本地缓存的非默认头像
+      if (userInfo.localAvatar && !userInfo.localAvatar.includes('thirdwx.qlogo.cn')) {
+        avatarUrl = userInfo.localAvatar;
+        console.log('[Dashboard.loadUserInfo] 使用本地缓存头像:', avatarUrl);
+      }
+      // 2. 如果没有本地缓存但有云存储头像，尝试下载并缓存
+      else if (userInfo.avatar && userInfo.avatar.startsWith('cloud://')) {
+        console.log('[Dashboard.loadUserInfo] 检测到云存储头像，尝试获取本地缓存或下载');
+        // 如果UserCache没有自动下载（比如是刷新场景），这里手动下载
+        if (!userInfo.localAvatar || userInfo.localAvatar.includes('thirdwx.qlogo.cn')) {
+          console.log('[Dashboard.loadUserInfo] 本地无有效缓存，开始下载云存储头像');
+          const localPath = await UserCache.downloadAndCacheAvatar(userInfo.avatar);
+          if (localPath) {
+            avatarUrl = localPath;
+            console.log('[Dashboard.loadUserInfo] 云存储头像已下载到本地:', localPath);
+          } else {
+            // 下载失败，使用云存储URL
+            avatarUrl = userInfo.avatar;
+            console.log('[Dashboard.loadUserInfo] 下载失败，使用云存储URL');
+          }
+        } else {
+          avatarUrl = userInfo.localAvatar;
+          console.log('[Dashboard.loadUserInfo] 使用已缓存的云存储头像');
+        }
+      }
+      // 3. 都没有则使用默认
+      else {
+        avatarUrl = userInfo.avatar || '';
+        console.log('[Dashboard.loadUserInfo] 使用默认头像或空');
+      }
+      
+      console.log('[Dashboard.loadUserInfo] 最终决定使用的头像URL:', avatarUrl);
+      
+      const result = {
+        name: userInfo.nickName || '微信用户',  // 使用nickName字段
+        nickName: userInfo.nickName || '微信用户',  // 同时保留nickName字段
+        avatar: avatarUrl,
+        status: userInfo.status || 'online',
+        currentTasks: processingCount.total || 0,
         maxTasks: 10,
-        location: userInfo?.department || '技术部',
-        phone: userInfo?.phone || '',
-        email: userInfo?.email || ''
+        location: userInfo.department || '技术部',
+        phone: userInfo.phone || '',
+        email: userInfo.email || ''
       };
+      
+      console.log('[Dashboard.loadUserInfo] 返回的用户信息:', result);
+      return result;
     } catch (error) {
       console.error('加载用户信息失败:', error);
       // 返回默认信息
       return {
         name: '微信用户',  // 默认用户名
-        avatar: wx.getStorageSync('userAvatar') || '',
+        nickName: '微信用户',  // 同时保留nickName字段
+        avatar: '',
         status: 'online',
-        currentTasks: 5,
+        currentTasks: 0,
         maxTasks: 10,
         location: '技术部'
       };

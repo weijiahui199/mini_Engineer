@@ -171,7 +171,7 @@ async function createTestTickets() {
         location: '办公楼2楼',
         department: '人事部',
         assigneeOpenid: openid, // 分配给当前用户（经理）
-        assigneeName: app.globalData.userInfo?.name || '测试经理',
+        assigneeName: app.globalData.userInfo?.nickName || '测试经理',
         createTime: new Date(),
         updateTime: new Date()
       },
@@ -187,7 +187,7 @@ async function createTestTickets() {
         location: '办公楼4楼',
         department: '市场部',
         assigneeOpenid: openid, // 分配给当前用户（经理）
-        assigneeName: app.globalData.userInfo?.name || '测试经理',
+        assigneeName: app.globalData.userInfo?.nickName || '测试经理',
         createTime: new Date(),
         updateTime: new Date()
       }

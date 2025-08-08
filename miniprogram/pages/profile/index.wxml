@@ -290,6 +290,46 @@
         </t-tag>
       </view>
     </view>
+    
+    <!-- 缓存调试工具 -->
+    <view class="test-card" style="margin-top: 20rpx;">
+      <view class="section-header">
+        <text class="section-title">缓存调试工具</text>
+      </view>
+      <view class="test-buttons">
+        <t-button 
+          theme="warning" 
+          variant="outline"
+          size="medium"
+          bind:tap="showCacheInfo"
+          block
+          style="margin-bottom: 10rpx;"
+        >
+          🔍 查看缓存信息
+        </t-button>
+        
+        <t-button 
+          theme="danger" 
+          variant="outline"
+          size="medium"
+          bind:tap="clearAvatarCache"
+          block
+          style="margin-bottom: 10rpx;"
+        >
+          🗑️ 清除头像缓存
+        </t-button>
+        
+        <t-button 
+          theme="primary" 
+          variant="outline"
+          size="medium"
+          bind:tap="forceRefreshUser"
+          block
+        >
+          🔄 强制刷新用户信息
+        </t-button>
+      </view>
+    </view>
   </view>
 
 </view>
