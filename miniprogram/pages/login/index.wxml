@@ -30,14 +30,15 @@
 
       <!-- 登录按钮 -->
       <view class="button-group">
-        <!-- 微信登录按钮（主要方式） -->
+        <!-- 主要登录方式：微信授权登录 -->
         <button 
           class="login-btn primary-btn"
           bindtap="getUserProfile"
-          wx:if="{{!hasUserInfo && canUseGetUserProfile}}"
+          wx:if="{{!hasUserInfo}}"
+          disabled="{{loading}}"
         >
-          <t-icon name="wechat" size="40rpx" />
-          <text>微信快捷登录</text>
+          <t-icon name="user-circle" size="40rpx" />
+          <text>微信授权登录</text>
         </button>
 
         <!-- 确认登录按钮（已获取用户信息后） -->
@@ -46,24 +47,30 @@
           bindtap="manualLogin"
           wx:if="{{hasUserInfo}}"
           loading="{{loading}}"
+          disabled="{{loading}}"
         >
           <t-icon name="check-circle" size="40rpx" />
           <text>确认登录</text>
         </button>
 
-        <!-- 快速体验按钮（不需要授权） -->
+        <!-- 次要登录方式：快速登录（无需授权） -->
         <button 
-          class="login-btn info-btn"
+          class="login-btn outline-btn"
           bindtap="quickLogin"
           wx:if="{{!hasUserInfo}}"
+          disabled="{{loading}}"
         >
-          <t-icon name="rocket" size="40rpx" />
-          <text>快速体验</text>
+          <t-icon name="lightning" size="40rpx" />
+          <text>快速登录</text>
         </button>
 
-        <!-- 游客模式 -->
-        <view class="guest-mode" bindtap="guestLogin">
-          <text>游客模式</text>
+        <!-- 其他选项 -->
+        <view class="other-options">
+          <!-- 游客模式 -->
+          <text class="option-link" bindtap="guestLogin">游客访问</text>
+          <text class="divider">|</text>
+          <!-- 帮助 -->
+          <text class="option-link" bindtap="showHelp">登录帮助</text>
         </view>
       </view>
 

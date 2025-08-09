@@ -26,7 +26,7 @@ Page({
     }
   },
 
-  // 获取用户信息
+  // 获取用户信息 - 使用新的规范
   getUserProfile() {
     if (!this.data.agreed) {
       wx.showToast({
@@ -36,33 +36,48 @@ Page({
       return;
     }
 
-    wx.getUserProfile({
-      desc: '用于完善用户资料',
-      success: (res) => {
-        console.log('获取用户信息成功', res);
-        this.setData({
-          userInfo: res.userInfo,
-          hasUserInfo: true
-        });
-        
-        // 保存用户信息到本地
-        wx.setStorageSync('userInfo', res.userInfo);
-        
-        // 继续登录流程
-        this.wxLogin();
-      },
-      fail: (err) => {
-        console.error('获取用户信息失败', err);
-        wx.showToast({
-          title: '获取用户信息失败',
-          icon: 'none'
-        });
-      }
-    });
+    // 检查是否支持 getUserProfile
+    if (wx.getUserProfile) {
+      wx.getUserProfile({
+        desc: '用于完善用户资料和提供个性化服务',
+        success: (res) => {
+          console.log('获取用户信息成功', res);
+          this.setData({
+            userInfo: res.userInfo,
+            hasUserInfo: true
+          });
+          
+          // 保存用户信息到本地
+          wx.setStorageSync('wxUserInfo', res.userInfo);
+          
+          // 继续登录流程
+          this.wxLogin(res.userInfo);
+        },
+        fail: (err) => {
+          console.error('获取用户信息失败', err);
+          // 用户拒绝授权，提供快速登录选项
+          wx.showModal({
+            title: '提示',
+            content: '获取用户信息失败，是否使用快速登录？',
+            confirmText: '快速登录',
+            cancelText: '取消',
+            success: (res) => {
+              if (res.confirm) {
+                this.quickLogin();
+              }
+            }
+          });
+        }
+      });
+    } else {
+      // 基础库版本过低，使用快速登录
+      console.log('不支持 getUserProfile，使用快速登录');
+      this.quickLogin();
+    }
   },
 
   // 微信登录
-  wxLogin() {
+  wxLogin(wxUserInfo) {
     this.setData({ loading: true });
     
     wx.login({
@@ -76,7 +91,7 @@ Page({
               name: 'login',
               data: {
                 code: res.code,
-                userInfo: this.data.userInfo
+                userInfo: wxUserInfo || this.data.userInfo
               }
             });
             
@@ -257,7 +272,7 @@ Page({
     });
   },
 
-  // 快速体验（无需授权）
+  // 快速登录（无需授权）
   quickLogin() {
     if (!this.data.agreed) {
       wx.showToast({
@@ -274,15 +289,24 @@ Page({
       success: async (res) => {
         if (res.code) {
           try {
-            // 调用云函数，不传递头像以保留已有的头像
+            // 生成默认用户信息
+            const defaultUserInfo = {
+              nickName: '微信用户' + Math.random().toString(36).substr(2, 4).toUpperCase(),
+              avatarUrl: '/assets/default-avatar.png',
+              gender: 0,
+              country: '',
+              province: '',
+              city: '',
+              language: 'zh_CN'
+            };
+            
+            // 调用云函数登录
             const result = await wx.cloud.callFunction({
               name: 'login',
               data: {
                 code: res.code,
-                userInfo: {
-                  nickName: '用户'
-                  // 不传递avatar字段，让云函数保留数据库中已有的头像
-                }
+                userInfo: defaultUserInfo,
+                isQuickLogin: true  // 标记为快速登录
               }
             });
             
@@ -319,6 +343,16 @@ Page({
       complete: () => {
         this.setData({ loading: false });
       }
+    });
+  },
+
+  // 显示登录帮助
+  showHelp() {
+    wx.showModal({
+      title: '登录帮助',
+      content: '1. 微信授权登录：获取您的微信头像和昵称，提供个性化服务\n\n2. 快速登录：无需授权，使用默认信息快速进入系统\n\n3. 游客访问：体验有限功能，不保存数据\n\n如遇问题请联系管理员',
+      showCancel: false,
+      confirmText: '我知道了'
     });
   },
 

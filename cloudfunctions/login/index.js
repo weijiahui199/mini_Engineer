@@ -19,7 +19,7 @@ function generateToken(openid) {
 // 云函数入口函数
 exports.main = async (event, context) => {
   const wxContext = cloud.getWXContext()
-  const { action, code, userInfo, cloudID, encryptedData, iv } = event
+  const { action, code, userInfo, cloudID, encryptedData, iv, isQuickLogin } = event
   
   try {
     // 处理获取手机号
@@ -67,7 +67,7 @@ exports.main = async (event, context) => {
         openid: openid,
         appid: appid,
         nickName: userInfo?.nickName || '微信用户',  // 默认用户名
-        avatar: userInfo?.avatarUrl || '',  // 保存微信头像URL，后续可上传到云存储
+        avatar: userInfo?.avatarUrl || '',  // 保存微信头像URL
         gender: userInfo?.gender || 0,
         country: userInfo?.country || '',
         province: userInfo?.province || '',
@@ -79,7 +79,9 @@ exports.main = async (event, context) => {
         roleGroup: '用户', // 默认角色组：普通用户
         department: '信息技术部',
         status: 'active',
-        avatarUpdateTime: now  // 记录头像更新时间
+        avatarUpdateTime: now,  // 记录头像更新时间
+        isQuickLogin: isQuickLogin || false,  // 标记是否快速登录
+        hasAuthorized: !isQuickLogin  // 是否已授权用户信息
       }
       
       // 插入新用户
@@ -98,8 +100,8 @@ exports.main = async (event, context) => {
         loginCount: db.command.inc(1)
       }
       
-      // 如果传入了新的用户信息，更新它
-      if (userInfo) {
+      // 如果传入了新的用户信息，更新它（但快速登录用户后续授权时才更新）
+      if (userInfo && !userData.isQuickLogin) {
         updateData.nickName = userInfo.nickName || userData.nickName
         updateData.avatar = userInfo.avatarUrl || userData.avatar
         updateData.gender = userInfo.gender ?? userData.gender
@@ -107,6 +109,19 @@ exports.main = async (event, context) => {
         updateData.province = userInfo.province || userData.province
         updateData.city = userInfo.city || userData.city
         updateData.language = userInfo.language || userData.language
+      }
+      
+      // 如果之前是快速登录，现在授权了，更新授权状态
+      if (userData.isQuickLogin && userInfo && userInfo.avatarUrl && userInfo.avatarUrl !== '/assets/default-avatar.png') {
+        updateData.hasAuthorized = true
+        updateData.isQuickLogin = false
+        updateData.nickName = userInfo.nickName
+        updateData.avatar = userInfo.avatarUrl
+        updateData.gender = userInfo.gender
+        updateData.country = userInfo.country
+        updateData.province = userInfo.province
+        updateData.city = userInfo.city
+        updateData.language = userInfo.language
       }
       
       await userCollection.doc(userData._id).update({
