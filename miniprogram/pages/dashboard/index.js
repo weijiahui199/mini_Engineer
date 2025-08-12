@@ -66,8 +66,28 @@ Page({
     
     this.startAutoRefresh();
   },
+  
+  // 处理头像更新事件
+  handleAvatarUpdate(data) {
+    console.log('[Dashboard] 收到头像更新事件:', data);
+    if (data && data.localPath) {
+      // 直接更新页面显示的头像
+      this.setData({
+        'engineerInfo.avatar': data.localPath
+      });
+      console.log('[Dashboard] 页面头像已更新');
+    }
+  },
 
   onShow() {
+    // 每次显示页面时，检查用户信息是否有更新
+    this.loadUserInfo().then(userInfo => {
+      if (userInfo) {
+        this.setData({
+          engineerInfo: userInfo
+        });
+      }
+    });
     this.refreshDashboardData();
   },
 
@@ -340,43 +360,82 @@ Page({
     }
   },
 
-  // 更换头像
-  changeAvatar() {
-    wx.chooseImage({
-      count: 1,
-      sizeType: ['compressed'],
-      sourceType: ['album', 'camera'],
-      success: (res) => {
-        const tempFilePath = res.tempFilePaths[0];
-        // 这里应该上传到服务器，现在先保存在本地
-        this.uploadAvatar(tempFilePath);
-      }
-    });
-  },
-
-  // 上传头像
-  uploadAvatar(filePath) {
-    wx.showLoading({
-      title: '上传中...'
-    });
+  // 选择头像（新的微信API）
+  async onChooseAvatar(e) {
+    const { avatarUrl } = e.detail;
+    console.log('[Dashboard] 选择的头像:', avatarUrl);
     
-    // 模拟上传过程
-    setTimeout(() => {
-      // 更新头像
-      this.setData({
-        'engineerInfo.avatar': filePath
+    if (!avatarUrl) return;
+
+    wx.showLoading({ title: '上传中...' });
+
+    try {
+      // 获取openid
+      const openid = this.app.globalData.openid || wx.getStorageSync('openid');
+      if (!openid) {
+        wx.showToast({
+          title: '请先登录',
+          icon: 'none'
+        });
+        return;
+      }
+
+      // 上传头像到云存储
+      const cloudPath = `avatars/${openid}_${Date.now()}.png`;
+      const uploadRes = await wx.cloud.uploadFile({
+        cloudPath,
+        filePath: avatarUrl
       });
+
+      console.log('[Dashboard] 头像上传成功:', uploadRes.fileID);
+
+      // 更新数据库中的用户头像
+      await this.db.collection('users').where({
+        openid: openid
+      }).update({
+        data: {
+          avatar: uploadRes.fileID,
+          avatarUpdateTime: new Date(),
+          updateTime: new Date()
+        }
+      });
+
+      // 更新本地显示
+      this.setData({
+        'engineerInfo.avatar': uploadRes.fileID
+      });
+
+      // 更新缓存
+      const userInfo = wx.getStorageSync('userInfo') || {};
+      userInfo.avatar = uploadRes.fileID;
+      wx.setStorageSync('userInfo', userInfo);
+
+      // 更新全局数据
+      if (this.app.globalData.userInfo) {
+        this.app.globalData.userInfo.avatar = uploadRes.fileID;
+      }
       
-      // 保存到本地存储
-      wx.setStorageSync('userAvatar', filePath);
-      
+      // 更新头像缓存并触发全局事件
+      const UserCache = require('../../utils/user-cache');
+      await UserCache.updateAvatarCache(uploadRes.fileID);
+      console.log('[Dashboard] 已更新头像缓存并触发全局事件');
+
       wx.hideLoading();
       wx.showToast({
         title: '头像更新成功',
         icon: 'success'
       });
-    }, 1500);
+
+    } catch (error) {
+      console.error('[Dashboard] 头像更新失败:', error);
+      wx.hideLoading();
+      wx.showToast({
+        title: '更新失败',
+        icon: 'none'
+      });
+    }
   },
+
 
   // 加载用户信息（使用缓存）
   async loadUserInfo(forceRefresh = false) {

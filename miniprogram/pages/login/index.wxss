@@ -217,8 +217,14 @@
   box-shadow: 0 10rpx 30rpx rgba(16, 185, 129, 0.4);
 }
 
+.login-icon {
+  width: 60rpx;   /* 改大了 */
+  height: 60rpx;  /* 改大了 */
+  margin-right: 12rpx;
+}
+
 .login-btn text {
-  margin-left: 15rpx;
+  margin-left: 0;
 }
 
 /* 其他选项 */

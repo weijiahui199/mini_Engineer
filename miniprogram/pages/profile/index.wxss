@@ -26,45 +26,125 @@
 .avatar-wrapper {
   position: relative;
   margin-right: 24rpx;
+  width: 128rpx;  /* 固定宽度，留出边框空间 */
+  height: 128rpx;  /* 固定高度，留出边框空间 */
+}
+
+/* 头像选择按钮 */
+.avatar-btn {
+  width: 128rpx;  /* 增加宽度以容纳边框 */
+  height: 128rpx;  /* 增加高度以容纳边框 */
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: transparent;
+  position: relative;
+}
+
+.avatar-btn::after {
+  border: none;
 }
 
 .user-avatar {
   width: 120rpx;
   height: 120rpx;
   border-radius: 50%;
-  border: 4rpx solid rgba(255, 255, 255, 0.3);
-  background: #e5e7eb;
+  box-shadow: 0 0 0 4rpx rgba(255, 255, 255, 0.3);  /* 使用box-shadow代替border，避免占用空间 */
+  background: #f0f0f0;  /* 灰色背景 */
+  display: block;
+  object-fit: cover;  /* 确保图片填充并保持比例 */
+  position: absolute;
+  top: 4rpx;
+  left: 4rpx;
 }
 
-.avatar-badge {
+/* 头像编辑图标 */
+.avatar-edit-icon {
   position: absolute;
-  bottom: 8rpx;
-  right: 8rpx;
-  width: 24rpx;
-  height: 24rpx;
-  background: white;
+  bottom: 0;
+  right: 0;
+  width: 36rpx;
+  height: 36rpx;
+  background: rgba(0, 0, 0, 0.5);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
+  border: 2rpx solid white;
 }
 
-.badge-dot {
-  width: 16rpx;
-  height: 16rpx;
-  background: #10b981;
+/* 在线状态已移除 */
+
+/* 头像编辑图标 */
+.avatar-edit-icon {
+  position: absolute;
+  bottom: 4rpx;
+  right: 4rpx;
+  width: 44rpx;
+  height: 44rpx;
+  background: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%);
   border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2rpx solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.2);
+}
+
+.camera-icon {
+  width: 24rpx;
+  height: 24rpx;
+  filter: brightness(0) invert(1);
+}
+
+/* 编辑图标 */
+.edit-icon {
+  width: 32rpx;
+  height: 32rpx;
+  opacity: 0.6;
+}
+
+.check-icon {
+  width: 36rpx;
+  height: 36rpx;
+  margin-left: 8rpx;
 }
 
 .user-details {
   flex: 1;
 }
 
+/* 昵称显示和编辑 */
+.nickname-display {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8rpx;
+}
+
+.nickname-edit {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8rpx;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 8rpx;
+  padding: 8rpx 12rpx;
+}
+
+.nickname-input {
+  flex: 1;
+  color: white;
+  font-size: 36rpx;
+  font-weight: 600;
+  background: transparent;
+  padding: 0;
+  margin-right: 16rpx;
+}
+
 .user-name {
   font-size: 36rpx;
   font-weight: 600;
   display: block;
-  margin-bottom: 8rpx;
+  margin-right: 12rpx;
 }
 
 .user-role {

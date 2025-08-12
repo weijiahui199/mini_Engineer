@@ -1,6 +1,7 @@
 {
   "pages": [
     "pages/login/index",
+    "pages/login/user-setup",
     "pages/dashboard/index",
     "pages/ticket-list/index",
     "pages/ticket-detail/index",

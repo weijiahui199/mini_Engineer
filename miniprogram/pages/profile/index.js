@@ -9,11 +9,16 @@ Page({
     userInfo: {
       avatar: '',
       name: '张工程师',
+      nickName: '',  // 用户昵称
       roleText: 'IT运维工程师',
       department: '信息技术部',
       isManager: false,
       isOnline: true
     },
+    
+    // 昵称编辑相关
+    isEditingNickName: false,
+    tempNickName: '',
     
     // 版本号
     version: '1.0.0',
@@ -77,6 +82,18 @@ Page({
     }
   },
   
+  // 处理头像更新事件
+  handleAvatarUpdate(data) {
+    console.log('[Profile] 收到头像更新事件:', data);
+    if (data && data.localPath) {
+      // 直接更新页面显示的头像
+      this.setData({
+        'userInfo.avatar': data.localPath
+      });
+      console.log('[Profile] 页面头像已更新');
+    }
+  },
+  
   // 打印缓存调试信息
   printCacheDebugInfo() {
     console.log('========== 页面加载时的缓存状态 ==========');
@@ -103,8 +120,8 @@ Page({
   onShow() {
     // 刷新未读消息数
     this.loadUnreadCount();
-    // 刷新用户信息（使用缓存）
-    this.loadUserInfo();
+    // 刷新用户信息（强制刷新以获取最新数据）
+    this.loadUserInfo(true);
   },
 
   // 下拉刷新处理
@@ -364,6 +381,159 @@ Page({
   },
 
   // 更换头像
+  // 选择头像 - 使用新的 open-type="chooseAvatar"
+  onChooseAvatar(e) {
+    const { avatarUrl } = e.detail;
+    console.log('选择的头像:', avatarUrl);
+    
+    // 立即更新显示
+    this.setData({
+      'userInfo.avatar': avatarUrl
+    });
+    
+    // 上传头像到云存储并更新数据库
+    this.uploadAvatar(avatarUrl);
+  },
+  
+  // 上传头像到云存储
+  async uploadAvatar(tempFilePath) {
+    wx.showLoading({ title: '上传中...' });
+    
+    try {
+      const app = getApp();
+      const openid = app.globalData.openid;
+      
+      // 上传到云存储
+      const cloudPath = `avatars/${openid}_${Date.now()}.png`;
+      const uploadRes = await wx.cloud.uploadFile({
+        cloudPath,
+        filePath: tempFilePath
+      });
+      
+      // 更新数据库
+      await this.db.collection('users').where({
+        openid: openid
+      }).update({
+        data: {
+          avatar: uploadRes.fileID,
+          avatarUpdateTime: new Date()
+        }
+      });
+      
+      // 更新本地缓存
+      const userInfo = wx.getStorageSync('userInfo') || {};
+      userInfo.avatar = uploadRes.fileID;
+      wx.setStorageSync('userInfo', userInfo);
+      
+      // 更新全局数据
+      app.globalData.userInfo.avatar = uploadRes.fileID;
+      
+      // 更新头像缓存并触发全局事件
+      const UserCache = require('../../utils/user-cache');
+      await UserCache.updateAvatarCache(uploadRes.fileID);
+      console.log('[Profile] 已更新头像缓存并触发全局事件');
+      
+      wx.hideLoading();
+      wx.showToast({
+        title: '头像更新成功',
+        icon: 'success'
+      });
+    } catch (error) {
+      console.error('上传头像失败:', error);
+      wx.hideLoading();
+      wx.showToast({
+        title: '上传失败',
+        icon: 'none'
+      });
+    }
+  },
+  
+  // 编辑昵称
+  editNickName() {
+    this.setData({
+      isEditingNickName: true,
+      tempNickName: this.data.userInfo.nickName || this.data.userInfo.name
+    });
+  },
+  
+  // 昵称输入
+  onNickNameInput(e) {
+    this.setData({
+      tempNickName: e.detail.value
+    });
+  },
+  
+  // 昵称失去焦点
+  onNickNameBlur() {
+    // 延迟关闭，避免与保存按钮冲突
+    setTimeout(() => {
+      if (this.data.isEditingNickName) {
+        this.setData({
+          isEditingNickName: false
+        });
+      }
+    }, 200);
+  },
+  
+  // 保存昵称
+  async saveNickName() {
+    const nickName = this.data.tempNickName.trim();
+    
+    if (!nickName) {
+      wx.showToast({
+        title: '昵称不能为空',
+        icon: 'none'
+      });
+      return;
+    }
+    
+    wx.showLoading({ title: '保存中...' });
+    
+    try {
+      const app = getApp();
+      const openid = app.globalData.openid;
+      
+      // 更新数据库
+      await this.db.collection('users').where({
+        openid: openid
+      }).update({
+        data: {
+          nickName: nickName,
+          updateTime: new Date()
+        }
+      });
+      
+      // 更新本地显示
+      this.setData({
+        'userInfo.nickName': nickName,
+        'userInfo.name': nickName,
+        isEditingNickName: false
+      });
+      
+      // 更新缓存
+      const userInfo = wx.getStorageSync('userInfo') || {};
+      userInfo.nickName = nickName;
+      wx.setStorageSync('userInfo', userInfo);
+      
+      // 更新全局数据
+      app.globalData.userInfo.nickName = nickName;
+      
+      wx.hideLoading();
+      wx.showToast({
+        title: '昵称更新成功',
+        icon: 'success'
+      });
+    } catch (error) {
+      console.error('保存昵称失败:', error);
+      wx.hideLoading();
+      wx.showToast({
+        title: '保存失败',
+        icon: 'none'
+      });
+    }
+  },
+
+  // 兼容旧的changeAvatar方法
   async changeAvatar() {
     console.log('[Profile.changeAvatar] 开始更换头像');
     wx.showLoading({

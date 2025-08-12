@@ -1,12 +1,9 @@
 // 登录页面
 Page({
   data: {
-    userInfo: null,
-    hasUserInfo: false,
-    canUseGetUserProfile: wx.canIUse('getUserProfile'),
     agreed: false,
     loading: false,
-    showPhoneLogin: false  // 默认不显示手机号登录（需要企业认证）
+    loginType: 'quick'  // 登录类型：quick（快速登录）、guest（游客）
   },
 
   onLoad() {
@@ -26,8 +23,8 @@ Page({
     }
   },
 
-  // 获取用户信息 - 使用新的规范
-  getUserProfile() {
+  // 主登录方法 - 直接使用 wx.login
+  doLogin() {
     if (!this.data.agreed) {
       wx.showToast({
         title: '请先同意用户协议',
@@ -36,71 +33,31 @@ Page({
       return;
     }
 
-    // 检查是否支持 getUserProfile
-    if (wx.getUserProfile) {
-      wx.getUserProfile({
-        desc: '用于完善用户资料和提供个性化服务',
-        success: (res) => {
-          console.log('获取用户信息成功', res);
-          this.setData({
-            userInfo: res.userInfo,
-            hasUserInfo: true
-          });
-          
-          // 保存用户信息到本地
-          wx.setStorageSync('wxUserInfo', res.userInfo);
-          
-          // 继续登录流程
-          this.wxLogin(res.userInfo);
-        },
-        fail: (err) => {
-          console.error('获取用户信息失败', err);
-          // 用户拒绝授权，提供快速登录选项
-          wx.showModal({
-            title: '提示',
-            content: '获取用户信息失败，是否使用快速登录？',
-            confirmText: '快速登录',
-            cancelText: '取消',
-            success: (res) => {
-              if (res.confirm) {
-                this.quickLogin();
-              }
-            }
-          });
-        }
-      });
-    } else {
-      // 基础库版本过低，使用快速登录
-      console.log('不支持 getUserProfile，使用快速登录');
-      this.quickLogin();
-    }
-  },
-
-  // 微信登录
-  wxLogin(wxUserInfo) {
-    this.setData({ loading: true });
+    this.setData({ 
+      loading: true,
+      loginType: 'quick'
+    });
     
+    // 直接使用 wx.login 获取 openid
     wx.login({
       success: async (res) => {
         if (res.code) {
-          console.log('登录凭证code:', res.code);
-          
-          // 调用云函数进行登录
           try {
+            console.log('登录凭证code:', res.code);
+            
+            // 调用云函数登录
             const result = await wx.cloud.callFunction({
               name: 'login',
               data: {
                 code: res.code,
-                userInfo: wxUserInfo || this.data.userInfo
+                loginType: 'normal'  // 标记为正常登录
               }
             });
             
-            console.log('云函数登录结果:', result);
-            
             if (result.result.success) {
-              // 保存登录信息
               const { openid, token, userInfo } = result.result.data;
               
+              // 保存登录信息
               wx.setStorageSync('openid', openid);
               wx.setStorageSync('token', token);
               wx.setStorageSync('userInfo', userInfo);
@@ -116,9 +73,17 @@ Page({
                 icon: 'success'
               });
               
-              // 跳转到主页
+              // 判断是否需要设置用户信息
               setTimeout(() => {
-                this.navigateToHome();
+                if (!userInfo.avatar || !userInfo.nickName || userInfo.nickName.startsWith('用户')) {
+                  // 新用户或未设置信息的用户，跳转到信息设置页面
+                  wx.redirectTo({
+                    url: '/pages/login/user-setup?firstTime=true'
+                  });
+                } else {
+                  // 已有完整信息的用户，直接进入主页
+                  this.navigateToHome();
+                }
               }, 1500);
             } else {
               throw new Error(result.result.message || '登录失败');
@@ -126,15 +91,10 @@ Page({
           } catch (error) {
             console.error('登录失败:', error);
             wx.showToast({
-              title: error.message || '登录失败',
+              title: error.message || '登录失败，请重试',
               icon: 'none'
             });
           }
-        } else {
-          wx.showToast({
-            title: '登录失败，请重试',
-            icon: 'none'
-          });
         }
       },
       fail: (err) => {
@@ -150,71 +110,6 @@ Page({
     });
   },
 
-  // 获取手机号登录
-  onGetPhoneNumber(e) {
-    if (!this.data.agreed) {
-      wx.showToast({
-        title: '请先同意用户协议',
-        icon: 'none'
-      });
-      return;
-    }
-
-    console.log('获取手机号结果:', e);
-    
-    if (e.detail.errMsg === 'getPhoneNumber:ok') {
-      this.setData({ loading: true });
-      
-      // 调用云函数解密手机号
-      wx.cloud.callFunction({
-        name: 'login',
-        data: {
-          action: 'getPhoneNumber',
-          cloudID: e.detail.cloudID,
-          encryptedData: e.detail.encryptedData,
-          iv: e.detail.iv
-        }
-      }).then(res => {
-        console.log('手机号解密结果:', res);
-        
-        if (res.result.success) {
-          // 继续登录流程
-          this.wxLogin();
-        } else {
-          wx.showToast({
-            title: '获取手机号失败',
-            icon: 'none'
-          });
-        }
-      }).catch(err => {
-        console.error('获取手机号失败:', err);
-        wx.showToast({
-          title: '获取手机号失败',
-          icon: 'none'
-        });
-      }).finally(() => {
-        this.setData({ loading: false });
-      });
-    } else {
-      wx.showToast({
-        title: '需要手机号授权才能登录',
-        icon: 'none'
-      });
-    }
-  },
-
-  // 手动登录（已有用户信息）
-  manualLogin() {
-    if (!this.data.agreed) {
-      wx.showToast({
-        title: '请先同意用户协议',
-        icon: 'none'
-      });
-      return;
-    }
-    
-    this.wxLogin();
-  },
 
   // 游客登录
   guestLogin() {
@@ -272,85 +167,12 @@ Page({
     });
   },
 
-  // 快速登录（无需授权）
-  quickLogin() {
-    if (!this.data.agreed) {
-      wx.showToast({
-        title: '请先同意用户协议',
-        icon: 'none'
-      });
-      return;
-    }
-    
-    this.setData({ loading: true });
-    
-    // 直接使用wx.login获取openid，不获取用户信息
-    wx.login({
-      success: async (res) => {
-        if (res.code) {
-          try {
-            // 生成默认用户信息
-            const defaultUserInfo = {
-              nickName: '微信用户' + Math.random().toString(36).substr(2, 4).toUpperCase(),
-              avatarUrl: '/assets/default-avatar.png',
-              gender: 0,
-              country: '',
-              province: '',
-              city: '',
-              language: 'zh_CN'
-            };
-            
-            // 调用云函数登录
-            const result = await wx.cloud.callFunction({
-              name: 'login',
-              data: {
-                code: res.code,
-                userInfo: defaultUserInfo,
-                isQuickLogin: true  // 标记为快速登录
-              }
-            });
-            
-            if (result.result.success) {
-              const { openid, token, userInfo } = result.result.data;
-              
-              wx.setStorageSync('openid', openid);
-              wx.setStorageSync('token', token);
-              wx.setStorageSync('userInfo', userInfo);
-              
-              const app = getApp();
-              app.globalData.openid = openid;
-              app.globalData.userInfo = userInfo;
-              app.globalData.isLogin = true;
-              
-              wx.showToast({
-                title: '登录成功',
-                icon: 'success'
-              });
-              
-              setTimeout(() => {
-                this.navigateToHome();
-              }, 1500);
-            }
-          } catch (error) {
-            console.error('快速登录失败:', error);
-            wx.showToast({
-              title: '登录失败，请重试',
-              icon: 'none'
-            });
-          }
-        }
-      },
-      complete: () => {
-        this.setData({ loading: false });
-      }
-    });
-  },
 
   // 显示登录帮助
   showHelp() {
     wx.showModal({
       title: '登录帮助',
-      content: '1. 微信授权登录：获取您的微信头像和昵称，提供个性化服务\n\n2. 快速登录：无需授权，使用默认信息快速进入系统\n\n3. 游客访问：体验有限功能，不保存数据\n\n如遇问题请联系管理员',
+      content: '1. 立即登录：使用微信账号快速登录系统\n\n2. 游客访问：体验有限功能，不保存数据\n\n3. 登录后可在个人中心修改头像和昵称\n\n如遇问题请联系管理员',
       showCancel: false,
       confirmText: '我知道了'
     });

@@ -4,12 +4,23 @@
   <view class="gradient-bg status-header">
     <view class="status-content">
       <view class="engineer-info">
-        <t-avatar 
-          size="large" 
-          image="{{engineerInfo.avatar}}"
-          icon="user"
-          bindtap="changeAvatar"
-        />
+        <!-- 头像选择按钮 -->
+        <button 
+          class="avatar-button" 
+          open-type="chooseAvatar" 
+          bindchooseavatar="onChooseAvatar"
+        >
+          <view class="avatar-wrapper">
+            <image 
+              class="engineer-avatar" 
+              src="{{engineerInfo.avatar || '/assets/default-avatar.png'}}"
+              mode="aspectFill"
+            />
+            <view class="avatar-edit-overlay">
+              <image class="camera-icon" src="/assets/icons/system/camera.png" mode="aspectFit" />
+            </view>
+          </view>
+        </button>
         <view class="engineer-details">
           <view class="engineer-name">
             <text>{{engineerInfo.name || '工程师'}}</text>

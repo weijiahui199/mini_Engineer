@@ -25,31 +25,66 @@
 }
 
 /* 头像样式 */
-.engineer-info .t-avatar {
+/* 旧的TDesign样式已移除 */
+
+/* 头像按钮样式 */
+.avatar-button {
+  width: 124rpx;  /* 稍微增加以包含边框 */
+  height: 124rpx;
+  padding: 2rpx;  /* 添加内边距 */
+  margin-right: 24rpx;
+  background: transparent;
+  border: none;
   position: relative;
-  cursor: pointer;
-  transition: all 0.3s;
+  flex-shrink: 0;  /* 防止被压缩 */
+  box-sizing: border-box;
 }
 
-.engineer-info .t-avatar:active {
-  transform: scale(0.95);
-  opacity: 0.8;
+.avatar-button::after {
+  border: none;
 }
 
-.engineer-info .t-avatar::after {
-  content: '📷';
+.avatar-wrapper {
+  width: 120rpx;
+  height: 120rpx;
+  position: relative;
+  border-radius: 50%;
+  /* 不使用overflow:hidden */
+  background: #f0f0f0;  /* 灰色背景 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 0 3rpx rgba(255, 255, 255, 0.8), 0 4rpx 12rpx rgba(0, 0, 0, 0.1);  /* 使用box-shadow实现边框和阴影 */
+}
+
+.engineer-avatar {
+  width: 114rpx;  /* 稍小于容器，留出边缘空间 */
+  height: 114rpx;
+  display: block;
+  border-radius: 50%;  /* 直接在图片上应用圆形 */
+  object-fit: cover;  /* 确保图片填充并保持比例 */
+}
+
+.avatar-edit-overlay {
   position: absolute;
-  bottom: 0;
-  right: 0;
-  width: 28rpx;
-  height: 28rpx;
-  background: white;
+  bottom: 2rpx;  /* 稍微向内移动，避免被裁剪 */
+  right: 2rpx;   /* 稍微向内移动，避免被裁剪 */
+  width: 32rpx;  /* 稍微减小尺寸 */
+  height: 32rpx;
+  background: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16rpx;
-  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
+  border: 2rpx solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.2);
+  z-index: 2;  /* 确保在头像之上 */
+}
+
+.camera-icon {
+  width: 20rpx;
+  height: 20rpx;
+  filter: brightness(0) invert(1);
 }
 
 .engineer-details {

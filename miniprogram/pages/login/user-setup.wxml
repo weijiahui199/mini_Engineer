@@ -1,0 +1,94 @@
+<!-- 用户信息设置页面 -->
+<view class="setup-container">
+  <!-- 背景渐变 -->
+  <view class="gradient-bg"></view>
+  
+  <!-- 磨砂玻璃效果容器 -->
+  <view class="glass-container">
+    <!-- Logo区域 -->
+    <view class="logo-section">
+      <view class="logo-wrapper">
+        <image class="logo" src="/assets/logo.png" mode="aspectFit" />
+      </view>
+      <text class="app-name">IT工程师工作台</text>
+    </view>
+
+    <!-- 内容表单 -->
+    <view class="setup-form">
+      <!-- 标题 -->
+      <view class="welcome-text">
+        <text class="welcome-title">完善个人信息</text>
+        <text class="welcome-subtitle">设置您的头像和昵称</text>
+      </view>
+    
+      <!-- 头像设置 -->
+      <view class="avatar-section">
+        <button 
+          class="avatar-button" 
+          open-type="chooseAvatar" 
+          bindchooseavatar="onChooseAvatar"
+        >
+          <view class="avatar-wrapper">
+            <image 
+              class="avatar-image" 
+              src="{{avatarUrl || '/assets/default-avatar.png'}}"
+              mode="aspectFill"
+            />
+            <view class="avatar-overlay">
+              <image class="camera-icon" src="/assets/icons/system/camera.png" mode="aspectFit" />
+            </view>
+          </view>
+          <text class="avatar-label">点击设置头像</text>
+        </button>
+      </view>
+    
+      <!-- 昵称设置 -->
+      <view class="nickname-section">
+        <view class="input-group">
+          <image class="input-icon" src="/assets/icons/user/user.png" mode="widthFix" />
+          <input 
+            type="nickname" 
+            class="nickname-input"
+            placeholder="请输入昵称 (2-20个字符)"
+            placeholder-class="input-placeholder"
+            value="{{nickName}}"
+            bindinput="onNickNameInput"
+            bindblur="onNickNameBlur"
+            maxlength="20"
+          />
+        </view>
+        <text class="error-hint" wx:if="{{nickNameError}}">{{nickNameError}}</text>
+      </view>
+    
+      <!-- 操作按钮 -->
+      <view class="button-group">
+        <button 
+          class="setup-btn primary-btn"
+          bindtap="saveUserInfo"
+          loading="{{saving}}"
+          disabled="{{saving || !nickName}}"
+        >
+          <view class="btn-content" wx:if="{{!saving}}">
+            <image class="check-icon" src="/assets/icons/common/check.png" mode="widthFix" />
+            <text>完成设置</text>
+          </view>
+          <text wx:else>保存中...</text>
+        </button>
+        
+        <view class="other-options" wx:if="{{isFirstTime}}">
+          <text class="option-link" bindtap="skipSetup">稍后设置</text>
+        </view>
+      </view>
+    </view>
+    
+    <!-- 底部信息 -->
+    <view class="footer">
+      <text class="tip-text">您可以随时在个人中心修改这些信息</text>
+    </view>
+  </view>
+  
+  <!-- 加载遮罩 -->
+  <view class="loading-mask" wx:if="{{saving}}">
+    <t-loading theme="circular" loading size="50rpx" text="保存中..." />
+  </view>
+</view>

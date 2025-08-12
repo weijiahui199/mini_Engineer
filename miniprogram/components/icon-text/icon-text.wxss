@@ -1,0 +1,11 @@
+.icon-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.icon-text__icon {
+  font-size: inherit;
+  line-height: 1;
+  display: inline-block;
+}

@@ -6,18 +6,41 @@
       <!-- 头像和基本信息 -->
       <view class="user-info">
         <view class="avatar-wrapper">
-          <image 
-            class="user-avatar" 
-            src="{{userInfo.avatar || '/assets/default-avatar.png'}}" 
-            mode="aspectFill"
-            bindtap="changeAvatar"
-          />
-          <view class="avatar-badge" wx:if="{{userInfo.isOnline}}">
-            <view class="badge-dot"></view>
-          </view>
+          <!-- 使用 button 的 open-type="chooseAvatar" 来选择头像 -->
+          <button 
+            class="avatar-btn" 
+            open-type="chooseAvatar" 
+            bindchooseavatar="onChooseAvatar"
+          >
+            <image 
+              class="user-avatar" 
+              src="{{userInfo.avatar || '/assets/default-avatar.png'}}" 
+              mode="aspectFill"
+            />
+            <view class="avatar-edit-icon">
+              <image class="camera-icon" src="/assets/icons/system/camera.png" mode="aspectFit" />
+            </view>
+          </button>
         </view>
         <view class="user-details">
-          <text class="user-name">{{userInfo.name}}</text>
+          <!-- 使用 input 的 type="nickname" 来编辑昵称 -->
+          <view class="nickname-edit" wx:if="{{isEditingNickName}}">
+            <input 
+              type="nickname" 
+              class="nickname-input"
+              value="{{tempNickName}}"
+              placeholder="请输入昵称"
+              bindblur="onNickNameBlur"
+              bindinput="onNickNameInput"
+              bindconfirm="saveNickName"
+              focus="{{isEditingNickName}}"
+            />
+            <image class="check-icon" src="/assets/icons/common/check.png" mode="aspectFit" bindtap="saveNickName" />
+          </view>
+          <view class="nickname-display" wx:else bindtap="editNickName">
+            <text class="user-name">{{userInfo.nickName || userInfo.name || '点击设置昵称'}}</text>
+            <image class="edit-icon" src="/assets/icons/common/edit.png" mode="aspectFit" />
+          </view>
           <text class="user-role">{{userInfo.roleText}}</text>
           <view class="user-tags">
             <t-tag theme="primary" variant="light" size="small">{{userInfo.department}}</t-tag>

@@ -1,0 +1,5 @@
+<!-- 图标文字组合组件 -->
+<view class="icon-text">
+  <text class="icon-text__icon" wx:if="{{icon}}">{{iconMap[icon] || icon}}</text>
+  <slot></slot>
+</view>

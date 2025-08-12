@@ -105,7 +105,7 @@ async function getUserProfile(event, wxContext) {
 
 // 更新用户信息
 async function updateUserProfile(event, wxContext) {
-  const { company, department, phone, nickName, email, employeeId, source = 'manual' } = event
+  const { company, department, phone, nickName, email, employeeId, avatar, source = 'manual' } = event
   
   try {
     console.log('更新用户信息请求:', {
@@ -116,6 +116,7 @@ async function updateUserProfile(event, wxContext) {
       nickName,
       email,
       employeeId,
+      avatar,
       source
     })
     
@@ -144,6 +145,7 @@ async function updateUserProfile(event, wxContext) {
       if (nickName !== undefined) updateData.nickName = nickName || ''
       if (email !== undefined) updateData.email = email || ''
       if (employeeId !== undefined) updateData.employeeId = employeeId || ''
+      if (avatar !== undefined) updateData.avatar = avatar || ''
       
       const updateResult = await db.collection('users')
         .doc(userId)
@@ -164,11 +166,42 @@ async function updateUserProfile(event, wxContext) {
         data: updatedUser.data
       }
     } else {
-      // 用户不存在，这种情况不应该发生（用户应该先通过login云函数创建）
-      console.error('用户不存在，无法更新信息')
+      // 用户不存在，创建新用户记录
+      console.log('用户不存在，创建新用户记录')
+      
+      const newUserData = {
+        _openid: wxContext.OPENID,  // 添加 _openid 字段用于权限控制
+        openid: wxContext.OPENID,
+        appid: wxContext.APPID,
+        createTime: db.serverDate(),
+        updateTime: db.serverDate(),
+        roleGroup: '用户',
+        department: '信息技术部',
+        status: 'active'
+      }
+      
+      // 添加提供的字段
+      if (company !== undefined) newUserData.company = company || ''
+      if (department !== undefined) newUserData.department = department || ''
+      if (phone !== undefined) newUserData.phone = phone || ''
+      if (nickName !== undefined) newUserData.nickName = nickName || ''
+      if (email !== undefined) newUserData.email = email || ''
+      if (employeeId !== undefined) newUserData.employeeId = employeeId || ''
+      if (avatar !== undefined) newUserData.avatar = avatar || ''
+      
+      const addResult = await db.collection('users').add({
+        data: newUserData
+      })
+      
+      console.log('创建用户记录成功:', addResult)
+      
+      // 获取创建的用户信息
+      const newUser = await db.collection('users').doc(addResult._id).get()
+      
       return {
-        code: 404,
-        message: '用户不存在，请先登录'
+        code: 200,
+        message: '用户信息创建成功',
+        data: newUser.data
       }
     }
   } catch (error) {

@@ -19,49 +19,20 @@
       <!-- 欢迎语 -->
       <view class="welcome-text">
         <text class="welcome-title">欢迎使用</text>
-        <text class="welcome-subtitle">请登录以继续</text>
-      </view>
-
-      <!-- 用户信息展示（获取后显示） -->
-      <view class="user-info-preview" wx:if="{{userInfo}}">
-        <image class="user-avatar" src="{{userInfo.avatarUrl || '/assets/default-avatar.png'}}" />
-        <text class="user-nickname">{{userInfo.nickName}}</text>
+        <text class="welcome-subtitle">IT工程师工作管理平台</text>
       </view>
 
       <!-- 登录按钮 -->
       <view class="button-group">
-        <!-- 主要登录方式：微信授权登录 -->
+        <!-- 主要登录按钮 -->
         <button 
           class="login-btn primary-btn"
-          bindtap="getUserProfile"
-          wx:if="{{!hasUserInfo}}"
-          disabled="{{loading}}"
-        >
-          <t-icon name="user-circle" size="40rpx" />
-          <text>微信授权登录</text>
-        </button>
-
-        <!-- 确认登录按钮（已获取用户信息后） -->
-        <button 
-          class="login-btn secondary-btn"
-          bindtap="manualLogin"
-          wx:if="{{hasUserInfo}}"
+          bindtap="doLogin"
           loading="{{loading}}"
           disabled="{{loading}}"
         >
-          <t-icon name="check-circle" size="40rpx" />
-          <text>确认登录</text>
-        </button>
-
-        <!-- 次要登录方式：快速登录（无需授权） -->
-        <button 
-          class="login-btn outline-btn"
-          bindtap="quickLogin"
-          wx:if="{{!hasUserInfo}}"
-          disabled="{{loading}}"
-        >
-          <t-icon name="lightning" size="40rpx" />
-          <text>快速登录</text>
+          <image class="login-icon" src="/assets/icons/system/hot.png" mode="aspectFit" />
+          <text>立即登录</text>
         </button>
 
         <!-- 其他选项 -->

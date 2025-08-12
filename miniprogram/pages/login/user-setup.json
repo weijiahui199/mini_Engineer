@@ -1,0 +1,11 @@
+{
+  "navigationBarTitleText": "完善信息",
+  "navigationBarBackgroundColor": "#0ea5e9",
+  "navigationBarTextStyle": "white",
+  "backgroundColor": "#f8fafc",
+  "usingComponents": {
+    "t-icon": "/miniprogram_npm/tdesign-miniprogram/icon/icon",
+    "t-button": "/miniprogram_npm/tdesign-miniprogram/button/button",
+    "t-loading": "/miniprogram_npm/tdesign-miniprogram/loading/loading"
+  }
+}

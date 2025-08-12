@@ -1,0 +1,386 @@
+/* 用户信息设置页面样式 - 与登录页面保持一致的磨砂玻璃风格 */
+.setup-container {
+  width: 100vw;
+  height: 100vh;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* 渐变背景 - 与登录页面相同 */
+.gradient-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #667eea 0%, #0ea5e9 50%, #06b6d4 100%);
+  animation: gradient-shift 15s ease infinite;
+}
+
+@keyframes gradient-shift {
+  0% {
+    background: linear-gradient(135deg, #667eea 0%, #0ea5e9 50%, #06b6d4 100%);
+  }
+  50% {
+    background: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 50%, #667eea 100%);
+  }
+  100% {
+    background: linear-gradient(135deg, #667eea 0%, #0ea5e9 50%, #06b6d4 100%);
+  }
+}
+
+/* 磨砂玻璃容器 - 与登录页面相同 */
+.glass-container {
+  position: relative;
+  width: 90%;
+  max-width: 700rpx;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 40rpx;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 20rpx 60rpx rgba(0, 0, 0, 0.1);
+  padding: 60rpx 40rpx 40rpx;
+  z-index: 1;
+}
+
+/* Logo区域 - 与登录页面相同 */
+.logo-section {
+  text-align: center;
+  margin-bottom: 50rpx;
+}
+
+.logo-wrapper {
+  width: 120rpx;
+  height: 120rpx;
+  margin: 0 auto 20rpx;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 24rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.1);
+}
+
+.logo {
+  width: 80rpx;
+  height: 80rpx;
+}
+
+.app-name {
+  display: block;
+  font-size: 36rpx;
+  font-weight: bold;
+  color: #ffffff;
+  margin-bottom: 10rpx;
+  text-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.2);
+}
+
+/* 表单容器 */
+.setup-form {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 30rpx;
+  padding: 40rpx;
+  margin-bottom: 30rpx;
+}
+
+/* 欢迎文字 - 与登录页面相同 */
+.welcome-text {
+  text-align: center;
+  margin-bottom: 50rpx;
+}
+
+.welcome-title {
+  display: block;
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #ffffff;
+  margin-bottom: 10rpx;
+}
+
+.welcome-subtitle {
+  display: block;
+  font-size: 28rpx;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* 头像设置部分 */
+.avatar-section {
+  margin-bottom: 50rpx;
+  text-align: center;
+}
+
+.avatar-button {
+  background: transparent;
+  border: none;
+  padding: 0;
+  display: inline-block;
+}
+
+.avatar-button::after {
+  border: none;
+}
+
+.avatar-wrapper {
+  width: 180rpx;
+  height: 180rpx;
+  margin: 0 auto 20rpx;
+  position: relative;
+  padding: 4rpx;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 50%;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.1);
+}
+
+.avatar-image {
+  width: 100%;
+  height: 100%;
+  display: block;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  object-fit: cover;
+}
+
+.avatar-overlay {
+  position: absolute;
+  bottom: 10rpx;
+  right: 10rpx;
+  width: 56rpx;
+  height: 56rpx;
+  background: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 3rpx solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.2);
+}
+
+.camera-icon {
+  width: 32rpx;
+  height: 32rpx;
+  filter: brightness(0) invert(1);
+}
+
+.avatar-label {
+  display: block;
+  font-size: 26rpx;
+  color: rgba(255, 255, 255, 0.9);
+  text-align: center;
+}
+
+/* 昵称设置部分 */
+.nickname-section {
+  margin-bottom: 50rpx;
+}
+
+.input-group {
+  position: relative;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50rpx;
+  border: 2rpx solid rgba(255, 255, 255, 0.3);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  padding: 0 30rpx;
+  transition: all 0.3s ease;
+}
+
+.input-group:focus-within {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.6);
+  box-shadow: 0 0 0 4rpx rgba(14, 165, 233, 0.2);
+}
+
+.input-icon {
+  width: 44rpx;
+  height: 44rpx;
+  margin-right: 20rpx;
+  flex-shrink: 0;
+  opacity: 0.8;
+  filter: brightness(0) invert(1);
+}
+
+.nickname-input {
+  flex: 1;
+  height: 96rpx;
+  font-size: 32rpx;
+  color: #ffffff;
+  background: transparent;
+  border: none;
+}
+
+.input-placeholder {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 30rpx;
+}
+
+.error-hint {
+  display: block;
+  margin-top: 16rpx;
+  padding-left: 30rpx;
+  font-size: 26rpx;
+  color: #fca5a5;
+  text-align: left;
+}
+
+/* 按钮组 - 与登录页面相同 */
+.button-group {
+  margin-bottom: 20rpx;
+}
+
+.setup-btn {
+  width: 100%;
+  height: 100rpx;
+  border-radius: 50rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32rpx;
+  font-weight: 500;
+  margin-bottom: 30rpx;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.setup-btn::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+.setup-btn:active::after {
+  width: 600rpx;
+  height: 600rpx;
+}
+
+.primary-btn {
+  background: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%);
+  color: #ffffff;
+  border: none;
+  box-shadow: 0 10rpx 30rpx rgba(14, 165, 233, 0.4);
+}
+
+.primary-btn:active {
+  transform: scale(0.98);
+  box-shadow: 0 5rpx 20rpx rgba(14, 165, 233, 0.4);
+}
+
+.primary-btn[disabled] {
+  opacity: 0.6;
+  background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%);
+  box-shadow: none;
+}
+
+.btn-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+}
+
+.check-icon {
+  width: 44rpx;
+  height: 44rpx;
+  margin-right: 12rpx;
+}
+
+.btn-content text {
+  font-size: 32rpx;
+  font-weight: 500;
+}
+
+.setup-btn text {
+  font-size: 32rpx;
+  font-weight: 500;
+}
+
+/* 其他选项 - 与登录页面相同 */
+.other-options {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 10rpx;
+}
+
+.option-link {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 28rpx;
+  padding: 10rpx 20rpx;
+  transition: all 0.3s ease;
+  text-decoration: underline;
+}
+
+.option-link:active {
+  color: #ffffff;
+  transform: scale(0.95);
+}
+
+/* 底部信息 - 与登录页面相同 */
+.footer {
+  text-align: center;
+  padding-top: 20rpx;
+  border-top: 1rpx solid rgba(255, 255, 255, 0.2);
+}
+
+.tip-text {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 36rpx;
+}
+
+/* 加载遮罩 - 与登录页面相同 */
+.loading-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+/* 响应式适配 */
+@media (max-height: 667px) {
+  .glass-container {
+    padding: 40rpx 30rpx 30rpx;
+  }
+  
+  .logo-wrapper {
+    width: 100rpx;
+    height: 100rpx;
+  }
+  
+  .logo {
+    width: 60rpx;
+    height: 60rpx;
+  }
+  
+  .setup-form {
+    padding: 30rpx;
+  }
+  
+  .avatar-wrapper {
+    width: 150rpx;
+    height: 150rpx;
+  }
+  
+  .setup-btn {
+    height: 90rpx;
+    margin-bottom: 20rpx;
+  }
+}
