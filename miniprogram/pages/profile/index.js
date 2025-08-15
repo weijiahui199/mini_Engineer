@@ -2,6 +2,8 @@
 const testManager = require('../../utils/test-manager');
 const avatarManager = require('../../utils/avatar-manager');
 const UserCache = require('../../utils/user-cache');
+const RefreshManager = require('../../utils/refresh-manager');
+const NetworkHandler = require('../../utils/network-handler');
 
 Page({
   data: {
@@ -85,6 +87,9 @@ Page({
   // 处理头像更新事件
   handleAvatarUpdate(data) {
     console.log('[Profile] 收到头像更新事件:', data);
+    
+    // 标记需要强制刷新
+    RefreshManager.setForceRefreshFlag('userInfo');
     if (data && data.localPath) {
       // 直接更新页面显示的头像
       this.setData({
@@ -118,10 +123,32 @@ Page({
   },
 
   onShow() {
-    // 刷新未读消息数
+    console.log('[Profile] onShow 触发');
+    
+    // 设置页面活跃状态
+    RefreshManager.setPageActive('profile', true);
+    
+    // 智能刷新决策
+    const decisions = RefreshManager.makeRefreshDecision('profile', ['userInfo']);
+    
+    // 根据决策刷新用户信息
+    if (decisions.userInfo) {
+      console.log('[Profile] 需要刷新用户信息');
+      this.loadUserInfo(true);
+      RefreshManager.recordRefresh('userInfo');
+    } else {
+      console.log('[Profile] 使用缓存的用户信息');
+      // 使用缓存的用户信息
+      this.loadUserInfo(false);
+    }
+    
+    // 始终刷新未读消息数
     this.loadUnreadCount();
-    // 刷新用户信息（强制刷新以获取最新数据）
-    this.loadUserInfo(true);
+  },
+  
+  onHide() {
+    // 页面隐藏时设置为非活跃
+    RefreshManager.setPageActive('profile', false);
   },
 
   // 下拉刷新处理
@@ -397,27 +424,48 @@ Page({
   
   // 上传头像到云存储
   async uploadAvatar(tempFilePath) {
+    // 检查网络状态
+    if (!NetworkHandler.isNetworkConnected()) {
+      wx.showToast({
+        title: '网络未连接',
+        icon: 'none',
+        duration: 2000
+      });
+      return;
+    }
+    
+    // 弱网提示
+    if (NetworkHandler.isWeakNetwork()) {
+      wx.showToast({
+        title: '当前网络较慢，上传可能需要更长时间',
+        icon: 'none',
+        duration: 2000
+      });
+    }
+    
     wx.showLoading({ title: '上传中...' });
     
     try {
       const app = getApp();
       const openid = app.globalData.openid;
       
-      // 上传到云存储
+      // 上传到云存储（带重试）
       const cloudPath = `avatars/${openid}_${Date.now()}.png`;
-      const uploadRes = await wx.cloud.uploadFile({
+      const uploadRes = await NetworkHandler.uploadFileWithRetry({
         cloudPath,
         filePath: tempFilePath
       });
       
-      // 更新数据库
-      await this.db.collection('users').where({
-        openid: openid
-      }).update({
-        data: {
-          avatar: uploadRes.fileID,
-          avatarUpdateTime: new Date()
-        }
+      // 更新数据库（带重试）
+      await NetworkHandler.databaseOperationWithRetry(async () => {
+        return this.db.collection('users').where({
+          openid: openid
+        }).update({
+          data: {
+            avatar: uploadRes.fileID,
+            avatarUpdateTime: new Date()
+          }
+        });
       });
       
       // 更新本地缓存
@@ -441,9 +489,25 @@ Page({
     } catch (error) {
       console.error('上传头像失败:', error);
       wx.hideLoading();
-      wx.showToast({
-        title: '上传失败',
-        icon: 'none'
+      
+      // 显示友好的错误提示
+      const errorMessage = NetworkHandler.getFriendlyErrorMessage(error);
+      
+      wx.showModal({
+        title: '头像上传失败',
+        content: errorMessage,
+        showCancel: true,
+        confirmText: '重试',
+        cancelText: '取消',
+        success: (res) => {
+          if (res.confirm) {
+            // 重试上传
+            this.uploadAvatar(tempFilePath);
+          } else {
+            // 恢复原头像
+            this.loadUserInfo();
+          }
+        }
       });
     }
   },

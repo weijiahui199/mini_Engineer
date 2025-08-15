@@ -96,21 +96,108 @@ await UserCache.updateAvatarCache(uploadRes.fileID);
 - [x] 更新相关WXML文件的绑定
 - [ ] 验证：昵称保存和读取正常
 
-### Checkpoint 4：优化缓存机制
-- [ ] 实现页面 onShow 时的智能刷新
-- [ ] 添加事件监听的响应处理
-- [ ] 验证：信息更新后自动刷新
+### Checkpoint 4：优化缓存机制 ✅
+- [x] 实现页面 onShow 时的智能刷新
+- [x] 添加事件监听的响应处理
+- [x] 验证：信息更新后自动刷新
 
-### Checkpoint 5：完善错误处理
-- [ ] 添加头像上传失败重试
-- [ ] 添加网络错误提示
-- [ ] 验证：弱网环境下的用户体验
+### Checkpoint 5：完善错误处理 ✅
+- [x] 添加头像上传失败重试
+- [x] 添加网络错误提示
+- [x] 验证：弱网环境下的用户体验
 
 ## 📝 修复记录
 
 ### 2025-08-12 修复记录
 
 #### 已修复
+
+#### Checkpoint 4 完成情况 （2025-08-12 晚上）
+
+**实现的功能：**
+
+1. **创建了智能刷新管理器 (RefreshManager)**
+   - 文件：`/miniprogram/utils/refresh-manager.js`
+   - 功能：
+     - 智能判断是否需要刷新数据
+     - 支持最小刷新间隔（30秒）
+     - 支持最大缓存时间（5分钟）
+     - 强制刷新标记管理
+     - 页面活跃状态管理
+
+2. **更新了 Dashboard 页面**
+   - 添加了 onShow 智能刷新逻辑
+   - 添加了 onHide 页面状态管理
+   - 头像更新事件会触发强制刷新
+
+3. **更新了 Profile 页面**
+   - 添加了智能刷新决策
+   - 根据刷新策略决定是否使用缓存
+
+4. **集成全局事件处理**
+   - 在 app.js 中设置全局事件监听器
+   - 连接 EventBus 和 RefreshManager
+   - 支持的事件：
+     - USER_INFO_UPDATED
+     - AVATAR_UPDATED  
+     - CACHE_CLEARED
+
+5. **创建测试页面**
+   - 文件：`/miniprogram/pages/test-refresh/`
+   - 功能：
+     - 显示刷新管理器状态
+     - 测试智能刷新决策
+     - 测试强制刷新标记
+     - 测试事件触发刷新
+     - 测试最小刷新间隔
+
+**优化效果：**
+- 减少不必要的数据库查询
+- 避免频繁刷新造成的性能消耗
+- 在真正需要时才刷新数据
+- 事件驱动的即时更新
+
+#### Checkpoint 5 完成情况（2025-08-15 晚上）
+
+**实现的功能：**
+
+1. **创建网络错误处理器（NetworkHandler）**
+   - 文件：`/miniprogram/utils/network-handler.js`
+   - 功能：
+     - 自动重试机制（最多3次）
+     - 指数退避算法
+     - 超时控制（30秒）
+     - 网络状态监听
+     - 友好错误消息映射
+
+2. **创建加载状态管理器（LoadingManager）**
+   - 文件：`/miniprogram/utils/loading-manager.js`
+   - 功能：
+     - 加载状态栈管理
+     - 最小显示时间（避免闪烁）
+     - 慢网络提示（3秒后）
+     - 进度显示支持
+     - 统一的Toast提示
+
+3. **创建头像占位图组件**
+   - 路径：`/miniprogram/components/avatar-placeholder/`
+   - 功能：
+     - 加载中动画
+     - 错误状态展示
+     - 默认图标显示
+
+4. **更新页面实现**
+   - user-setup.js：添加重试机制和弱网提示
+   - dashboard/index.js：集成NetworkHandler
+   - profile/index.js：添加友好错误提示
+
+**优化效果：**
+- 网络问题自动重试，提高成功率
+- 友好的错误提示，用户体验更好
+- 弱网环境下有明确提示
+- 加载状态可视化，减少用户焦虑
+
+#### 已修复（Checkpoint 1-3）
 1. **头像更新同步问题** ✅
    - 在 `user-setup.js` 第111行添加了 `UserCache.updateAvatarCache()` 调用
    - 在 `dashboard/index.js` 第402行添加了缓存更新和事件触发

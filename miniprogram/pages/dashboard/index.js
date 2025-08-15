@@ -1,5 +1,7 @@
 // 工程师工作台页面
 const UserCache = require('../../utils/user-cache');
+const RefreshManager = require('../../utils/refresh-manager');
+const NetworkHandler = require('../../utils/network-handler');
 
 Page({
   data: {
@@ -70,6 +72,9 @@ Page({
   // 处理头像更新事件
   handleAvatarUpdate(data) {
     console.log('[Dashboard] 收到头像更新事件:', data);
+    
+    // 标记需要强制刷新
+    RefreshManager.setForceRefreshFlag('userInfo');
     if (data && data.localPath) {
       // 直接更新页面显示的头像
       this.setData({
@@ -80,15 +85,47 @@ Page({
   },
 
   onShow() {
-    // 每次显示页面时，检查用户信息是否有更新
-    this.loadUserInfo().then(userInfo => {
-      if (userInfo) {
-        this.setData({
-          engineerInfo: userInfo
-        });
-      }
-    });
-    this.refreshDashboardData();
+    console.log('[Dashboard] onShow 触发');
+    
+    // 设置页面活跃状态
+    RefreshManager.setPageActive('dashboard', true);
+    
+    // 智能刷新决策
+    const decisions = RefreshManager.makeRefreshDecision('dashboard', ['userInfo', 'dashboard']);
+    
+    // 根据决策刷新用户信息
+    if (decisions.userInfo) {
+      console.log('[Dashboard] 需要刷新用户信息');
+      this.loadUserInfo(true).then(userInfo => {
+        if (userInfo) {
+          this.setData({
+            engineerInfo: userInfo
+          });
+          RefreshManager.recordRefresh('userInfo');
+        }
+      });
+    } else {
+      // 使用缓存的用户信息
+      this.loadUserInfo(false).then(userInfo => {
+        if (userInfo) {
+          this.setData({
+            engineerInfo: userInfo
+          });
+        }
+      });
+    }
+    
+    // 根据决策刷新仪表板数据
+    if (decisions.dashboard) {
+      console.log('[Dashboard] 需要刷新仪表板数据');
+      this.refreshDashboardData();
+      RefreshManager.recordRefresh('dashboard');
+    }
+  },
+  
+  onHide() {
+    // 页面隐藏时设置为非活跃
+    RefreshManager.setPageActive('dashboard', false);
   },
 
   onUnload() {
@@ -367,6 +404,16 @@ Page({
     
     if (!avatarUrl) return;
 
+    // 检查网络状态
+    if (!NetworkHandler.isNetworkConnected()) {
+      wx.showToast({
+        title: '网络未连接，请检查网络',
+        icon: 'none',
+        duration: 2000
+      });
+      return;
+    }
+
     wx.showLoading({ title: '上传中...' });
 
     try {
@@ -380,24 +427,26 @@ Page({
         return;
       }
 
-      // 上传头像到云存储
+      // 上传头像到云存储（带重试）
       const cloudPath = `avatars/${openid}_${Date.now()}.png`;
-      const uploadRes = await wx.cloud.uploadFile({
+      const uploadRes = await NetworkHandler.uploadFileWithRetry({
         cloudPath,
         filePath: avatarUrl
       });
 
       console.log('[Dashboard] 头像上传成功:', uploadRes.fileID);
 
-      // 更新数据库中的用户头像
-      await this.db.collection('users').where({
-        openid: openid
-      }).update({
-        data: {
-          avatar: uploadRes.fileID,
-          avatarUpdateTime: new Date(),
-          updateTime: new Date()
-        }
+      // 更新数据库中的用户头像（带重试）
+      await NetworkHandler.databaseOperationWithRetry(async () => {
+        return this.db.collection('users').where({
+          openid: openid
+        }).update({
+          data: {
+            avatar: uploadRes.fileID,
+            avatarUpdateTime: new Date(),
+            updateTime: new Date()
+          }
+        });
       });
 
       // 更新本地显示
@@ -429,9 +478,16 @@ Page({
     } catch (error) {
       console.error('[Dashboard] 头像更新失败:', error);
       wx.hideLoading();
-      wx.showToast({
-        title: '更新失败',
-        icon: 'none'
+      
+      // 显示友好的错误提示
+      NetworkHandler.showErrorDialog(error, {
+        title: '头像更新失败',
+        confirmText: '重试',
+        cancelText: '取消',
+        onConfirm: () => {
+          // 重新触发选择头像
+          this.onChooseAvatar(e);
+        }
       });
     }
   },

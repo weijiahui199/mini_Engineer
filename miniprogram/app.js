@@ -1,11 +1,15 @@
 // app.js
 const { EventBus, EVENTS } = require('./utils/event-bus');
+const RefreshManager = require('./utils/refresh-manager');
 
 App({
   onLaunch: function () {
     // 初始化事件总线
     this.eventBus = new EventBus();
     console.log('[App] 事件总线初始化完成');
+    
+    // 设置全局事件监听，连接EventBus和RefreshManager
+    this.setupGlobalEventHandlers();
     
     this.globalData = {
       // env 参数说明：
@@ -23,6 +27,9 @@ App({
     
     // 导出事件常量，方便页面使用
     this.EVENTS = EVENTS;
+    
+    // 导出RefreshManager，方便页面使用
+    this.refreshManager = RefreshManager;
     
     if (!wx.cloud) {
       console.error("请使用 2.2.3 或以上的基础库以使用云能力");
@@ -216,5 +223,29 @@ App({
     } catch (error) {
       console.error('数据库检查失败：', error);
     }
+  },
+  
+  // 设置全局事件处理器
+  setupGlobalEventHandlers() {
+    // 监听用户信息更新事件
+    this.eventBus.on(EVENTS.USER_INFO_UPDATED, () => {
+      console.log('[App] 监听到用户信息更新事件');
+      RefreshManager.handleGlobalEvent('USER_INFO_UPDATED');
+    });
+    
+    // 监听头像更新事件
+    this.eventBus.on(EVENTS.AVATAR_UPDATED, () => {
+      console.log('[App] 监听到头像更新事件');
+      RefreshManager.handleGlobalEvent('AVATAR_UPDATED');
+    });
+    
+    // 监听缓存清除事件
+    this.eventBus.on(EVENTS.CACHE_CLEARED, () => {
+      console.log('[App] 监听到缓存清除事件');
+      // 清除所有刷新记录
+      RefreshManager.reset();
+    });
+    
+    console.log('[App] 全局事件处理器设置完成');
   }
 });

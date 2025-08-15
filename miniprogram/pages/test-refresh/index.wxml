@@ -1,0 +1,116 @@
+<!-- 智能刷新机制测试页面 -->
+<view class="container">
+  <view class="header">
+    <text class="title">智能刷新机制测试</text>
+    <text class="subtitle">最后更新: {{lastRefreshTime}}</text>
+  </view>
+
+  <!-- 刷新管理器状态 -->
+  <view class="section">
+    <view class="section-title">刷新管理器状态</view>
+    <view class="info-card">
+      <view class="info-item">
+        <text class="label">活跃页面:</text>
+        <text class="value">{{refreshStats.activePages.length > 0 ? refreshStats.activePages.join(', ') : '无'}}</text>
+      </view>
+      <view class="info-item">
+        <text class="label">强制刷新标记:</text>
+        <text class="value">{{refreshStats.forceRefreshFlags.length > 0 ? refreshStats.forceRefreshFlags.join(', ') : '无'}}</text>
+      </view>
+      <view class="info-item" wx:for="{{refreshStats.lastUpdateTimes}}" wx:key="index">
+        <text class="label">{{index}}:</text>
+        <text class="value">{{item}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 缓存信息 -->
+  <view class="section">
+    <view class="section-title">缓存信息</view>
+    <view class="info-card">
+      <view class="info-item">
+        <text class="label">缓存大小:</text>
+        <text class="value">{{cacheInfo.size}}</text>
+      </view>
+      <view class="info-item">
+        <text class="label">缓存键数量:</text>
+        <text class="value">{{cacheInfo.keys}}</text>
+      </view>
+      <view class="info-item">
+        <text class="label">用户缓存有效:</text>
+        <text class="value {{cacheInfo.userCacheValid ? 'success' : 'error'}}">
+          {{cacheInfo.userCacheValid ? '是' : '否'}}
+        </text>
+      </view>
+      <view class="info-item">
+        <text class="label">剩余有效时间:</text>
+        <text class="value">{{cacheInfo.userCacheRemaining}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 用户信息 -->
+  <view class="section" wx:if="{{userInfo}}">
+    <view class="section-title">当前用户信息</view>
+    <view class="info-card">
+      <view class="info-item">
+        <text class="label">昵称:</text>
+        <text class="value">{{userInfo.nickName || '未设置'}}</text>
+      </view>
+      <view class="info-item">
+        <text class="label">角色:</text>
+        <text class="value">{{userInfo.roleGroup || '用户'}}</text>
+      </view>
+      <view class="info-item">
+        <text class="label">头像:</text>
+        <text class="value">{{userInfo.avatar ? '已设置' : '未设置'}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 测试按钮 -->
+  <view class="section">
+    <view class="section-title">测试功能</view>
+    <view class="button-grid">
+      <button class="test-btn" bindtap="testSmartRefresh">
+        智能刷新决策
+      </button>
+      <button class="test-btn" bindtap="testForceRefresh">
+        强制刷新标记
+      </button>
+      <button class="test-btn" bindtap="testEventTrigger">
+        事件触发刷新
+      </button>
+      <button class="test-btn" bindtap="testCacheRefresh">
+        缓存刷新测试
+      </button>
+      <button class="test-btn" bindtap="testMinInterval">
+        最小间隔测试
+      </button>
+      <button class="test-btn warning" bindtap="clearTests">
+        清理测试数据
+      </button>
+    </view>
+  </view>
+
+  <!-- 测试结果 -->
+  <view class="section" wx:if="{{testResults.length > 0}}">
+    <view class="section-title">测试结果</view>
+    <view class="results-list">
+      <view class="result-item" wx:for="{{testResults}}" wx:key="index">
+        <view class="result-header">
+          <text class="result-time">{{item.time}}</text>
+          <text class="result-message">{{item.message}}</text>
+        </view>
+        <view class="result-detail">
+          <text>{{item}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 刷新按钮 -->
+  <view class="float-btn" bindtap="onRefresh">
+    <text>刷新</text>
+  </view>
+</view>

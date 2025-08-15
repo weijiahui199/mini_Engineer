@@ -1,0 +1,21 @@
+<!-- 头像占位图组件 -->
+<view class="avatar-container {{round ? 'round' : ''}}" style="width: {{size}}; height: {{size}};">
+  <!-- 加载中状态 -->
+  <view wx:if="{{loading}}" class="loading-state">
+    <view class="loading-spinner"></view>
+  </view>
+  
+  <!-- 图片 -->
+  <image 
+    class="avatar-image {{loading ? 'loading' : ''}}"
+    src="{{finalSrc}}"
+    mode="aspectFill"
+    bindload="onImageLoad"
+    binderror="onImageError"
+  />
+  
+  <!-- 错误状态 -->
+  <view wx:if="{{error && !loading}}" class="error-state">
+    <image class="error-icon" src="/assets/icons/user/user-icon.png" />
+  </view>
+</view>

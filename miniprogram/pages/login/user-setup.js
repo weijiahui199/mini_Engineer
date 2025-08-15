@@ -1,4 +1,7 @@
 // 用户信息设置页面
+const NetworkHandler = require('../../utils/network-handler');
+const UserCache = require('../../utils/user-cache');
+
 Page({
   data: {
     avatarUrl: '',
@@ -100,20 +103,47 @@ Page({
             tempPath: this.data.avatarUrl
           });
           
-          const uploadRes = await wx.cloud.uploadFile({
+          // 使用网络处理器上传（带重试）
+          const uploadRes = await NetworkHandler.uploadFileWithRetry({
             cloudPath,
             filePath: this.data.avatarUrl
           });
+          
           finalAvatarUrl = uploadRes.fileID;
           console.log('[UserSetup] 头像上传成功:', finalAvatarUrl);
           
           // 更新头像缓存并触发全局事件
-          const UserCache = require('../../utils/user-cache');
           await UserCache.updateAvatarCache(finalAvatarUrl);
           console.log('[UserSetup] 已更新头像缓存并触发全局事件');
         } catch (uploadError) {
           console.error('[UserSetup] 头像上传失败:', uploadError);
-          // 如果上传失败，继续使用临时URL
+          
+          // 显示错误对话框，让用户选择重试
+          NetworkHandler.showErrorDialog(uploadError, {
+            title: '头像上传失败',
+            confirmText: '重试',
+            cancelText: '跳过',
+            onConfirm: () => {
+              // 重试上传
+              this.onCompleteSetup();
+            },
+            onCancel: () => {
+              // 跳过头像上传，使用默认头像
+              finalAvatarUrl = '';
+            }
+          });
+          
+          // 如果是弱网环境，给出提示
+          if (NetworkHandler.isWeakNetwork()) {
+            wx.showToast({
+              title: '当前网络较慢，建议切换到WiFi',
+              icon: 'none',
+              duration: 3000
+            });
+          }
+          
+          // 如果上传失败，不阻塞流程，使用默认头像
+          finalAvatarUrl = '';
         }
         
         wx.hideLoading();
@@ -128,8 +158,8 @@ Page({
       });
       
       try {
-        // 调用云函数更新用户信息
-        const cloudResult = await wx.cloud.callFunction({
+        // 调用云函数更新用户信息（带重试）
+        const cloudResult = await NetworkHandler.callFunctionWithRetry({
           name: 'userProfile',
           data: {
             action: 'updateUserProfile',
