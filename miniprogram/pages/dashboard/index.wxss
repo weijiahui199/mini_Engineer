@@ -398,11 +398,7 @@
   padding: 4rpx 12rpx;
 }
 
-.dashboard-container .t-button--small {
-  height: 56rpx;
-  font-size: 26rpx;
-  padding: 0 20rpx;
-}
+/* TDesign按钮样式已移除，使用自定义磨砂按钮 */
 
 .dashboard-container .t-radio-group {
   display: flex;
@@ -412,6 +408,15 @@
 
 .dashboard-container .t-radio {
   padding: 16rpx 0;
+}
+
+/* 可点击区域样式 */
+.ticket-clickable {
+  cursor: pointer;
+}
+
+.ticket-clickable:active {
+  opacity: 0.95;
 }
 
 /* 工单池样式 */
@@ -424,6 +429,81 @@
 .ticket-card.my-ticket {
   border-left: 4px solid #1989fa !important;
   background: linear-gradient(to right, rgba(25, 137, 250, 0.05), #ffffff) !important;
+}
+
+/* 自定义磨砂玻璃按钮样式 */
+.custom-action-btn {
+  min-width: 120rpx;
+  height: 56rpx;
+  padding: 0 24rpx;
+  font-size: 26rpx;
+  border-radius: 12rpx;
+  border: none;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* 磨砂玻璃效果 */
+.custom-action-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: inherit;
+  filter: blur(10px);
+  opacity: 0.8;
+  z-index: -1;
+}
+
+/* 开始处理按钮 - 蓝色 */
+.btn-primary-action {
+  background: rgba(37, 99, 235, 0.15);
+  color: #2563eb;
+  border: 2rpx solid rgba(37, 99, 235, 0.3);
+  box-shadow: 0 4rpx 12rpx rgba(37, 99, 235, 0.2);
+}
+
+.btn-primary-action:active {
+  background: rgba(37, 99, 235, 0.25);
+  border-color: rgba(37, 99, 235, 0.5);
+  transform: scale(0.98);
+}
+
+/* 查看详情按钮 - 灰色 */
+.btn-view-detail {
+  background: rgba(107, 114, 128, 0.15);
+  color: #4b5563;
+  border: 2rpx solid rgba(107, 114, 128, 0.3);
+  box-shadow: 0 4rpx 12rpx rgba(107, 114, 128, 0.2);
+}
+
+.btn-view-detail:active {
+  background: rgba(107, 114, 128, 0.25);
+  border-color: rgba(107, 114, 128, 0.5);
+  transform: scale(0.98);
+}
+
+/* 已完成按钮 - 绿色 */
+.btn-success {
+  background: rgba(34, 197, 94, 0.15);
+  color: #16a34a;
+  border: 2rpx solid rgba(34, 197, 94, 0.3);
+  box-shadow: 0 4rpx 12rpx rgba(34, 197, 94, 0.2);
+}
+
+.btn-success:active {
+  background: rgba(34, 197, 94, 0.25);
+  border-color: rgba(34, 197, 94, 0.5);
+  transform: scale(0.98);
 }
 
 /* 无待处理工单提示样式 */

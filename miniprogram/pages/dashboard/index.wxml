@@ -107,10 +107,10 @@
         class="ticket-card {{item.isPool ? 'pool-ticket' : ''}} {{item.isMine ? 'my-ticket' : ''}}" 
         wx:for="{{latestTickets}}" 
         wx:key="id"
-        bindtap="navigateToTicketDetail"
-        data-id="{{item.id}}"
       >
-        <view class="ticket-header">
+        <!-- 可点击区域 - 只包含头部和内容 -->
+        <view class="ticket-clickable" bindtap="navigateToTicketDetail" data-id="{{item.id}}">
+          <view class="ticket-header">
           <view class="ticket-left">
             <view class="priority-dot priority-{{item.priority}}"></view>
             <text class="ticket-no">{{item.ticketNo}}</text>
@@ -169,26 +169,35 @@
             </view>
           </view>
         </view>
+        </view>
+        <!-- 结束可点击区域 -->
         
+        <!-- 操作按钮独立区域 - 不触发跳转 -->
         <view class="ticket-actions">
-          <t-button 
-            wx:if="{{item.status === 'pending'}}"
-            theme="primary"
-            size="small"
-            bind:click="startProcessing"
+          <button 
+            wx:if="{{item.status === 'pending' && !item.assigneeOpenid}}"
+            class="custom-action-btn btn-primary-action"
+            catchtap="acceptTicket"
             data-id="{{item.id}}"
           >
             开始处理
-          </t-button>
-          <t-button 
+          </button>
+          <button 
             wx:elif="{{item.status === 'processing'}}"
-            theme="default"
-            size="small"
-            bind:click="viewDetail"
+            class="custom-action-btn btn-view-detail"
+            catchtap="viewDetail"
             data-id="{{item.id}}"
           >
             查看详情
-          </t-button>
+          </button>
+          <button 
+            wx:elif="{{item.status === 'resolved'}}"
+            class="custom-action-btn btn-success"
+            catchtap="viewDetail"
+            data-id="{{item.id}}"
+          >
+            已完成
+          </button>
         </view>
       </view>
     </view>

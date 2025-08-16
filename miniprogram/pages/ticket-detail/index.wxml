@@ -1,4 +1,5 @@
 <!-- 工单详情页面 -->
+<wxs module="utils" src="./utils.wxs"></wxs>
 <view class="ticket-detail-container">
   <!-- 自定义导航栏 -->
   <t-navbar 
@@ -60,18 +61,65 @@
 
   <!-- 附件信息 -->
   <view class="section-container" wx:if="{{ticketInfo.attachments && ticketInfo.attachments.length > 0}}">
-    <view class="section-title">相关附件</view>
+    <view class="section-title">相关附件 ({{ticketInfo.attachments.length}})</view>
     <view class="attachment-list">
       <view 
         class="attachment-item" 
         wx:for="{{ticketInfo.attachments}}" 
-        wx:key="index"
+        wx:key="id"
         bindtap="previewAttachment"
-        data-url="{{item}}"
+        data-index="{{index}}"
+        data-attachment="{{item}}"
       >
-        <t-icon name="file" size="32rpx" />
-        <text class="attachment-name">附件{{index + 1}}</text>
-        <t-icon name="chevron-right" size="24rpx" />
+        <view class="attachment-icon">
+          <!-- 根据文件类型显示不同图标 -->
+          <t-icon 
+            wx:if="{{item.type === 'image'}}"
+            name="image" 
+            size="48rpx"
+            color="#4299e1"
+          />
+          <t-icon 
+            wx:elif="{{item.mimeType.indexOf('pdf') !== -1}}"
+            name="file-pdf" 
+            size="48rpx"
+            color="#dc2626"
+          />
+          <t-icon 
+            wx:elif="{{item.mimeType.indexOf('word') !== -1 || item.mimeType.indexOf('document') !== -1}}"
+            name="file-word" 
+            size="48rpx"
+            color="#2563eb"
+          />
+          <t-icon 
+            wx:elif="{{item.mimeType.indexOf('excel') !== -1 || item.mimeType.indexOf('spreadsheet') !== -1}}"
+            name="file-excel" 
+            size="48rpx"
+            color="#16a34a"
+          />
+          <t-icon 
+            wx:elif="{{item.mimeType.indexOf('powerpoint') !== -1 || item.mimeType.indexOf('presentation') !== -1}}"
+            name="file-powerpoint" 
+            size="48rpx"
+            color="#ea580c"
+          />
+          <t-icon 
+            wx:else
+            name="file" 
+            size="48rpx"
+            color="#6b7280"
+          />
+        </view>
+        <view class="attachment-info">
+          <text class="attachment-name">{{item.originalName || item.name || '附件' + (index + 1)}}</text>
+          <view class="attachment-meta">
+            <text class="attachment-size">{{utils.formatFileSize(item.size)}}</text>
+            <text class="attachment-time">{{utils.formatUploadTime(item.uploadTime)}}</text>
+          </view>
+        </view>
+        <view class="attachment-action">
+          <t-icon name="chevron-right" size="24rpx" color="#999" />
+        </view>
       </view>
     </view>
   </view>
@@ -118,32 +166,28 @@
     <!-- 待处理状态 -->
     <view wx:if="{{ticketInfo.status === 'pending'}}" class="action-group">
       <!-- 工程师：未分配工单显示开始处理按钮 -->
-      <t-button 
+      <button 
         wx:if="{{canAccept}}"
-        theme="primary"
-        size="large"
-        block
-        bind:tap="acceptTicket"
+        class="custom-action-btn btn-primary-full"
+        bindtap="acceptTicket"
       >
         开始处理
-      </t-button>
-      <!-- 负责人：显示继续处理按钮 -->
-      <view wx:elif="{{isAssignee}}" class="action-buttons">
-        <t-button 
-          theme="default"
-          size="large"
-          bind:tap="rejectTicket"
+      </button>
+      <!-- 负责人：显示退回和继续处理按钮 -->
+      <block wx:elif="{{isAssignee}}">
+        <button 
+          class="custom-action-btn btn-reject"
+          bindtap="rejectTicket"
         >
           退回
-        </t-button>
-        <t-button 
-          theme="primary"
-          size="large"
-          bind:tap="startProcessing"
+        </button>
+        <button 
+          class="custom-action-btn btn-continue"
+          bindtap="startProcessing"
         >
           继续处理
-        </t-button>
-      </view>
+        </button>
+      </block>
     </view>
     
     <!-- 处理中状态 -->
@@ -163,15 +207,26 @@
     </view>
     
     <!-- 已解决状态 -->
-    <view wx:elif="{{ticketInfo.status === 'resolved'}}" class="action-group">
-      <t-button 
-        theme="primary"
-        size="large"
-        block
-        bind:tap="closeTicket"
+    <view wx:elif="{{ticketInfo.status === 'resolved' && isAssignee}}" class="action-group">
+      <button 
+        class="custom-action-btn btn-reopen"
+        bindtap="reopenTicket"
+      >
+        重新处理
+      </button>
+      <button 
+        class="custom-action-btn btn-close"
+        bindtap="closeTicket"
       >
         关闭工单
-      </t-button>
+      </button>
+    </view>
+    
+    <!-- 已关闭状态 - 不显示任何操作按钮 -->
+    <view wx:elif="{{ticketInfo.status === 'closed'}}" class="action-group">
+      <text style="color: #999; font-size: 28rpx; text-align: center; display: block;">
+        工单已关闭，无法进行任何操作
+      </text>
     </view>
   </view>
 

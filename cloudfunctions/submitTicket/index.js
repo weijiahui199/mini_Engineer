@@ -26,6 +26,8 @@ exports.main = async (event, context) => {
         return await updateTicketStatus(event, wxContext)
       case 'acceptTicket':
         return await acceptTicket(event, wxContext)
+      case 'rejectTicket':
+        return await rejectTicket(event, wxContext)
       case 'getTicketListByRole':
         return await getTicketListByRole(event, wxContext)
       default:
@@ -359,6 +361,15 @@ async function updateTicket(event, wxContext) {
 async function updateTicketStatus(event, wxContext) {
   const { ticketId, status, solution, reason, assigneeName } = event
   
+  console.log('[updateTicketStatus] 开始执行')
+  console.log('[updateTicketStatus] 参数:', {
+    ticketId,
+    status,
+    solution,
+    reason,
+    assigneeName
+  })
+  
   if (!ticketId) {
     return {
       code: 400,
@@ -405,12 +416,24 @@ async function updateTicketStatus(event, wxContext) {
     const isOwner = ticket.openid === wxContext.OPENID
     const isAssignee = ticket.assigneeOpenid === wxContext.OPENID
     
+    console.log('[updateTicketStatus] 权限检查:', {
+      ticketId,
+      currentStatus,
+      newStatus: status,
+      isOwner,
+      isAssignee,
+      ticketOpenid: ticket.openid,
+      ticketAssignee: ticket.assigneeOpenid,
+      requestOpenid: wxContext.OPENID
+    })
+    
     // 特殊处理：从pending到processing（接单操作）
     if (currentStatus === 'pending' && status === 'processing' && !ticket.assigneeOpenid) {
       // 这是接单操作，任何工程师都可以接
-      // 在这种情况下不需要权限检查
+      console.log('[updateTicketStatus] 允许接单操作')
     } else if (!isOwner && !isAssignee) {
       // 其他情况需要是创建者或负责人
+      console.log('[updateTicketStatus] 权限检查失败：不是创建者也不是负责人')
       return {
         code: 403,
         message: '无权修改此工单'
@@ -442,12 +465,20 @@ async function updateTicketStatus(event, wxContext) {
     
     // 根据不同状态添加相应字段
     if (status === 'processing') {
-      updateData.processTime = db.serverDate()
+      // 只有第一次进入处理状态时才设置processTime
+      if (!ticket.processTime) {
+        updateData.processTime = db.serverDate()
+        console.log('[updateTicketStatus] 第一次进入处理状态，设置processTime')
+      } else {
+        console.log('[updateTicketStatus] 已有processTime，不覆盖:', ticket.processTime)
+      }
+      
       // 如果是从pending接单，添加负责人信息
       if (currentStatus === 'pending' && !ticket.assigneeOpenid) {
         updateData.assigneeOpenid = wxContext.OPENID
         updateData.assigneeName = assigneeName || '工程师'
         updateData.acceptTime = db.serverDate()
+        console.log('[updateTicketStatus] 从pending接单，设置负责人信息')
       }
     } else if (status === 'resolved') {
       updateData.resolveTime = db.serverDate()
@@ -461,12 +492,17 @@ async function updateTicketStatus(event, wxContext) {
       updateData.cancelTime = db.serverDate()
     }
     
+    console.log('[updateTicketStatus] 准备更新的数据:', updateData)
+    
     // 更新数据库
-    await db.collection('tickets')
+    const updateResult = await db.collection('tickets')
       .doc(ticketId)
       .update({
         data: updateData
       })
+    
+    console.log('[updateTicketStatus] 更新结果:', updateResult)
+    console.log('[updateTicketStatus] 更新成功，返回数据:', updateData)
     
     return {
       code: 200,
@@ -533,6 +569,7 @@ async function acceptTicket(event, wxContext) {
           assigneeName: userInfo.nickName || '工程师',
           status: 'processing',
           acceptTime: db.serverDate(),
+          processTime: db.serverDate(),  // 接单时也是开始处理的时间
           updateTime: db.serverDate()
         }
       })
@@ -554,6 +591,95 @@ async function acceptTicket(event, wxContext) {
     return {
       code: 500,
       message: '接单失败',
+      error: error.message
+    }
+  }
+}
+
+// 退回工单方法
+async function rejectTicket(event, wxContext) {
+  const { ticketId, reason } = event
+  
+  if (!ticketId) {
+    return {
+      code: 400,
+      message: '工单ID不能为空'
+    }
+  }
+  
+  console.log('[rejectTicket] 开始退回工单:', ticketId)
+  console.log('[rejectTicket] 退回原因:', reason)
+  console.log('[rejectTicket] 操作人:', wxContext.OPENID)
+  
+  try {
+    // 先查询工单确认状态和权限
+    const ticketResult = await db.collection('tickets').doc(ticketId).get()
+    
+    if (!ticketResult.data) {
+      return {
+        code: 404,
+        message: '工单不存在'
+      }
+    }
+    
+    const ticket = ticketResult.data
+    
+    // 检查是否是工单负责人
+    if (ticket.assigneeOpenid !== wxContext.OPENID) {
+      console.log('[rejectTicket] 权限检查失败:', {
+        assigneeOpenid: ticket.assigneeOpenid,
+        currentOpenid: wxContext.OPENID
+      })
+      return {
+        code: 403,
+        message: '只有工单负责人才能退回工单'
+      }
+    }
+    
+    // 执行退回操作 - 清空负责人信息
+    const updateData = {
+      status: 'pending',
+      assigneeOpenid: db.command.remove(),
+      assigneeName: db.command.remove(),
+      acceptTime: db.command.remove(),
+      rejectTime: db.serverDate(),
+      updateTime: db.serverDate()
+    }
+    
+    // 只有提供了退回原因才添加这个字段
+    if (reason && reason.trim()) {
+      updateData.rejectReason = reason.trim()
+    }
+    
+    console.log('[rejectTicket] 准备更新数据:', updateData)
+    
+    const updateResult = await db.collection('tickets').doc(ticketId).update({
+      data: updateData
+    })
+    
+    console.log('[rejectTicket] 更新结果:', updateResult)
+    
+    if (updateResult.stats.updated > 0) {
+      return {
+        code: 200,
+        message: '退回成功',
+        data: {
+          ticketId: ticketId,
+          status: 'pending'
+        }
+      }
+    } else {
+      return {
+        code: 500,
+        message: '退回失败，数据库更新失败'
+      }
+    }
+    
+  } catch (error) {
+    console.error('[rejectTicket] 错误:', error)
+    return {
+      code: 500,
+      message: '退回失败',
       error: error.message
     }
   }

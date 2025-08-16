@@ -308,20 +308,113 @@ Page({
     });
   },
 
-  // 开始处理工单
-  startProcessing(e) {
-    e.stopPropagation();
-    const id = e.currentTarget.dataset.id;
+  // 接受工单（开始处理）
+  async acceptTicket(e) {
+    // 阻止事件冒泡
+    if (e && e.stopPropagation) {
+      e.stopPropagation();
+    }
+    
+    const ticketId = e.currentTarget.dataset.id;
+    const that = this;
+    
+    console.log('[Dashboard acceptTicket] 开始接单，工单ID:', ticketId);
+    console.log('[Dashboard acceptTicket] 当前用户信息:', this.app.globalData);
     
     wx.showModal({
-      title: '确认操作',
+      title: '确认接单',
       content: '确定要开始处理这个工单吗？',
-      success: (res) => {
+      success: async (res) => {
         if (res.confirm) {
-          this.updateTicketStatus(id, 'processing');
+          wx.showLoading({ title: '处理中...' });
+          
+          try {
+            console.log('[Dashboard acceptTicket] 准备调用云函数...');
+            console.log('[Dashboard acceptTicket] 云函数参数:', {
+              action: 'acceptTicket',
+              ticketId: ticketId
+            });
+            
+            // 使用云函数接单
+            const result = await wx.cloud.callFunction({
+              name: 'submitTicket',
+              data: {
+                action: 'acceptTicket',
+                ticketId: ticketId
+              }
+            });
+            
+            console.log('[Dashboard acceptTicket] 云函数完整返回:', result);
+            console.log('[Dashboard acceptTicket] result.result:', result.result);
+            console.log('[Dashboard acceptTicket] result.result.code:', result.result?.code);
+            console.log('[Dashboard acceptTicket] result.result.message:', result.result?.message);
+            
+            if (result.result && result.result.code === 200) {
+              console.log('[Dashboard acceptTicket] 接单成功！');
+              wx.hideLoading();
+              wx.showToast({
+                title: '接单成功',
+                icon: 'success'
+              });
+              
+              // 刷新页面数据
+              setTimeout(() => {
+                console.log('[Dashboard acceptTicket] 刷新数据...');
+                that.loadDashboardData();
+              }, 1500);
+            } else {
+              // 处理错误
+              console.error('[Dashboard acceptTicket] 接单失败，错误信息:', result.result);
+              const message = result.result?.message || '接单失败';
+              const code = result.result?.code;
+              
+              wx.hideLoading();
+              
+              if (code === 409 || message.includes('已被接单')) {
+                wx.showModal({
+                  title: '接单失败',
+                  content: '该工单已被其他工程师接单',
+                  showCancel: false,
+                  success: () => {
+                    that.loadDashboardData();
+                  }
+                });
+              } else if (code === 403) {
+                wx.showModal({
+                  title: '权限不足',
+                  content: '您没有接单权限，请确认您的角色是工程师或经理',
+                  showCancel: false
+                });
+              } else {
+                wx.showModal({
+                  title: '接单失败',
+                  content: message,
+                  showCancel: false,
+                  success: () => {
+                    that.loadDashboardData();
+                  }
+                });
+              }
+            }
+          } catch (error) {
+            console.error('[Dashboard acceptTicket] 调用云函数出错:', error);
+            console.error('[Dashboard acceptTicket] 错误堆栈:', error.stack);
+            wx.hideLoading();
+            wx.showModal({
+              title: '接单失败',
+              content: '网络错误或云函数调用失败，请重试',
+              showCancel: false
+            });
+          }
         }
       }
     });
+  },
+
+  // 开始处理工单（已废弃，改用acceptTicket）
+  startProcessing(e) {
+    // 调用新的接单方法
+    this.acceptTicket(e);
   },
 
   // 查看详情

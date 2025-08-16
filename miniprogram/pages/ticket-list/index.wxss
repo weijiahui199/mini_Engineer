@@ -310,6 +310,38 @@
   transform: scale(0.98);
 }
 
+/* 开始处理按钮 - 主色蓝色 */
+.btn-primary {
+  background: rgba(37, 99, 235, 0.15);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: #2563eb;
+  border: 2rpx solid rgba(37, 99, 235, 0.3);
+  box-shadow: 0 4rpx 12rpx rgba(37, 99, 235, 0.2);
+}
+
+.btn-primary:active {
+  background: rgba(37, 99, 235, 0.25);
+  border-color: rgba(37, 99, 235, 0.5);
+  transform: scale(0.98);
+}
+
+/* 默认按钮 - 灰色 */
+.btn-default {
+  background: rgba(107, 114, 128, 0.15);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: #4b5563;
+  border: 2rpx solid rgba(107, 114, 128, 0.3);
+  box-shadow: 0 4rpx 12rpx rgba(107, 114, 128, 0.2);
+}
+
+.btn-default:active {
+  background: rgba(107, 114, 128, 0.25);
+  border-color: rgba(107, 114, 128, 0.5);
+  transform: scale(0.98);
+}
+
 /* 加载更多 */
 .load-more {
   padding: 32rpx;

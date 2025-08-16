@@ -148,15 +148,14 @@
           <view class="card-actions">
             
             <!-- 场景1：未分配工单 - 显示开始处理按钮 -->
-            <t-button 
+            <button 
               wx:if="{{userRoleGroup === '工程师' && item.status === 'pending' && !item.assigneeOpenid}}"
-              theme="primary"
-              size="small"
+              class="custom-btn btn-primary"
               catchtap="acceptTicketSafely"
               data-id="{{item.id}}"
             >
               开始处理
-            </t-button>
+            </button>
             
             <!-- 场景2：我的工单(processing状态) - 显示查看详情和完成工单两个按钮 -->
             <block wx:elif="{{item.assigneeOpenid === openid && item.status === 'processing'}}">
@@ -176,16 +175,25 @@
               </button>
             </block>
             
-            <!-- 场景3：我的工单(已完成) - 只显示查看详情 -->
-            <t-button 
+            <!-- 场景3：我的工单(已解决) - 显示查看详情 -->
+            <button 
               wx:elif="{{item.assigneeOpenid === openid && item.status === 'resolved'}}"
-              theme="default"
-              size="small"
-              bind:tap="navigateToDetail"
+              class="custom-btn btn-default"
+              catchtap="navigateToDetail"
               data-id="{{item.id}}"
             >
               查看详情
-            </t-button>
+            </button>
+            
+            <!-- 场景3.5：已关闭工单 - 显示已关闭标签 -->
+            <t-tag
+              wx:elif="{{item.status === 'closed'}}"
+              theme="default"
+              variant="outline"
+              size="medium"
+            >
+              已关闭
+            </t-tag>
             
             <!-- 场景4：他人的工单 - 显示已被接单文字 -->
             <text 
@@ -196,26 +204,24 @@
             </text>
             
             <!-- 场景5：经理角色 - 始终显示查看详情 -->
-            <t-button 
+            <button 
               wx:elif="{{userRoleGroup === '经理'}}"
-              theme="default"
-              size="small"
-              bind:tap="navigateToDetail"
+              class="custom-btn btn-default"
+              catchtap="navigateToDetail"
               data-id="{{item.id}}"
             >
               查看详情
-            </t-button>
+            </button>
             
             <!-- 场景6：普通用户查看自己提交的工单 -->
-            <t-button 
+            <button 
               wx:elif="{{userRoleGroup === '用户'}}"
-              theme="default"
-              size="small"
-              bind:tap="navigateToDetail"
+              class="custom-btn btn-default"
+              catchtap="navigateToDetail"
               data-id="{{item.id}}"
             >
               查看详情
-            </t-button>
+            </button>
           </view>
         </view>
       </t-swipe-cell>

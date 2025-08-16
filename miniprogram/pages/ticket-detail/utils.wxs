@@ -1,0 +1,49 @@
+// 格式化文件大小
+function formatFileSize(bytes) {
+  if (!bytes || bytes === 0) return '0 B';
+  
+  var k = 1024;
+  var sizes = ['B', 'KB', 'MB', 'GB'];
+  var i = Math.floor(Math.log(bytes) / Math.log(k));
+  
+  return (bytes / Math.pow(k, i)).toFixed(2) + ' ' + sizes[i];
+}
+
+// 格式化上传时间
+function formatUploadTime(time) {
+  if (!time) return '';
+  
+  var date = getDate(time);
+  var now = getDate();
+  var diff = now - date;
+  
+  // 小于1小时
+  if (diff < 3600000) {
+    var minutes = Math.floor(diff / 60000);
+    return minutes <= 1 ? '刚刚' : minutes + '分钟前';
+  }
+  
+  // 小于24小时
+  if (diff < 86400000) {
+    var hours = Math.floor(diff / 3600000);
+    return hours + '小时前';
+  }
+  
+  // 小于7天
+  if (diff < 604800000) {
+    var days = Math.floor(diff / 86400000);
+    return days + '天前';
+  }
+  
+  // 超过7天显示日期
+  var month = (date.getMonth() + 1);
+  var day = date.getDate();
+  month = month < 10 ? '0' + month : month;
+  day = day < 10 ? '0' + day : day;
+  return month + '-' + day;
+}
+
+module.exports = {
+  formatFileSize: formatFileSize,
+  formatUploadTime: formatUploadTime
+};
