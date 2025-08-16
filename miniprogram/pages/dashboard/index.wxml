@@ -95,16 +95,16 @@
     </view>
   </view>
 
-  <!-- 最新工单 -->
+  <!-- 待处理工单 -->
   <view class="section-container">
     <view class="section-header">
-      <text class="section-title">最新工单</text>
+      <text class="section-title">待处理工单</text>
       <text class="section-more" bindtap="navigateToTicketList">查看全部 ></text>
     </view>
     
     <view class="ticket-list" wx:if="{{latestTickets.length > 0}}">
       <view 
-        class="ticket-card" 
+        class="ticket-card {{item.isPool ? 'pool-ticket' : ''}} {{item.isMine ? 'my-ticket' : ''}}" 
         wx:for="{{latestTickets}}" 
         wx:key="id"
         bindtap="navigateToTicketDetail"
@@ -114,6 +114,24 @@
           <view class="ticket-left">
             <view class="priority-dot priority-{{item.priority}}"></view>
             <text class="ticket-no">{{item.ticketNo}}</text>
+            <!-- 工单池标记 -->
+            <t-tag 
+              wx:if="{{item.isPool}}"
+              theme="success"
+              variant="light"
+              size="small"
+            >
+              待接单
+            </t-tag>
+            <!-- 我的工单标记 -->
+            <t-tag 
+              wx:elif="{{item.isMine}}"
+              theme="primary"
+              variant="light"
+              size="small"
+            >
+              我的
+            </t-tag>
             <t-tag 
               wx:if="{{item.priority === 'urgent'}}"
               theme="danger"
@@ -175,11 +193,11 @@
       </view>
     </view>
     
-    <t-empty 
-      wx:else
-      icon="inbox"
-      description="暂无新工单"
-    />
+    <!-- 没有待处理工单时的提示 -->
+    <view wx:else class="no-tickets-hint">
+      <view class="hint-icon">✅</view>
+      <text class="hint-text">所有任务正在有序处理中</text>
+    </view>
   </view>
 
 </view>

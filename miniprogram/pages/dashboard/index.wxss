@@ -413,3 +413,51 @@
 .dashboard-container .t-radio {
   padding: 16rpx 0;
 }
+
+/* 工单池样式 */
+.ticket-card.pool-ticket {
+  border-left: 4px solid #07c160 !important;
+  background: linear-gradient(to right, rgba(7, 193, 96, 0.05), #ffffff) !important;
+}
+
+/* 我的工单样式 */
+.ticket-card.my-ticket {
+  border-left: 4px solid #1989fa !important;
+  background: linear-gradient(to right, rgba(25, 137, 250, 0.05), #ffffff) !important;
+}
+
+/* 无待处理工单提示样式 */
+.no-tickets-hint {
+  padding: 60rpx 32rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #f6f9fc 0%, #ffffff 100%);
+  border-radius: 16rpx;
+  margin: 20rpx 0;
+}
+
+.hint-icon {
+  font-size: 64rpx;
+  margin-bottom: 20rpx;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.hint-text {
+  font-size: 32rpx;
+  color: #4a5568;
+  font-weight: 500;
+  letter-spacing: 1rpx;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+}

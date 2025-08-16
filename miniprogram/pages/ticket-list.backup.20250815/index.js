@@ -46,9 +46,7 @@ Page({
     filterPopupVisible: false,
     tempFilters: {
       timeRange: 'all',
-      assignee: 'all', // 负责人筛选
-      category: 'all', // 问题类型
-      priority: [] // 优先级（多选）
+      assignee: 'all' // 负责人筛选
     },
     
     // 负责人选项列表
@@ -94,19 +92,13 @@ Page({
     this.refreshList();
   },
 
-  // 获取用户角色并设置权限相关UI
+  // 获取用户角色
   getUserRole() {
     // 从全局用户信息获取角色
     const userInfo = this.app.globalData.userInfo;
-    const openid = this.app.globalData.openid;
     const roleGroup = userInfo?.roleGroup || wx.getStorageSync('userRoleGroup') || '用户';
-    
-    // 根据角色设置UI控制
     this.setData({
-      userRoleGroup: roleGroup,
-      showAssigneeFilter: roleGroup === '经理',  // 只有经理显示负责人筛选
-      currentAssignee: roleGroup === '工程师' ? 'pool' : 'all',  // 工程师默认看工单池视图
-      openid: openid  // 保存openid用于页面判断
+      userRoleGroup: roleGroup
     });
   },
 
@@ -134,27 +126,19 @@ Page({
         .get();
       
       // 处理查询结果
-      const formattedList = res.data.map(ticket => {
-        // 确保status字段是干净的字符串
-        const cleanStatus = ticket.status ? String(ticket.status).trim() : 'pending';
-        
-        const formatted = {
-          id: ticket._id,
-          ticketNo: '#' + ticket.ticketNo,
-          title: ticket.title,
-          category: ticket.category,
-          priority: ticket.priority,
-          status: cleanStatus,  // 使用清理后的状态
-          submitter: ticket.submitterName,
-          location: ticket.location,
-          createTime: this.formatTime(ticket.createTime),
-          assigned: !!ticket.assigneeOpenid,
-          assigneeOpenid: ticket.assigneeOpenid || '',  // 添加assigneeOpenid字段
-          assigneeName: ticket.assigneeName || ''
-        };
-        
-        return formatted;
-      });
+      const formattedList = res.data.map(ticket => ({
+        id: ticket._id,
+        ticketNo: '#' + ticket.ticketNo,
+        title: ticket.title,
+        category: ticket.category,
+        priority: ticket.priority,
+        status: ticket.status,
+        submitter: ticket.submitterName,
+        location: ticket.location,
+        createTime: this.formatTime(ticket.createTime),
+        assigned: !!ticket.assigneeOpenid,
+        assigneeName: ticket.assigneeName || ''
+      }));
       
       // 更新统计数据
       await this.updateFilterCounts();
@@ -283,191 +267,116 @@ Page({
     });
   },
 
-  // 安全接单方法（解决并发问题）
-  async acceptTicketSafely(e) {
-    // 安全地调用 stopPropagation（如果存在）
-    if (e && typeof e.stopPropagation === 'function') {
-      e.stopPropagation();
-    }
-    
-    // 获取工单ID
-    const ticketId = e.currentTarget?.dataset?.id || e.detail?.id;
-    
-    if (!ticketId) {
-      wx.showToast({
-        title: '参数错误',
-        icon: 'error'
-      });
-      return false;
-    }
-    
-    wx.showLoading({ title: '处理中...' });
-    
-    try {
-      // 1. 先查询工单最新状态
-      const res = await this.db.collection('tickets').doc(ticketId).get();
-      const ticket = res.data;
-      
-      // 2. 检查是否已被分配
-      if (ticket.assigneeOpenid && ticket.assigneeOpenid !== '') {
-        wx.hideLoading();
-        
-        if (ticket.assigneeOpenid === this.app.globalData.openid) {
-          wx.showToast({ 
-            title: '您已开始处理', 
-            icon: 'success' 
-          });
-        } else {
-          wx.showModal({
-            title: '无法处理',
-            content: '该工单已被其他工程师处理',
-            showCancel: false,
-            confirmText: '知道了',
-            success: () => {
-              // 刷新列表
-              this.refreshList();
-            }
-          });
-        }
-        return false;
-      }
-      
-      // 3. 直接调用云函数执行接单（使用事务确保原子性）
-      const cloudResult = await wx.cloud.callFunction({
-        name: 'submitTicket',
-        data: {
-          action: 'acceptTicket',
-          ticketId: ticketId
-        }
-      });
-      
-      // 检查云函数执行结果
-      if (cloudResult.result && cloudResult.result.code === 200) {
-        
-        wx.hideLoading();
-        wx.showToast({ 
-          title: '开始处理', 
-          icon: 'success' 
-        });
-        
-        // 刷新列表和统计
-        setTimeout(() => {
-          this.refreshList();
-          this.updateFilterCounts();
-        }, 500);
-        
-        return true;
-      } else if (cloudResult.result && cloudResult.result.code === 400) {
-        // 工单已被其他人接单
-        wx.hideLoading();
-        wx.showModal({
-          title: '无法处理',
-          content: cloudResult.result.message || '该工单已被其他工程师处理',
-          showCancel: false,
-          confirmText: '知道了',
-          success: () => {
-            this.refreshList();
-          }
-        });
-        return false;
-      } else {
-        // 其他错误
-        throw new Error(cloudResult.result?.message || '接单失败');
-      }
-      
-    } catch (error) {
-      console.error('接单失败:', error);
-      wx.hideLoading();
-      
-      // 显示详细错误信息
-      wx.showModal({
-        title: '处理失败',
-        content: error.message || '请稍后重试',
-        showCancel: false,
-        confirmText: '确定'
-      });
-      
-      return false;
-    }
-  },
-  
-  // 兼容旧的acceptTicket方法
+  // 接受工单
   acceptTicket(e) {
-    // 调用新的安全接单方法
-    return this.acceptTicketSafely(e);
-  },
-
-  // 完成工单 - 统一使用云函数版本
-  async completeTicket(e) {
-    // 阻止事件冒泡
-    if (e && e.stopPropagation) {
-      e.stopPropagation();
-    }
+    e.stopPropagation();
+    const id = e.currentTarget.dataset.id;
     
-    const ticketId = e.currentTarget.dataset.id;
-    const that = this;
-    
-    console.log('[completeTicket] 从列表完成工单:', ticketId);
-    
-    // 使用输入框让用户填写解决方案
     wx.showModal({
-      title: '完成工单',
-      editable: true,
-      placeholderText: '请简述解决方案（可选）',
-      confirmText: '完成',
-      cancelText: '取消',
-      success: async function(res) {
+      title: '确认接受',
+      content: '确定要接受这个工单吗？',
+      success: (res) => {
         if (res.confirm) {
-          wx.showLoading({ title: '处理中...' });
-          
-          try {
-            // 准备解决方案内容
-            const solution = res.content || '工单已处理完成';
-            console.log('[completeTicket] 解决方案:', solution);
-            
-            // 直接使用云函数更新（避免权限问题）
-            const cloudResult = await wx.cloud.callFunction({
-              name: 'submitTicket',
-              data: {
-                action: 'updateStatus',
-                ticketId: ticketId,
-                status: 'resolved',
-                solution: solution
-              }
-            });
-            
-            console.log('[completeTicket] 云函数返回:', cloudResult);
-            
-            if (cloudResult.result && cloudResult.result.code === 200) {
-              wx.hideLoading();
-              wx.showToast({
-                title: '工单已完成',
-                icon: 'success',
-                duration: 2000
-              });
-              
-              // 刷新列表
-              setTimeout(() => {
-                that.refreshList();
-                that.updateFilterCounts();
-              }, 1500);
-            } else {
-              throw new Error(cloudResult.result?.message || '更新失败');
-            }
-          } catch (error) {
-            console.error('[completeTicket] 错误:', error);
-            wx.hideLoading();
-            wx.showToast({
-              title: '操作失败',
-              icon: 'error'
-            });
-          }
+          this.updateTicketAssignment(id);
         }
       }
     });
   },
 
+  // 开始处理
+  startProcessing(e) {
+    e.stopPropagation();
+    const id = e.currentTarget.dataset.id;
+    
+    wx.showModal({
+      title: '开始处理',
+      content: '确定要开始处理这个工单吗？',
+      success: (res) => {
+        if (res.confirm) {
+          this.updateTicketStatus(id, 'processing');
+        }
+      }
+    });
+  },
 
+  // 继续处理
+  continueProcessing(e) {
+    e.stopPropagation();
+    const id = e.currentTarget.dataset.id;
+    wx.navigateTo({
+      url: `/pages/ticket-detail/index?id=${id}`
+    });
+  },
+
+
+  // 更新工单状态
+  async updateTicketStatus(ticketId) {
+    wx.showLoading({
+      title: '处理中...'
+    });
+
+    try {
+      const userInfo = this.app.globalData.userInfo;
+      
+      // 更新工单分配
+      await this.db.collection('tickets').doc(ticketId).update({
+        data: {
+          assigneeOpenid: userInfo?.openid || this.app.globalData.openid,
+          assigneeName: userInfo?.nickName || '工程师',
+          status: 'processing',
+          updateTime: new Date()
+        }
+      });
+      
+      wx.showToast({
+        title: '接受成功',
+        icon: 'success'
+      });
+      this.refreshList();
+    } catch (error) {
+      console.error('更新工单分配失败:', error);
+      wx.showToast({
+        title: '操作失败',
+        icon: 'error'
+      });
+    }
+  },
+
+  // 更新工单状态
+  async updateTicketStatus(ticketId, status) {
+    wx.showLoading({
+      title: '处理中...'
+    });
+
+    try {
+      const updateData = {
+        status: status,
+        updateTime: new Date()
+      };
+      
+      // 如果是解决状态，记录解决时间
+      if (status === 'resolved') {
+        updateData.resolveTime = new Date();
+      }
+      
+      // 更新工单状态
+      await this.db.collection('tickets').doc(ticketId).update({
+        data: updateData
+      });
+      
+      wx.showToast({
+        title: '操作成功',
+        icon: 'success'
+      });
+      this.refreshList();
+    } catch (error) {
+      console.error('更新工单状态失败:', error);
+      wx.showToast({
+        title: '操作失败',
+        icon: 'error'
+      });
+    }
+  },
 
   // 获取滑动操作
   getSwipeActions(item) {
@@ -508,29 +417,13 @@ Page({
       'tempFilters.timeRange': e.detail.value
     });
   },
-  
-  // 问题类型变化
-  onCategoryChange(e) {
-    this.setData({
-      'tempFilters.category': e.detail.value
-    });
-  },
-  
-  // 优先级变化（多选）
-  onPriorityChange(e) {
-    this.setData({
-      'tempFilters.priority': e.detail.value
-    });
-  },
 
   // 重置筛选
   resetFilters() {
     this.setData({
       tempFilters: {
         timeRange: 'all',
-        assignee: this.data.userRoleGroup === '工程师' ? 'my' : 'all',
-        category: 'all',
-        priority: []
+        assignee: this.data.userRoleGroup === '工程师' ? 'my' : 'all'
       }
     });
   },
@@ -557,93 +450,81 @@ Page({
     this.refreshList();
   },
 
-  // 构建查询条件 - 重构版本
+  // 构建查询条件
   async buildQueryCondition() {
     const _ = this.db.command;
-    const openid = this.app.globalData.openid;
-    const roleGroup = this.data.userRoleGroup;
-    
     let conditions = [];
     
-    // 根据角色构建基础查询条件
-    switch(roleGroup) {
-      case '经理':
-        // 经理：可以看到所有工单，支持负责人筛选
-        if (this.data.currentAssignee === 'my') {
-          // 只看我负责的
-          conditions.push({ assigneeOpenid: openid });
-        }
-        // 'all' 时不添加限制，看所有工单
-        break;
-        
-      case '工程师':
-        // 工程师：看工单池（未分配）+ 自己负责的
+    // 根据用户角色和负责人筛选过滤
+    if (this.data.userRoleGroup === '工程师') {
+      // 工程师只能看到分配给自己的工单
+      const openid = this.app.globalData.openid;
+      if (openid) {
         conditions.push(_.or([
-          // 工单池：未分配的待处理工单
-          _.and([
-            { status: 'pending' },
-            _.or([
-              { assigneeOpenid: _.exists(false) },
-              { assigneeOpenid: '' },
-              { assigneeOpenid: null }
-            ])
-          ]),
-          // 自己负责的所有工单（所有状态）
+          { assignedTo: openid },
           { assigneeOpenid: openid }
         ]));
-        break;
-        
-      default:  // 普通用户
-        // 只能看自己创建的工单
-        conditions.push({ openid: openid });
-        break;
-    }
-    
-    // 状态筛选
-    if (this.data.currentFilter !== 'all') {
-      if (this.data.currentFilter === 'urgent') {
-        // 紧急工单筛选
-        conditions.push({ priority: 'urgent' });
-      } else {
-        // 具体状态筛选
-        conditions.push({ status: this.data.currentFilter });
       }
-    }
-    
-    // 关键词搜索（搜索工单号、标题或提交人）
-    if (this.data.searchKeyword) {
-      const keyword = this.data.searchKeyword.trim();
-      if (keyword) {
+    } else if (this.data.userRoleGroup === '经理') {
+      // 经理根据负责人筛选
+      if (this.data.currentAssignee === 'my') {
+        // "我负责的"：只看分配给自己的工单
+        const openid = this.app.globalData.openid;
+        if (openid) {
+          conditions.push(_.or([
+            { assignedTo: openid },
+            { assigneeOpenid: openid }
+          ]));
+        }
+      } else if (this.data.currentAssignee !== 'all') {
+        // 选择了具体的工程师
         conditions.push(_.or([
-          { ticketNo: this.db.RegExp({
-            regexp: keyword,
-            options: 'i'
-          })},
-          { title: this.db.RegExp({
-            regexp: keyword,
-            options: 'i'
-          })},
-          { submitterName: this.db.RegExp({
-            regexp: keyword,
-            options: 'i'
-          })}
+          { assignedTo: this.data.currentAssignee },
+          { assigneeOpenid: this.data.currentAssignee }
         ]));
       }
+      // "全部"：不添加用户过滤条件，可以看到所有工单
+    }
+    
+    // 根据筛选条件过滤
+    if (this.data.currentFilter === 'all') {
+      // "全部"筛选：不添加任何状态过滤，显示所有工单
+      // 不需要添加任何条件
+    } else if (this.data.currentFilter === 'urgent') {
+      // 紧急筛选：显示所有紧急优先级的工单
+      conditions.push({ priority: 'urgent' });
+    } else {
+      // 其他状态筛选：只显示特定状态的工单
+      conditions.push({ status: this.data.currentFilter });
+    }
+    
+    // 根据搜索关键词过滤
+    if (this.data.searchKeyword) {
+      const keyword = this.data.searchKeyword;
+      // 搜索工单号、标题或描述
+      conditions.push(_.or([
+        { ticketNo: this.db.RegExp({
+          regexp: keyword,
+          options: 'i'
+        })},
+        { title: this.db.RegExp({
+          regexp: keyword,
+          options: 'i'
+        })},
+        { description: this.db.RegExp({
+          regexp: keyword,
+          options: 'i'
+        })}
+      ]));
     }
     
     // 应用高级筛选
-    
-    // 问题类型筛选
-    if (this.data.tempFilters.category && this.data.tempFilters.category !== 'all') {
-      conditions.push({ category: this.data.tempFilters.category });
+    if (this.data.tempFilters.status && this.data.tempFilters.status.length > 0) {
+      conditions.push({ status: _.in(this.data.tempFilters.status) });
     }
-    
-    // 优先级筛选（多选）
     if (this.data.tempFilters.priority && this.data.tempFilters.priority.length > 0) {
       conditions.push({ priority: _.in(this.data.tempFilters.priority) });
     }
-    
-    // 时间范围筛选
     if (this.data.tempFilters.timeRange && this.data.tempFilters.timeRange !== 'all') {
       const now = new Date();
       let startTime;
@@ -875,9 +756,7 @@ Page({
           submitter: '张三',
           location: '财务部3楼',
           createTime: '10分钟前',
-          assigned: false,
-          assigneeOpenid: '',  // 未分配
-          assigneeName: ''
+          assigned: false
         },
         {
           id: 'TK001214',
@@ -889,9 +768,7 @@ Page({
           submitter: '李四',
           location: '人事部2楼',
           createTime: '30分钟前',
-          assigned: true,
-          assigneeOpenid: 'mock_engineer_001',  // 模拟已分配
-          assigneeName: '工程师A'
+          assigned: true
         },
         {
           id: 'TK001213',
@@ -903,9 +780,7 @@ Page({
           submitter: '王五',
           location: '市场部4楼',
           createTime: '1小时前',
-          assigned: true,
-          assigneeOpenid: 'mock_engineer_002',  // 模拟已分配给其他工程师
-          assigneeName: '工程师B'
+          assigned: true
         },
         {
           id: 'TK001212',
@@ -917,9 +792,7 @@ Page({
           submitter: '赵六',
           location: '研发部5楼',
           createTime: '2小时前',
-          assigned: true,
-          assigneeOpenid: 'mock_engineer_001',  // 模拟已完成的工单
-          assigneeName: '工程师A'
+          assigned: true
         }
       ],
       hasMore: true

@@ -221,6 +221,67 @@
   flex: 1;
 }
 
+/* 自定义磨砂按钮样式 */
+.custom-action-btn {
+  flex: 1;
+  height: 88rpx;
+  padding: 0 32rpx;
+  font-size: 32rpx;
+  border-radius: 16rpx;
+  border: none;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* 磨砂玻璃效果 */
+.custom-action-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: inherit;
+  filter: blur(10px);
+  opacity: 0.8;
+  z-index: -1;
+}
+
+/* 暂停按钮 - 灰色 */
+.btn-pause {
+  background: rgba(156, 163, 175, 0.15);
+  color: #4b5563;
+  border: 2rpx solid rgba(156, 163, 175, 0.3);
+  box-shadow: 0 4rpx 12rpx rgba(156, 163, 175, 0.2);
+}
+
+.btn-pause:active {
+  background: rgba(156, 163, 175, 0.25);
+  border-color: rgba(156, 163, 175, 0.5);
+  transform: scale(0.98);
+}
+
+/* 完成工单按钮 - 浅红色 */
+.btn-complete-detail {
+  background: rgba(239, 68, 68, 0.15);
+  color: #dc2626;
+  border: 2rpx solid rgba(239, 68, 68, 0.3);
+  box-shadow: 0 4rpx 12rpx rgba(239, 68, 68, 0.2);
+}
+
+.btn-complete-detail:active {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: rgba(239, 68, 68, 0.5);
+  transform: scale(0.98);
+}
+
 /* 耗材弹窗 */
 .material-dialog,
 .help-dialog {

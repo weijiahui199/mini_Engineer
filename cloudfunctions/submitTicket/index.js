@@ -24,6 +24,10 @@ exports.main = async (event, context) => {
         return await updateTicket(event, wxContext)
       case 'updateStatus':
         return await updateTicketStatus(event, wxContext)
+      case 'acceptTicket':
+        return await acceptTicket(event, wxContext)
+      case 'getTicketListByRole':
+        return await getTicketListByRole(event, wxContext)
       default:
         return {
           code: 400,
@@ -123,7 +127,72 @@ async function submitTicket(event, wxContext) {
   }
 }
 
-// 获取工单列表
+// 获取工单列表 - 支持新的权限模型
+async function getTicketListByRole(event, wxContext) {
+  const { page = 1, limit = 20, status, roleGroup, filter } = event
+  const _ = db.command
+  
+  let query
+  
+  // 根据角色构建查询条件
+  if (roleGroup === '经理') {
+    // 经理查看所有或筛选
+    if (filter === 'my') {
+      query = { assigneeOpenid: wxContext.OPENID }
+    } else {
+      query = {}
+    }
+  } else if (roleGroup === '工程师') {
+    // 工程师查看工单池 + 自己的
+    query = _.or([
+      _.and([
+        { status: 'pending' },
+        _.or([
+          { assigneeOpenid: _.exists(false) },
+          { assigneeOpenid: '' }
+        ])
+      ]),
+      { assigneeOpenid: wxContext.OPENID }
+    ])
+  } else {
+    // 用户只看自己创建的
+    query = { openid: wxContext.OPENID }
+  }
+  
+  // 状态筛选
+  if (status && status !== 'all') {
+    query = _.and([query, { status: status }])
+  }
+  
+  // 执行查询
+  try {
+    const countResult = await db.collection('tickets').where(query).count()
+    const result = await db.collection('tickets')
+      .where(query)
+      .orderBy('createTime', 'desc')
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .get()
+    
+    return {
+      code: 200,
+      data: {
+        list: result.data,
+        total: countResult.total,
+        page,
+        limit
+      }
+    }
+  } catch (error) {
+    console.error('查询工单失败:', error)
+    return {
+      code: 500,
+      message: '查询失败'
+    }
+  }
+}
+
+// 原始的获取工单列表方法（保留以便兼容）
 async function getTicketList(event, wxContext) {
   const { page = 1, limit = 20, status = 'all', keyword = '' } = event
   
@@ -286,9 +355,9 @@ async function updateTicket(event, wxContext) {
   }
 }
 
-// 更新工单状态
+// 更新工单状态 - 增强版，支持更多场景
 async function updateTicketStatus(event, wxContext) {
-  const { ticketId, status, reason } = event
+  const { ticketId, status, solution, reason, assigneeName } = event
   
   if (!ticketId) {
     return {
@@ -314,27 +383,47 @@ async function updateTicketStatus(event, wxContext) {
   }
   
   try {
-    // 先检查工单是否存在且属于当前用户
+    // 先检查工单是否存在
     const existResult = await db.collection('tickets')
       .doc(ticketId)
       .get()
     
-    if (!existResult.data || existResult.data.openid !== wxContext.OPENID) {
+    if (!existResult.data) {
+      return {
+        code: 404,
+        message: '工单不存在'
+      }
+    }
+    
+    const ticket = existResult.data
+    const currentStatus = ticket.status
+    
+    // 权限检查 - 根据不同场景判断
+    // 1. 工单创建者可以取消
+    // 2. 负责人可以更新状态
+    // 3. 工程师可以接单（pending -> processing）
+    const isOwner = ticket.openid === wxContext.OPENID
+    const isAssignee = ticket.assigneeOpenid === wxContext.OPENID
+    
+    // 特殊处理：从pending到processing（接单操作）
+    if (currentStatus === 'pending' && status === 'processing' && !ticket.assigneeOpenid) {
+      // 这是接单操作，任何工程师都可以接
+      // 在这种情况下不需要权限检查
+    } else if (!isOwner && !isAssignee) {
+      // 其他情况需要是创建者或负责人
       return {
         code: 403,
         message: '无权修改此工单'
       }
     }
     
-    const currentStatus = existResult.data.status
-    
-    // 检查状态转换是否合法
+    // 检查状态转换是否合法 - 放宽限制
     const allowedTransitions = {
-      'pending': ['processing', 'cancelled'],
-      'processing': ['resolved', 'cancelled'],
-      'resolved': ['rated', 'closed'],
+      'pending': ['processing', 'cancelled', 'resolved'], // 允许直接解决
+      'processing': ['pending', 'resolved', 'cancelled'], // 允许暂停（回到pending）
+      'resolved': ['rated', 'closed', 'processing'], // 允许重新打开
       'rated': ['closed'],
-      'cancelled': [],
+      'cancelled': ['pending'], // 允许重新打开
       'closed': []
     }
     
@@ -345,17 +434,34 @@ async function updateTicketStatus(event, wxContext) {
       }
     }
     
-    // 更新工单状态
+    // 准备更新数据
     const updateData = {
       status: status,
       updateTime: db.serverDate()
     }
     
-    // 如果是取消状态，添加取消原因
-    if (status === 'cancelled' && reason) {
+    // 根据不同状态添加相应字段
+    if (status === 'processing') {
+      updateData.processTime = db.serverDate()
+      // 如果是从pending接单，添加负责人信息
+      if (currentStatus === 'pending' && !ticket.assigneeOpenid) {
+        updateData.assigneeOpenid = wxContext.OPENID
+        updateData.assigneeName = assigneeName || '工程师'
+        updateData.acceptTime = db.serverDate()
+      }
+    } else if (status === 'resolved') {
+      updateData.resolveTime = db.serverDate()
+      if (solution) {
+        updateData.solution = solution
+      }
+    } else if (status === 'closed') {
+      updateData.closeTime = db.serverDate()
+    } else if (status === 'cancelled' && reason) {
       updateData.cancelReason = reason
+      updateData.cancelTime = db.serverDate()
     }
     
+    // 更新数据库
     await db.collection('tickets')
       .doc(ticketId)
       .update({
@@ -364,13 +470,91 @@ async function updateTicketStatus(event, wxContext) {
     
     return {
       code: 200,
-      message: '状态更新成功'
+      message: '状态更新成功',
+      data: updateData
     }
   } catch (error) {
     console.error('更新工单状态失败:', error)
     return {
       code: 500,
-      message: '状态更新失败'
+      message: '状态更新失败',
+      error: error.message
+    }
+  }
+}
+
+// 新增：安全接单方法
+async function acceptTicket(event, wxContext) {
+  const { ticketId } = event
+  const _ = db.command
+  
+  if (!ticketId) {
+    return {
+      code: 400,
+      message: '工单ID不能为空'
+    }
+  }
+  
+  try {
+    // 使用事务确保原子性
+    const transaction = await db.startTransaction()
+    
+    try {
+      // 查询当前状态
+      const ticket = await transaction.collection('tickets').doc(ticketId).get()
+      
+      if (!ticket.data) {
+        await transaction.rollback()
+        return { code: 404, message: '工单不存在' }
+      }
+      
+      // 检查是否已被分配
+      if (ticket.data.assigneeOpenid) {
+        await transaction.rollback()
+        
+        if (ticket.data.assigneeOpenid === wxContext.OPENID) {
+          return { code: 200, message: '您已接单' }
+        } else {
+          return { code: 400, message: '工单已被其他工程师接单' }
+        }
+      }
+      
+      // 获取用户信息
+      const userResult = await db.collection('users').where({
+        openid: wxContext.OPENID
+      }).limit(1).get()
+      
+      const userInfo = userResult.data[0] || {}
+      
+      // 执行接单
+      await transaction.collection('tickets').doc(ticketId).update({
+        data: {
+          assigneeOpenid: wxContext.OPENID,
+          assigneeName: userInfo.nickName || '工程师',
+          status: 'processing',
+          acceptTime: db.serverDate(),
+          updateTime: db.serverDate()
+        }
+      })
+      
+      await transaction.commit()
+      
+      return {
+        code: 200,
+        message: '接单成功'
+      }
+      
+    } catch (error) {
+      await transaction.rollback()
+      throw error
+    }
+    
+  } catch (error) {
+    console.error('接单失败:', error)
+    return {
+      code: 500,
+      message: '接单失败',
+      error: error.message
     }
   }
 } 

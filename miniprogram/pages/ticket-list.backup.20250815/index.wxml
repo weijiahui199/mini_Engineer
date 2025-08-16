@@ -79,12 +79,12 @@
         right="{{getSwipeActions(item)}}"
       >
         <view 
-          class="ticket-card {{item.priority === 'urgent' ? 'urgent-border' : ''}} {{!item.assigneeOpenid && item.status === 'pending' ? 'pool-ticket' : ''}} {{item.assigneeOpenid && item.assigneeOpenid !== openid ? 'taken' : ''}} {{item.assigneeOpenid === openid ? 'my-ticket' : ''}}"
+          class="ticket-card {{item.priority === 'urgent' ? 'urgent-border' : ''}}"
+          bindtap="navigateToDetail"
+          data-id="{{item.id}}"
         >
-          <!-- 可点击区域 - 点击查看详情 -->
-          <view class="card-clickable" bindtap="navigateToDetail" data-id="{{item.id}}">
-            <!-- 工单头部 -->
-            <view class="card-header">
+          <!-- 工单头部 -->
+          <view class="card-header">
             <view class="header-left">
               <view class="priority-dot priority-{{item.priority}}"></view>
               <text class="ticket-no">{{item.ticketNo}}</text>
@@ -141,81 +141,37 @@
               <text class="info-text">{{item.assigneeName}}</text>
             </view>
           </view>
-          </view>
-          <!-- 结束可点击区域 -->
           
-          <!-- 操作按钮 - 独立于可点击区域 -->
+          <!-- 操作按钮 -->
           <view class="card-actions">
-            
-            <!-- 场景1：未分配工单 - 显示开始处理按钮 -->
             <t-button 
-              wx:if="{{userRoleGroup === '工程师' && item.status === 'pending' && !item.assigneeOpenid}}"
+              wx:if="{{item.status === 'pending' && !item.assigned}}"
               theme="primary"
               size="small"
-              catchtap="acceptTicketSafely"
+              bind:click="acceptTicket"
+              data-id="{{item.id}}"
+            >
+              接受工单
+            </t-button>
+            <t-button 
+              wx:elif="{{item.status === 'pending' && item.assigned}}"
+              theme="primary"
+              size="small"
+              bind:click="startProcessing"
               data-id="{{item.id}}"
             >
               开始处理
             </t-button>
-            
-            <!-- 场景2：我的工单(processing状态) - 显示查看详情和完成工单两个按钮 -->
-            <block wx:elif="{{item.assigneeOpenid === openid && item.status === 'processing'}}">
-              <button 
-                class="custom-btn btn-detail"
-                catchtap="navigateToDetail"
-                data-id="{{item.id}}"
-              >
-                查看详情
-              </button>
-              <button 
-                class="custom-btn btn-complete"
-                catchtap="completeTicket"
-                data-id="{{item.id}}"
-              >
-                完成工单
-              </button>
-            </block>
-            
-            <!-- 场景3：我的工单(已完成) - 只显示查看详情 -->
             <t-button 
-              wx:elif="{{item.assigneeOpenid === openid && item.status === 'resolved'}}"
+              wx:elif="{{item.status === 'processing'}}"
               theme="default"
               size="small"
-              bind:tap="navigateToDetail"
+              bind:click="continueProcessing"
               data-id="{{item.id}}"
             >
-              查看详情
+              继续处理
             </t-button>
             
-            <!-- 场景4：他人的工单 - 显示已被接单文字 -->
-            <text 
-              wx:elif="{{userRoleGroup === '工程师' && item.assigneeOpenid && item.assigneeOpenid !== openid}}"
-              class="status-hint"
-            >
-              已被接单
-            </text>
-            
-            <!-- 场景5：经理角色 - 始终显示查看详情 -->
-            <t-button 
-              wx:elif="{{userRoleGroup === '经理'}}"
-              theme="default"
-              size="small"
-              bind:tap="navigateToDetail"
-              data-id="{{item.id}}"
-            >
-              查看详情
-            </t-button>
-            
-            <!-- 场景6：普通用户查看自己提交的工单 -->
-            <t-button 
-              wx:elif="{{userRoleGroup === '用户'}}"
-              theme="default"
-              size="small"
-              bind:tap="navigateToDetail"
-              data-id="{{item.id}}"
-            >
-              查看详情
-            </t-button>
           </view>
         </view>
       </t-swipe-cell>
@@ -259,18 +215,15 @@
         </view>
       </view>
       
-      <view class="filter-section" wx:if="{{showAssigneeFilter && assigneeOptions.length > 0}}">
+      <view class="filter-section" wx:if="{{assigneeOptions.length > 0}}">
         <text class="filter-label">负责人</text>
         <t-radio-group 
           value="{{tempFilters.assignee}}"
           bind:change="onAssigneeFilterChange"
         >
-          <t-radio label="全部" value="all" />
-          <t-radio label="我负责的" value="my" />
           <t-radio 
             wx:for="{{assigneeOptions}}" 
             wx:key="value"
-            wx:if="{{item.value !== 'all' && item.value !== 'my'}}"
             label="{{item.label}}"
             value="{{item.value}}"
           />
@@ -290,36 +243,6 @@
             value="{{item.value}}"
           />
         </t-radio-group>
-      </view>
-      
-      <!-- 问题类型筛选 -->
-      <view class="filter-section">
-        <text class="filter-label">问题类型</text>
-        <t-radio-group 
-          value="{{tempFilters.category}}"
-          bind:change="onCategoryChange"
-        >
-          <t-radio label="全部" value="all" />
-          <t-radio label="硬件故障" value="hardware" />
-          <t-radio label="软件问题" value="software" />
-          <t-radio label="网络问题" value="network" />
-          <t-radio label="账号权限" value="account" />
-          <t-radio label="其他" value="other" />
-        </t-radio-group>
-      </view>
-      
-      <!-- 优先级筛选 -->
-      <view class="filter-section">
-        <text class="filter-label">优先级</text>
-        <t-checkbox-group 
-          value="{{tempFilters.priority}}"
-          bind:change="onPriorityChange"
-        >
-          <t-checkbox label="紧急" value="urgent" />
-          <t-checkbox label="高" value="high" />
-          <t-checkbox label="中" value="medium" />
-          <t-checkbox label="低" value="low" />
-        </t-checkbox-group>
       </view>
     </view>
   </t-popup>

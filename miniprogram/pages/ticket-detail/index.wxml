@@ -112,42 +112,54 @@
   </view>
 
 
+  
   <!-- 底部操作栏 -->
   <view class="bottom-actions safe-bottom" wx:if="{{showActions}}">
     <!-- 待处理状态 -->
     <view wx:if="{{ticketInfo.status === 'pending'}}" class="action-group">
+      <!-- 工程师：未分配工单显示开始处理按钮 -->
       <t-button 
-        theme="default"
-        size="large"
-        bind:click="rejectTicket"
-      >
-        退回
-      </t-button>
-      <t-button 
+        wx:if="{{canAccept}}"
         theme="primary"
         size="large"
-        bind:click="startProcessing"
+        block
+        bind:tap="acceptTicket"
       >
         开始处理
       </t-button>
+      <!-- 负责人：显示继续处理按钮 -->
+      <view wx:elif="{{isAssignee}}" class="action-buttons">
+        <t-button 
+          theme="default"
+          size="large"
+          bind:tap="rejectTicket"
+        >
+          退回
+        </t-button>
+        <t-button 
+          theme="primary"
+          size="large"
+          bind:tap="startProcessing"
+        >
+          继续处理
+        </t-button>
+      </view>
     </view>
     
     <!-- 处理中状态 -->
-    <view wx:elif="{{ticketInfo.status === 'processing'}}" class="action-group">
-      <t-button 
-        theme="default"
-        size="large"
-        bind:click="pauseProcessing"
+    <view wx:elif="{{ticketInfo.status === 'processing' && isAssignee}}" class="action-group">
+      <button 
+        class="custom-action-btn btn-pause"
+        bindtap="pauseProcessing"
       >
         暂停
-      </t-button>
-      <t-button 
-        theme="success"
-        size="large"
-        bind:click="completeTicket"
+      </button>
+      <button 
+        class="custom-action-btn btn-complete-detail"
+        bindtap="completeTicket"
       >
         完成工单
-      </t-button>
+      </button>
     </view>
     
     <!-- 已解决状态 -->
@@ -156,7 +168,7 @@
         theme="primary"
         size="large"
         block
-        bind:click="closeTicket"
+        bind:tap="closeTicket"
       >
         关闭工单
       </t-button>
