@@ -28,6 +28,10 @@ exports.main = async (event, context) => {
         return await acceptTicket(event, wxContext)
       case 'rejectTicket':
         return await rejectTicket(event, wxContext)
+      case 'pauseTicket':
+        return await pauseTicket(event, wxContext)
+      case 'continueTicket':
+        return await continueTicket(event, wxContext)
       case 'getTicketListByRole':
         return await getTicketListByRole(event, wxContext)
       default:
@@ -93,6 +97,24 @@ async function submitTicket(event, wxContext) {
   const ticketNo = `TK${dateStr}${timeStr}`
   
   try {
+    // 获取提交者信息
+    const userResult = await db.collection('users').where({
+      openid: wxContext.OPENID
+    }).limit(1).get()
+    
+    const submitterName = userResult.data[0]?.nickName || '用户'
+    
+    // 创建初始历史记录
+    const firstHistory = {
+      id: `ph_${Date.now()}`,
+      action: 'created',
+      operator: submitterName,
+      operatorId: wxContext.OPENID,
+      timestamp: new Date().toISOString(),
+      description: '提交工单',
+      reason: null
+    }
+    
     // 保存工单到数据库
     const result = await db.collection('tickets').add({
       data: {
@@ -107,8 +129,11 @@ async function submitTicket(event, wxContext) {
         attachments: attachments || [],
         status: 'pending',
         openid: wxContext.OPENID,
+        submitterName: submitterName,
         createTime: db.serverDate(),
-        updateTime: db.serverDate()
+        updateTime: db.serverDate(),
+        // 新增处理历史字段
+        processHistory: [firstHistory]
       }
     })
     
@@ -285,7 +310,7 @@ async function getTicketDetail(event, wxContext) {
   }
 }
 
-// 更新工单
+// 更新工单（添加事务保护）
 async function updateTicket(event, wxContext) {
   const { ticketId, title, company, department, phone, location, category, description, attachments } = event
   
@@ -304,13 +329,25 @@ async function updateTicket(event, wxContext) {
     }
   }
   
+  // 使用事务确保原子性操作
+  const transaction = await db.startTransaction()
+  
   try {
-    // 先检查工单是否存在且属于当前用户
-    const existResult = await db.collection('tickets')
+    // 在事务中检查工单是否存在且属于当前用户
+    const existResult = await transaction.collection('tickets')
       .doc(ticketId)
       .get()
     
-    if (!existResult.data || existResult.data.openid !== wxContext.OPENID) {
+    if (!existResult.data) {
+      await transaction.rollback()
+      return {
+        code: 404,
+        message: '工单不存在'
+      }
+    }
+    
+    if (existResult.data.openid !== wxContext.OPENID) {
+      await transaction.rollback()
       return {
         code: 403,
         message: '无权修改此工单'
@@ -318,14 +355,16 @@ async function updateTicket(event, wxContext) {
     }
     
     // 检查工单状态是否允许修改
-    if (existResult.data.status !== 'pending') {
+    // 只有待处理且未分配的工单才能修改基本信息
+    if (existResult.data.status !== 'pending' || existResult.data.assigneeOpenid) {
+      await transaction.rollback()
       return {
         code: 400,
-        message: '只能修改待处理状态的工单'
+        message: '只能修改待处理且未分配的工单'
       }
     }
     
-    // 更新工单
+    // 准备更新数据
     const updateData = {
       title: title.trim(),
       company: company.trim(),
@@ -338,37 +377,36 @@ async function updateTicket(event, wxContext) {
       updateTime: db.serverDate()
     }
     
-    await db.collection('tickets')
+    // 在事务中更新工单
+    await transaction.collection('tickets')
       .doc(ticketId)
       .update({
         data: updateData
       })
     
+    // 提交事务
+    await transaction.commit()
+    
     return {
       code: 200,
       message: '工单更新成功'
     }
+    
   } catch (error) {
+    // 回滚事务
+    await transaction.rollback()
     console.error('更新工单失败:', error)
     return {
       code: 500,
-      message: '工单更新失败'
+      message: '工单更新失败',
+      error: error.message
     }
   }
 }
 
-// 更新工单状态 - 增强版，支持更多场景
+// 更新工单状态 - 增强版，支持更多场景（添加事务保护）
 async function updateTicketStatus(event, wxContext) {
   const { ticketId, status, solution, reason, assigneeName } = event
-  
-  console.log('[updateTicketStatus] 开始执行')
-  console.log('[updateTicketStatus] 参数:', {
-    ticketId,
-    status,
-    solution,
-    reason,
-    assigneeName
-  })
   
   if (!ticketId) {
     return {
@@ -393,13 +431,17 @@ async function updateTicketStatus(event, wxContext) {
     }
   }
   
+  // 使用事务确保原子性操作
+  const transaction = await db.startTransaction()
+  
   try {
-    // 先检查工单是否存在
-    const existResult = await db.collection('tickets')
+    // 在事务中检查工单是否存在
+    const existResult = await transaction.collection('tickets')
       .doc(ticketId)
       .get()
     
     if (!existResult.data) {
+      await transaction.rollback()
       return {
         code: 404,
         message: '工单不存在'
@@ -416,24 +458,23 @@ async function updateTicketStatus(event, wxContext) {
     const isOwner = ticket.openid === wxContext.OPENID
     const isAssignee = ticket.assigneeOpenid === wxContext.OPENID
     
-    console.log('[updateTicketStatus] 权限检查:', {
-      ticketId,
-      currentStatus,
-      newStatus: status,
-      isOwner,
-      isAssignee,
-      ticketOpenid: ticket.openid,
-      ticketAssignee: ticket.assigneeOpenid,
-      requestOpenid: wxContext.OPENID
-    })
-    
-    // 特殊处理：从pending到processing（接单操作）
-    if (currentStatus === 'pending' && status === 'processing' && !ticket.assigneeOpenid) {
-      // 这是接单操作，任何工程师都可以接
-      console.log('[updateTicketStatus] 允许接单操作')
+    // 特殊处理：状态转换权限
+    if (currentStatus === 'pending' && status === 'processing') {
+      if (!ticket.assigneeOpenid) {
+        // 这是接单操作，任何工程师都可以接
+      } else if (ticket.assigneeOpenid === wxContext.OPENID) {
+        // 这是继续处理操作（从暂停恢复），只有负责人可以继续
+      } else {
+        // 其他人不能接已分配的工单
+        await transaction.rollback()
+        return {
+          code: 403,
+          message: '此工单已分配给其他工程师'
+        }
+      }
     } else if (!isOwner && !isAssignee) {
       // 其他情况需要是创建者或负责人
-      console.log('[updateTicketStatus] 权限检查失败：不是创建者也不是负责人')
+      await transaction.rollback()
       return {
         code: 403,
         message: '无权修改此工单'
@@ -451,6 +492,7 @@ async function updateTicketStatus(event, wxContext) {
     }
     
     if (!allowedTransitions[currentStatus]?.includes(status)) {
+      await transaction.rollback()
       return {
         code: 400,
         message: `无法从${currentStatus}状态转换为${status}状态`
@@ -468,41 +510,83 @@ async function updateTicketStatus(event, wxContext) {
       // 只有第一次进入处理状态时才设置processTime
       if (!ticket.processTime) {
         updateData.processTime = db.serverDate()
-        console.log('[updateTicketStatus] 第一次进入处理状态，设置processTime')
-      } else {
-        console.log('[updateTicketStatus] 已有processTime，不覆盖:', ticket.processTime)
       }
       
-      // 如果是从pending接单，添加负责人信息
+      // 如果是从pending接单（未分配的），添加负责人信息
       if (currentStatus === 'pending' && !ticket.assigneeOpenid) {
         updateData.assigneeOpenid = wxContext.OPENID
         updateData.assigneeName = assigneeName || '工程师'
         updateData.acceptTime = db.serverDate()
-        console.log('[updateTicketStatus] 从pending接单，设置负责人信息')
       }
+      // 如果是从暂停状态恢复（pending但有assignee），只更新状态
+      // 不需要更新assignee信息，保持原有的负责人
+      
+    } else if (status === 'pending' && currentStatus === 'processing') {
+      // 暂停操作：从processing到pending，保留负责人信息
+      // 不清空assigneeOpenid和assigneeName，这样可以区分暂停和真正的待处理
+      updateData.pauseTime = db.serverDate()
+      // 注意：不要清空assignee信息
+      
     } else if (status === 'resolved') {
+      // 获取操作者信息
+      const userResult = await db.collection('users').where({
+        openid: wxContext.OPENID
+      }).limit(1).get()
+      
+      const operatorName = userResult.data[0]?.nickName || ticket.assigneeName || '工程师'
+      
+      // 创建解决历史记录
+      const resolveHistory = {
+        id: `ph_${Date.now()}`,
+        action: 'resolved',
+        operator: operatorName,
+        operatorId: wxContext.OPENID,
+        timestamp: new Date().toISOString(),
+        description: '问题已解决',
+        reason: null,
+        solution: solution || null
+      }
+      
       updateData.resolveTime = db.serverDate()
+      updateData.processHistory = db.command.push(resolveHistory)
       if (solution) {
         updateData.solution = solution
       }
     } else if (status === 'closed') {
+      // 获取操作者信息
+      const userResult = await db.collection('users').where({
+        openid: wxContext.OPENID
+      }).limit(1).get()
+      
+      const operatorName = userResult.data[0]?.nickName || ticket.assigneeName || '用户'
+      
+      // 创建关闭历史记录
+      const closeHistory = {
+        id: `ph_${Date.now()}`,
+        action: 'closed',
+        operator: operatorName,
+        operatorId: wxContext.OPENID,
+        timestamp: new Date().toISOString(),
+        description: '工单已关闭',
+        reason: null
+      }
+      
       updateData.closeTime = db.serverDate()
+      updateData.processHistory = db.command.push(closeHistory)
     } else if (status === 'cancelled' && reason) {
       updateData.cancelReason = reason
       updateData.cancelTime = db.serverDate()
     }
     
-    console.log('[updateTicketStatus] 准备更新的数据:', updateData)
-    
-    // 更新数据库
-    const updateResult = await db.collection('tickets')
+    // 在事务中更新数据库
+    await transaction.collection('tickets')
       .doc(ticketId)
       .update({
         data: updateData
       })
     
-    console.log('[updateTicketStatus] 更新结果:', updateResult)
-    console.log('[updateTicketStatus] 更新成功，返回数据:', updateData)
+    // 提交事务
+    await transaction.commit()
     
     return {
       code: 200,
@@ -510,6 +594,8 @@ async function updateTicketStatus(event, wxContext) {
       data: updateData
     }
   } catch (error) {
+    // 回滚事务
+    await transaction.rollback()
     console.error('更新工单状态失败:', error)
     return {
       code: 500,
@@ -561,16 +647,30 @@ async function acceptTicket(event, wxContext) {
       }).limit(1).get()
       
       const userInfo = userResult.data[0] || {}
+      const operatorName = userInfo.nickName || '工程师'
+      
+      // 创建接单历史记录
+      const acceptHistory = {
+        id: `ph_${Date.now()}`,
+        action: 'accepted',
+        operator: operatorName,
+        operatorId: wxContext.OPENID,
+        timestamp: new Date().toISOString(),
+        description: '接单处理',
+        reason: null
+      }
       
       // 执行接单
       await transaction.collection('tickets').doc(ticketId).update({
         data: {
           assigneeOpenid: wxContext.OPENID,
-          assigneeName: userInfo.nickName || '工程师',
+          assigneeName: operatorName,
           status: 'processing',
           acceptTime: db.serverDate(),
           processTime: db.serverDate(),  // 接单时也是开始处理的时间
-          updateTime: db.serverDate()
+          updateTime: db.serverDate(),
+          // 追加历史记录
+          processHistory: db.command.push(acceptHistory)
         }
       })
       
@@ -596,7 +696,7 @@ async function acceptTicket(event, wxContext) {
   }
 }
 
-// 退回工单方法
+// 退回工单方法（添加事务保护）
 async function rejectTicket(event, wxContext) {
   const { ticketId, reason } = event
   
@@ -607,15 +707,15 @@ async function rejectTicket(event, wxContext) {
     }
   }
   
-  console.log('[rejectTicket] 开始退回工单:', ticketId)
-  console.log('[rejectTicket] 退回原因:', reason)
-  console.log('[rejectTicket] 操作人:', wxContext.OPENID)
+  // 使用事务确保原子性操作
+  const transaction = await db.startTransaction()
   
   try {
-    // 先查询工单确认状态和权限
-    const ticketResult = await db.collection('tickets').doc(ticketId).get()
+    // 在事务中查询工单确认状态和权限
+    const ticketResult = await transaction.collection('tickets').doc(ticketId).get()
     
     if (!ticketResult.data) {
+      await transaction.rollback()
       return {
         code: 404,
         message: '工单不存在'
@@ -626,24 +726,50 @@ async function rejectTicket(event, wxContext) {
     
     // 检查是否是工单负责人
     if (ticket.assigneeOpenid !== wxContext.OPENID) {
-      console.log('[rejectTicket] 权限检查失败:', {
-        assigneeOpenid: ticket.assigneeOpenid,
-        currentOpenid: wxContext.OPENID
-      })
+      await transaction.rollback()
       return {
         code: 403,
         message: '只有工单负责人才能退回工单'
       }
     }
     
-    // 执行退回操作 - 清空负责人信息
+    // 检查工单状态，避免在已完成或已关闭的工单上执行退回
+    if (ticket.status === 'resolved' || ticket.status === 'closed') {
+      await transaction.rollback()
+      return {
+        code: 400,
+        message: '已完成或已关闭的工单不能退回'
+      }
+    }
+    
+    // 获取操作者信息
+    const userResult = await db.collection('users').where({
+      openid: wxContext.OPENID
+    }).limit(1).get()
+    
+    const operatorName = userResult.data[0]?.nickName || ticket.assigneeName || '工程师'
+    
+    // 创建退回历史记录
+    const rejectHistory = {
+      id: `ph_${Date.now()}`,
+      action: 'rejected',
+      operator: operatorName,
+      operatorId: wxContext.OPENID,
+      timestamp: new Date().toISOString(),
+      description: '退回工单',
+      reason: reason && reason.trim() ? reason.trim() : '未说明原因'
+    }
+    
+    // 准备退回操作数据 - 清空负责人信息
     const updateData = {
       status: 'pending',
       assigneeOpenid: db.command.remove(),
       assigneeName: db.command.remove(),
       acceptTime: db.command.remove(),
       rejectTime: db.serverDate(),
-      updateTime: db.serverDate()
+      updateTime: db.serverDate(),
+      // 追加历史记录
+      processHistory: db.command.push(rejectHistory)
     }
     
     // 只有提供了退回原因才添加这个字段
@@ -651,35 +777,225 @@ async function rejectTicket(event, wxContext) {
       updateData.rejectReason = reason.trim()
     }
     
-    console.log('[rejectTicket] 准备更新数据:', updateData)
-    
-    const updateResult = await db.collection('tickets').doc(ticketId).update({
+    // 在事务中执行更新
+    await transaction.collection('tickets').doc(ticketId).update({
       data: updateData
     })
     
-    console.log('[rejectTicket] 更新结果:', updateResult)
+    // 提交事务
+    await transaction.commit()
     
-    if (updateResult.stats.updated > 0) {
-      return {
-        code: 200,
-        message: '退回成功',
-        data: {
-          ticketId: ticketId,
-          status: 'pending'
-        }
-      }
-    } else {
-      return {
-        code: 500,
-        message: '退回失败，数据库更新失败'
+    return {
+      code: 200,
+      message: '退回成功',
+      data: {
+        ticketId: ticketId,
+        status: 'pending'
       }
     }
     
   } catch (error) {
-    console.error('[rejectTicket] 错误:', error)
+    // 回滚事务
+    await transaction.rollback()
+    console.error('退回工单失败:', error)
     return {
       code: 500,
       message: '退回失败',
+      error: error.message
+    }
+  }
+}
+
+// 暂停工单（添加事务保护）
+async function pauseTicket(event, wxContext) {
+  const { ticketId } = event
+  
+  if (!ticketId) {
+    return {
+      code: 400,
+      message: '工单ID不能为空'
+    }
+  }
+  
+  // 使用事务确保原子性操作
+  const transaction = await db.startTransaction()
+  
+  try {
+    // 在事务中检查工单状态
+    const ticket = await transaction.collection('tickets').doc(ticketId).get()
+    
+    if (!ticket.data) {
+      await transaction.rollback()
+      return {
+        code: 404,
+        message: '工单不存在'
+      }
+    }
+    
+    // 检查权限：只有负责人可以暂停
+    if (ticket.data.assigneeOpenid !== wxContext.OPENID) {
+      await transaction.rollback()
+      return {
+        code: 403,
+        message: '只有负责人可以暂停工单'
+      }
+    }
+    
+    // 检查状态：只有processing状态可以暂停
+    if (ticket.data.status !== 'processing') {
+      await transaction.rollback()
+      return {
+        code: 400,
+        message: '只有处理中的工单可以暂停'
+      }
+    }
+    
+    // 获取操作者信息
+    const userResult = await db.collection('users').where({
+      openid: wxContext.OPENID
+    }).limit(1).get()
+    
+    const operatorName = userResult.data[0]?.nickName || ticket.data.assigneeName || '工程师'
+    
+    // 创建暂停历史记录
+    const pauseHistory = {
+      id: `ph_${Date.now()}`,
+      action: 'paused',
+      operator: operatorName,
+      operatorId: wxContext.OPENID,
+      timestamp: new Date().toISOString(),
+      description: '暂停处理',
+      reason: null
+    }
+    
+    // 在事务中更新为pending状态，但保留assignee信息
+    await transaction.collection('tickets').doc(ticketId).update({
+      data: {
+        status: 'pending',
+        pauseTime: db.serverDate(),
+        updateTime: db.serverDate(),
+        // 追加历史记录
+        processHistory: db.command.push(pauseHistory)
+        // 注意：保留assigneeOpenid和assigneeName
+      }
+    })
+    
+    // 提交事务
+    await transaction.commit()
+    
+    return {
+      code: 200,
+      message: '工单已暂停'
+    }
+    
+  } catch (error) {
+    // 回滚事务
+    await transaction.rollback()
+    console.error('暂停工单失败:', error)
+    return {
+      code: 500,
+      message: '暂停失败',
+      error: error.message
+    }
+  }
+}
+
+// 继续处理工单（添加事务保护）
+async function continueTicket(event, wxContext) {
+  const { ticketId } = event
+  
+  if (!ticketId) {
+    return {
+      code: 400,
+      message: '工单ID不能为空'
+    }
+  }
+  
+  // 使用事务确保原子性操作
+  const transaction = await db.startTransaction()
+  
+  try {
+    // 在事务中检查工单状态
+    const ticket = await transaction.collection('tickets').doc(ticketId).get()
+    
+    if (!ticket.data) {
+      await transaction.rollback()
+      return {
+        code: 404,
+        message: '工单不存在'
+      }
+    }
+    
+    // 检查权限：只有负责人可以继续
+    if (ticket.data.assigneeOpenid !== wxContext.OPENID) {
+      await transaction.rollback()
+      return {
+        code: 403,
+        message: '只有负责人可以继续处理工单'
+      }
+    }
+    
+    // 检查状态：只有暂停状态（pending但有assignee）可以继续
+    if (ticket.data.status !== 'pending' || !ticket.data.assigneeOpenid) {
+      await transaction.rollback()
+      return {
+        code: 400,
+        message: '只有暂停的工单可以继续处理'
+      }
+    }
+    
+    // 获取操作者信息
+    const userResult = await db.collection('users').where({
+      openid: wxContext.OPENID
+    }).limit(1).get()
+    
+    const operatorName = userResult.data[0]?.nickName || ticket.data.assigneeName || '工程师'
+    
+    // 创建继续处理历史记录
+    const continueHistory = {
+      id: `ph_${Date.now()}`,
+      action: 'processing',
+      operator: operatorName,
+      operatorId: wxContext.OPENID,
+      timestamp: new Date().toISOString(),
+      description: '继续处理',
+      reason: null
+    }
+    
+    // 准备更新数据
+    const updateData = {
+      status: 'processing',
+      continueTime: db.serverDate(),
+      updateTime: db.serverDate(),
+      // 追加历史记录
+      processHistory: db.command.push(continueHistory)
+    }
+    
+    // 如果之前没有processTime，添加它
+    if (!ticket.data.processTime) {
+      updateData.processTime = db.serverDate()
+    }
+    
+    // 在事务中更新为processing状态
+    await transaction.collection('tickets').doc(ticketId).update({
+      data: updateData
+    })
+    
+    // 提交事务
+    await transaction.commit()
+    
+    return {
+      code: 200,
+      message: '继续处理工单'
+    }
+    
+  } catch (error) {
+    // 回滚事务
+    await transaction.rollback()
+    console.error('继续处理工单失败:', error)
+    return {
+      code: 500,
+      message: '操作失败',
       error: error.message
     }
   }

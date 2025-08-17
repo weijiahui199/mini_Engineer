@@ -6,7 +6,8 @@
     "pages/ticket-list/index",
     "pages/ticket-detail/index",
     "pages/profile/index",
-    "pages/user-info/index"
+    "pages/user-info/index",
+    "pages/test-history/index"
   ],
   "window": {
     "backgroundTextStyle": "light",

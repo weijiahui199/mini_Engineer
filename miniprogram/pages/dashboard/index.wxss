@@ -171,8 +171,8 @@
 /* 今日工作概览 */
 .today-stats-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12rpx;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10rpx;
   padding: 4rpx 0;
 }
 
@@ -180,7 +180,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 16rpx 10rpx;
+  padding: 14rpx 8rpx;
   background: white;
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-light);
@@ -193,34 +193,35 @@
 }
 
 .stat-icon-wrapper {
-  width: 80rpx;
-  height: 80rpx;
+  width: 72rpx;
+  height: 72rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 8rpx;
+  margin-bottom: 6rpx;
 }
 
 .stat-icon {
-  width: 68rpx;
-  height: 68rpx;
+  width: 60rpx;
+  height: 60rpx;
   display: block;
 }
 
 .stat-value {
-  font-size: 36rpx;
+  font-size: 32rpx;
   font-weight: bold;
-  margin-bottom: 8rpx;
+  margin-bottom: 6rpx;
 }
 
 .stat-label {
-  font-size: 24rpx;
+  font-size: 22rpx;
   color: #6b7280;
 }
 
 .text-orange { color: #faad14; }
 .text-blue { color: #1890ff; }
 .text-green { color: #52c41a; }
+.text-cyan { color: #13c2c2; }
 .text-red { color: #ff4d4f; }
 
 /* 快捷操作 */

@@ -401,7 +401,434 @@ console.log('缓存信息:', {
   3. **视觉一致性**：相同功能级别的按钮应该有相似的视觉权重
   4. **色彩语义**：使用颜色传达操作的性质（危险、安全、中性等）
 
+### 问题 #11：工单时间线显示错误 - 暂停后继续处理报错
+- **发生时间**：2025-08-16
+- **问题描述**：
+  1. 工程师暂停工单后，点击继续处理时报错
+  2. 错误信息：`Cannot set property 'isActive' of undefined`
+  3. 时间线节点的数组索引访问失败
+- **错误信息**：
+  ```javascript
+  TypeError: Cannot set property 'isActive' of undefined
+  at updateTimeline (index.js:638)
+  // timeline[2].isActive = true; // 这里timeline[2]不存在
+  ```
+- **问题原因**：
+  1. **硬编码索引问题**：`updateTimeline`方法使用硬编码的数组索引（`timeline[2]`、`timeline[3]`）
+  2. **动态节点生成**：`buildTimeline`根据工单状态动态生成节点，暂停状态可能不生成某些节点
+  3. **状态转换逻辑缺失**：没有处理从暂停（pending但有assignee）到处理中的转换
+- **解决方案**：
+  1. **改用ID查找节点**：
+     ```javascript
+     // 不再使用 timeline[2]
+     // 改为循环查找
+     for (let item of timeline) {
+       if (item.id === 'processing') {
+         item.isActive = true;
+         break;
+       }
+     }
+     ```
+  2. **确保节点存在**：
+     - 有负责人就显示"处理中"节点
+     - 暂停状态显示为"已暂停"描述
+  3. **添加容错处理**：
+     - try-catch包装时间线更新
+     - 失败不影响主流程
+- **相关文件**：
+  - `/miniprogram/pages/ticket-detail/index.js` - updateTimeline和buildTimeline方法
+- **验证结果**：
+  - 暂停后继续处理正常工作
+  - 时间线正确更新状态
+  - 无报错信息
+- **经验总结**：
+  1. **避免硬编码索引**：使用ID或其他标识符查找数组元素
+  2. **防御性编程**：检查对象存在性再访问属性
+  3. **动态数据结构**：处理可变长度数组时要特别小心
+
+### 问题 #12：MongoDB日期格式处理问题
+- **发生时间**：2025-08-16
+- **问题描述**：
+  1. 数据库返回的日期格式为：`{$date: "2025-08-16T03:20:40.122Z"}`
+  2. formatDateTime函数无法正确识别此格式
+  3. 时间显示为"时间格式错误"或空白
+- **问题原因**：
+  1. **特殊日期格式**：MongoDB/云数据库使用特殊的JSON格式表示日期
+  2. **类型判断失败**：不是字符串也不是Date对象
+  3. **直接转换失败**：`new Date(date)`无法处理对象格式
+- **解决方案**：
+  ```javascript
+  formatDateTime(date) {
+    let d;
+    if (date.$date) {
+      // MongoDB日期格式
+      d = new Date(date.$date);
+    } else if (typeof date === 'string') {
+      d = new Date(date);
+    } else if (date instanceof Date) {
+      d = date;
+    } else {
+      d = new Date(date);
+    }
+    // 检查日期有效性
+    if (isNaN(d.getTime())) {
+      return '时间格式错误';
+    }
+    // 格式化输出
+  }
+  ```
+- **相关文件**：
+  - `/miniprogram/pages/ticket-detail/index.js` - formatDateTime方法
+- **验证结果**：
+  - 正确显示所有时间字段
+  - 支持多种日期格式
+- **经验总结**：
+  1. **了解数据源格式**：不同数据库有不同的日期表示方式
+  2. **多格式兼容**：日期处理函数要支持多种输入格式
+  3. **有效性检查**：始终检查Date对象的有效性
+
+### 问题 #13：工单处理时间重复设置问题
+- **发生时间**：2025-08-16
+- **问题描述**：
+  1. 暂停后继续处理，processTime被重新设置
+  2. 导致原始的处理开始时间丢失
+  3. 时间线显示不准确
+- **问题原因**：
+  1. **云函数逻辑问题**：`updateTicketStatus`每次转换到processing都设置processTime
+  2. **缺少状态检查**：没有判断是否已经有processTime
+  3. **接单函数遗漏**：`acceptTicket`没有设置processTime
+- **解决方案**：
+  1. **条件设置processTime**：
+     ```javascript
+     if (status === 'processing') {
+       // 只有第一次进入处理状态时才设置
+       if (!ticket.processTime) {
+         updateData.processTime = db.serverDate()
+       }
+     }
+     ```
+  2. **接单时设置**：
+     ```javascript
+     // acceptTicket函数中
+     data: {
+       status: 'processing',
+       acceptTime: db.serverDate(),
+       processTime: db.serverDate(), // 添加这行
+     }
+     ```
+- **相关文件**：
+  - `/cloudfunctions/submitTicket/index.js` - updateTicketStatus和acceptTicket函数
+- **验证结果**：
+  - 处理时间只在第一次设置
+  - 暂停后继续不会覆盖
+  - 时间线显示准确
+- **经验总结**：
+  1. **状态转换要完整**：考虑所有可能的状态转换路径
+  2. **时间字段管理**：一次性时间字段要防止重复设置
+  3. **数据一致性**：相关函数要保持逻辑一致
+
+### 问题 #14：退回工单时预填内容问题
+- **发生时间**：2025-08-16
+- **问题描述**：
+  1. 退回工单时输入框预填"工程师退回"
+  2. 用户需要先删除再输入自己的原因
+  3. 影响用户体验
+- **问题原因**：
+  1. **默认值设置**：代码中设置了默认退回原因
+  2. **强制预填**：`res.content || '工程师退回'`
+- **解决方案**：
+  1. **移除默认值**：
+     ```javascript
+     // 原来：const rejectReason = res.content || '工程师退回';
+     // 改为：const rejectReason = res.content || '';
+     ```
+  2. **云函数处理**：
+     ```javascript
+     // 只有提供了原因才添加字段
+     if (reason && reason.trim()) {
+       updateData.rejectReason = reason.trim()
+     }
+     ```
+- **相关文件**：
+  - `/miniprogram/pages/ticket-detail/index.js` - rejectTicket方法
+  - `/cloudfunctions/submitTicket/index.js` - rejectTicket函数
+- **验证结果**：
+  - 输入框保持空白
+  - 用户可选择性填写
+  - 不填写时不保存默认文本
+- **经验总结**：
+  1. **用户体验优先**：避免不必要的预填内容
+  2. **可选字段处理**：真正可选的字段不应有默认值
+  3. **数据清洁**：避免存储无意义的默认文本
+
+## 调试技巧总结
+
+### 时间处理调试
+1. **添加详细日志**：
+   ```javascript
+   console.log('[模块名] 时间字段:', {
+     原始值: date,
+     类型: typeof date,
+     格式化结果: formattedDate
+   });
+   ```
+
+2. **MongoDB日期格式兼容**：
+   - 检查 `date.$date` 属性
+   - 支持字符串、Date对象、MongoDB格式
+
+3. **时间字段管理原则**：
+   - 创建时间：只在创建时设置
+   - 更新时间：每次操作都更新
+   - 状态时间：首次进入状态时设置
+
+### 数组操作调试
+1. **避免硬编码索引**：
+   - 使用 `find()` 或 `findIndex()`
+   - 循环查找特定ID的元素
+   - 添加存在性检查
+
+2. **动态数组处理**：
+   ```javascript
+   // 安全的数组访问
+   const item = array.find(x => x.id === targetId);
+   if (item) {
+     item.property = value;
+   }
+   ```
+
+### 云函数调试
+1. **日志位置**：
+   - 函数入口记录参数
+   - 关键操作前后记录状态
+   - 错误捕获记录详情
+
+2. **权限问题排查**：
+   - 检查操作者身份
+   - 验证数据所有权
+   - 记录权限判断结果
+
+### 问题 #15：工单状态在用户取消操作后仍然改变【待调查】
+- **发生时间**：2025-08-16
+- **问题描述**：
+  1. 用户点击退回按钮，显示确认对话框
+  2. 用户点击取消，但工单状态已经变成了待接单
+  3. 似乎在显示对话框之前或用户确认之前状态就改变了
+- **代码检查结果**：
+  - 所有二次确认操作代码逻辑正确（都在 `if (res.confirm)` 内执行）
+  - `startProcessing()` ✓
+  - `pauseProcessing()` ✓  
+  - `completeTicket()` ✓
+  - `reopenTicket()` ✓
+  - `closeTicket()` ✓
+  - `acceptTicket()` ✓
+  - `rejectTicket()` ✓
+- **可能原因**：
+  1. **异步操作未完成**：之前的操作还在执行中
+  2. **页面重载触发**：`loadTicketDetail` 可能触发了某些自动操作
+  3. **缓存问题**：显示的是缓存的旧状态
+  4. **双击/多次点击**：用户可能快速点击了多次
+- **调试建议**：
+  ```javascript
+  // 在rejectTicket开头添加防重复点击
+  if (this.data.isRejecting) {
+    console.log('正在处理中，请勿重复点击');
+    return;
+  }
+  this.setData({ isRejecting: true });
+  
+  // 在操作完成或取消后重置
+  this.setData({ isRejecting: false });
+  ```
+- **相关文件**：
+  - `/miniprogram/pages/ticket-detail/index.js` - 所有状态操作方法
+- **状态**：待进一步调查和复现
+
+### 问题 #16：实现工单暂停状态的UI标识和功能
+- **发生时间**：2025-08-16
+- **问题描述**：
+  1. 工单在暂停状态没有明确的UI提示
+  2. 暂停状态在数据库中表示为 `status='pending'` 但有 `assigneeOpenid`
+  3. 容易与真正的待处理工单混淆
+  4. 缺少继续处理的便捷操作
+- **问题原因**：
+  1. **状态设计缺陷**：使用同一个 `pending` 状态表示两种不同的情况
+  2. **UI未区分**：前端没有识别并显示暂停状态的逻辑
+  3. **云函数不完整**：暂停时清空了负责人信息，导致无法区分
+- **解决方案**：
+  
+  **1. 前端识别暂停状态（所有页面）**：
+  ```javascript
+  // 判断是否是暂停状态
+  let displayStatus = ticket.status || 'pending';
+  if (ticket.status === 'pending' && ticket.assigneeOpenid) {
+    displayStatus = 'paused';  // UI显示为暂停
+  }
+  ```
+  
+  **2. 添加状态文本映射**：
+  ```javascript
+  statusText: {
+    pending: '待处理',
+    processing: '处理中',
+    resolved: '已解决',
+    cancelled: '已取消',
+    paused: '已暂停'  // 新增
+  }
+  ```
+  
+  **3. 云函数保留负责人信息**：
+  ```javascript
+  // 暂停时不清空assignee
+  if (status === 'pending' && currentStatus === 'processing') {
+    updateData.pauseTime = db.serverDate()
+    // 注意：不要添加 assigneeOpenid: db.command.remove()
+  }
+  ```
+  
+  **4. 新增专门的云函数方法**：
+  ```javascript
+  case 'pauseTicket':
+    return await pauseTicket(event, wxContext)
+  case 'continueTicket':
+    return await continueTicket(event, wxContext)
+  ```
+  
+- **相关文件**：
+  - `/miniprogram/pages/ticket-list/index.js` - 识别暂停状态，添加继续处理按钮
+  - `/miniprogram/pages/ticket-list/index.wxml` - 显示暂停标签和按钮
+  - `/miniprogram/pages/ticket-detail/index.js` - 暂停状态处理逻辑
+  - `/miniprogram/pages/dashboard/index.js` - 统计暂停工单
+  - `/cloudfunctions/submitTicket/index.js` - 新增暂停/继续函数
+- **验证结果**：
+  - 暂停工单显示"已暂停"标签
+  - 继续处理按钮正常工作
+  - Dashboard单独统计暂停工单数量
+  - 暂停后保留负责人信息
+- **经验总结**：
+  1. **状态设计要明确**：不同的业务状态应该有明确的区分方式
+  2. **前后端要同步**：修改状态逻辑时，前端和云函数都要更新
+  3. **保持数据完整性**：暂停不是退回，应保留负责人信息
+  4. **UI反馈要清晰**：用户需要一眼看出工单的真实状态
+
+### 问题 #17：实现暂停状态时容易遗漏的关键点
+- **发生时间**：2025-08-16
+- **问题描述**：在实现工单暂停/继续功能时，有多个容易遗漏的更新点
+- **容易遗漏的点**：
+
+  **1. 状态映射的完整性**：
+  - ❌ 只更新了部分页面的 `statusText`
+  - ✅ 需要更新：工单列表、工单详情、Dashboard 三个页面
+  
+  **2. 状态主题（颜色）映射**：
+  ```javascript
+  // 容易忘记添加 paused 的主题色
+  getStatusTheme(status) {
+    const themes = {
+      pending: 'warning',
+      processing: 'primary',
+      resolved: 'success',
+      cancelled: 'default',
+      paused: 'warning'  // 容易遗漏！
+    };
+  }
+  ```
+  
+  **3. 统计数据的更新**：
+  - Dashboard 的 `loadTicketStats` 需要单独统计暂停工单
+  - 初始 `todayStats` 数组需要添加暂停项
+  - 工程师和经理的统计逻辑不同
+  
+  **4. 权限检查的特殊处理**：
+  ```javascript
+  // updateTicketStatus 中需要区分三种情况
+  if (currentStatus === 'pending' && status === 'processing') {
+    if (!ticket.assigneeOpenid) {
+      // 接单
+    } else if (ticket.assigneeOpenid === wxContext.OPENID) {
+      // 继续处理（容易遗漏）
+    } else {
+      // 不能接别人的工单
+    }
+  }
+  ```
+  
+  **5. 时间字段的管理**：
+  - `processTime`：只在第一次处理时设置
+  - `pauseTime`：暂停时设置
+  - `continueTime`：继续时设置（新增字段）
+  - `acceptTime`：接单时设置
+  
+  **6. 按钮样式的添加**：
+  ```css
+  /* 容易忘记添加继续处理按钮的样式 */
+  .btn-continue {
+    background: rgba(34, 197, 94, 0.15);
+    backdrop-filter: blur(10px);
+    color: #16a34a;
+    /* ... */
+  }
+  ```
+  
+  **7. 工单列表的筛选条件**：
+  ```javascript
+  // 工程师看工单池时，要排除暂停的工单
+  db.collection('tickets').where(_.and([
+    { status: 'pending' },
+    _.or([
+      { assigneeOpenid: _.exists(false) },
+      { assigneeOpenid: '' },
+      { assigneeOpenid: null }
+    ])
+  ]))
+  ```
+  
+  **8. 模拟数据的更新**：
+  - `getMockDashboardData` 中的统计数据
+  - `getMockTicketData` 中的示例工单
+  
+  **9. 状态转换的完整性**：
+  ```javascript
+  // allowedTransitions 要允许暂停和继续
+  const allowedTransitions = {
+    'pending': ['processing', 'cancelled', 'resolved'],
+    'processing': ['pending', 'resolved', 'cancelled'], // pending是暂停
+  }
+  ```
+  
+  **10. 事件处理的防冒泡**：
+  ```javascript
+  // 列表页按钮需要阻止事件冒泡
+  catchtap="continueProcessing"  // 不是 bindtap
+  ```
+
+- **检查清单**：
+  - [ ] 所有页面的 `statusText` 都包含 `paused`
+  - [ ] 所有页面的 `getStatusTheme` 都处理 `paused`
+  - [ ] Dashboard 统计包含暂停工单
+  - [ ] 云函数权限检查区分暂停恢复
+  - [ ] 云函数保留负责人信息
+  - [ ] 时间字段正确设置
+  - [ ] 按钮样式已添加
+  - [ ] 工单筛选逻辑正确
+  - [ ] 状态转换允许暂停/继续
+  - [ ] 事件处理使用 `catchtap`
+
+- **调试技巧**：
+  ```javascript
+  // 在关键位置添加日志
+  console.log('[暂停状态检查]', {
+    status: ticket.status,
+    assigneeOpenid: ticket.assigneeOpenid,
+    isPaused: ticket.status === 'pending' && !!ticket.assigneeOpenid,
+    displayStatus: displayStatus
+  });
+  ```
+
 ## 更新日志
 
 - 2025-08-12：创建文档，整理调试模板和技巧
 - 2025-08-16：添加工单按钮风格统一问题及解决方案
+- 2025-08-16：添加时间线显示错误、日期格式处理、处理时间重复设置、退回预填内容等问题及解决方案
+- 2025-08-16：记录工单状态意外变化问题（待调查）
+- 2025-08-16：添加工单暂停状态实现方案和容易遗漏的关键点

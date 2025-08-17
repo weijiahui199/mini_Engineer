@@ -107,7 +107,7 @@
             </view>
             <view class="header-right">
               <t-tag 
-                theme="{{getStatusTheme(item.status)}}"
+                theme="{{item.status === 'paused' ? 'warning' : getStatusTheme(item.status)}}"
                 variant="light"
                 size="small"
               >
@@ -134,7 +134,7 @@
             </view>
             <view class="info-item">
               <text class="info-icon">⏰</text>
-              <text class="info-text">{{item.createTime}}</text>
+              <text class="info-text">{{item.displayTime}}</text>
             </view>
             <view class="info-item" wx:if="{{item.assigneeName && userRoleGroup === '经理' && currentAssignee === 'all'}}">
               <text class="info-icon">👷</text>
@@ -149,7 +149,7 @@
             
             <!-- 场景1：未分配工单 - 显示开始处理按钮 -->
             <button 
-              wx:if="{{userRoleGroup === '工程师' && item.status === 'pending' && !item.assigneeOpenid}}"
+              wx:if="{{userRoleGroup === '工程师' && item.realStatus === 'pending' && !item.assigneeOpenid}}"
               class="custom-btn btn-primary"
               catchtap="acceptTicketSafely"
               data-id="{{item.id}}"
@@ -157,7 +157,17 @@
               开始处理
             </button>
             
-            <!-- 场景2：我的工单(processing状态) - 显示查看详情和完成工单两个按钮 -->
+            <!-- 场景2：暂停状态的工单 - 显示继续处理按钮 -->
+            <button 
+              wx:elif="{{item.status === 'paused' && item.assigneeOpenid === openid}}"
+              class="custom-btn btn-continue"
+              catchtap="continueProcessing"
+              data-id="{{item.id}}"
+            >
+              继续处理
+            </button>
+            
+            <!-- 场景3：我的工单(processing状态) - 显示查看详情和完成工单两个按钮 -->
             <block wx:elif="{{item.assigneeOpenid === openid && item.status === 'processing'}}">
               <button 
                 class="custom-btn btn-detail"

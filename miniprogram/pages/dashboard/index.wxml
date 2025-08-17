@@ -165,7 +165,7 @@
             </view>
             <view class="meta-item">
               <text class="meta-icon">⏰</text>
-              <text class="meta-text">{{item.createTime}}</text>
+              <text class="meta-text">{{item.updateTime}}</text>
             </view>
           </view>
         </view>

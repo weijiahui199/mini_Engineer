@@ -19,7 +19,8 @@ Page({
       pending: '待处理',
       processing: '处理中',
       resolved: '已解决',
-      cancelled: '已取消'
+      cancelled: '已取消',
+      paused: '已暂停'
     },
     
     // 最后更新时间
@@ -29,6 +30,7 @@ Page({
     todayStats: [
       { key: 'pending', label: '待处理', value: 3, colorClass: 'text-orange', icon: '/assets/icons/pending-icon.png' },
       { key: 'processing', label: '进行中', value: 5, colorClass: 'text-blue', icon: '/assets/icons/processing-icon.png' },
+      { key: 'paused', label: '已暂停', value: 0, colorClass: 'text-orange', icon: '/assets/icons/pause-icon.png' },
       { key: 'resolved', label: '已完成', value: 2, colorClass: 'text-green', icon: '/assets/icons/completed-icon.png' },
       { key: 'urgent', label: '紧急', value: 1, colorClass: 'text-red', icon: '/assets/icons/urgent-icon.png' }
     ],
@@ -478,7 +480,8 @@ Page({
       pending: 'warning',
       processing: 'primary',
       resolved: 'success',
-      cancelled: 'default'
+      cancelled: 'default',
+      paused: 'warning'  // 暂停状态使用警告色
     };
     return themes[status] || 'default';
   },
@@ -743,7 +746,7 @@ Page({
         
       } else if (roleGroup === '工程师') {
         // 工程师：工单池 + 个人视角
-        const [poolTickets, myProcessing, myTodayResolved, urgentTickets] = await Promise.all([
+        const [poolTickets, myProcessing, myPaused, myTodayResolved, urgentTickets] = await Promise.all([
           // 工单池（未分配的待处理）
           db.collection('tickets').where(_.and([
             { status: 'pending' },
@@ -758,6 +761,12 @@ Page({
           db.collection('tickets').where({
             assigneeOpenid: openid,
             status: 'processing'
+          }).count(),
+          
+          // 我的暂停（pending状态但有assigneeOpenid）
+          db.collection('tickets').where({
+            assigneeOpenid: openid,
+            status: 'pending'
           }).count(),
           
           // 我今日完成
@@ -788,6 +797,7 @@ Page({
         return [
           { key: 'pool', label: '待接单', value: poolTickets.total || 0, colorClass: 'text-green', icon: '/assets/icons/pending-icon.png' },
           { key: 'processing', label: '处理中', value: myProcessing.total || 0, colorClass: 'text-blue', icon: '/assets/icons/processing-icon.png' },
+          { key: 'paused', label: '已暂停', value: myPaused.total || 0, colorClass: 'text-orange', icon: '/assets/icons/pause-icon.png' },
           { key: 'resolved', label: '今日完成', value: myTodayResolved.total || 0, colorClass: 'text-cyan', icon: '/assets/icons/completed-icon.png' },
           { key: 'urgent', label: '紧急', value: urgentTickets.total || 0, colorClass: 'text-red', icon: '/assets/icons/urgent-icon.png' }
         ];
@@ -888,7 +898,7 @@ Page({
       
       const res = await db.collection('tickets')
         .where(whereCondition)
-        .orderBy('createTime', 'desc')
+        .orderBy('updateTime', 'desc')  // 按更新时间排序，最近有动作的优先
         .limit(3)
         .get();
       
@@ -951,7 +961,7 @@ Page({
       const res = await db.collection('tickets')
         .where(whereCondition)
         .orderBy('priority', 'desc')  // 优先级高的排前面
-        .orderBy('createTime', 'desc')  // 然后按创建时间排序
+        .orderBy('updateTime', 'desc')  // 然后按更新时间排序，最近有动作的优先
         .limit(5)
         .get();
       
@@ -960,20 +970,31 @@ Page({
         return [];
       }
       
-      return res.data.map(ticket => ({
-        id: ticket._id,
-        ticketNo: ticket.ticketNo ? '#' + ticket.ticketNo : '#' + ticket._id.slice(-6).toUpperCase(),
-        title: ticket.title || ticket.description || '工单',
-        priority: ticket.priority || 'normal',
-        status: ticket.status || 'pending',
-        submitter: ticket.submitterName || ticket.userName || '用户',
-        location: ticket.location || ticket.department || '未知位置',
-        createTime: this.formatTime(ticket.createTime || ticket.createdAt),
-        // 标记工单类型
-        isPool: !ticket.assigneeOpenid && ticket.status === 'pending',  // 工单池
-        isMine: ticket.assigneeOpenid === openid,  // 我的工单
-        assigneeName: ticket.assigneeName  // 负责人名称（经理可见）
-      }));
+      return res.data.map(ticket => {
+        // 判断是否是暂停状态（pending但有assignee）
+        let displayStatus = ticket.status || 'pending';
+        if (ticket.status === 'pending' && ticket.assigneeOpenid) {
+          displayStatus = 'paused';  // UI显示为暂停
+        }
+        
+        return {
+          id: ticket._id,
+          ticketNo: ticket.ticketNo ? '#' + ticket.ticketNo : '#' + ticket._id.slice(-6).toUpperCase(),
+          title: ticket.title || ticket.description || '工单',
+          priority: ticket.priority || 'normal',
+          status: displayStatus,  // 使用显示状态
+          realStatus: ticket.status,  // 保留真实状态
+          submitter: ticket.submitterName || ticket.userName || '用户',
+          location: ticket.location || ticket.department || '未知位置',
+          createTime: this.formatTime(ticket.createTime || ticket.createdAt),
+          updateTime: this.formatTime(ticket.updateTime || ticket.createTime || ticket.createdAt),  // 优先显示更新时间
+          // 标记工单类型
+          isPool: !ticket.assigneeOpenid && ticket.status === 'pending',  // 工单池
+          isMine: ticket.assigneeOpenid === openid,  // 我的工单
+          isPaused: ticket.status === 'pending' && ticket.assigneeOpenid === openid,  // 我的暂停工单
+          assigneeName: ticket.assigneeName  // 负责人名称（经理可见）
+        };
+      });
     } catch (error) {
       console.error('[Dashboard] 加载待处理工单失败:', error);
       return [];

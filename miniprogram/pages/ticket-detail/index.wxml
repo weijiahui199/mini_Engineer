@@ -14,10 +14,10 @@
       <view class="status-left">
         <text class="ticket-number">{{ticketInfo.ticketNo}}</text>
         <t-tag 
-          theme="{{getStatusTheme(ticketInfo.status)}}"
+          theme="{{ticketInfo.status === 'paused' ? 'warning' : getStatusTheme(ticketInfo.status)}}"
           variant="light"
         >
-          {{statusText[ticketInfo.status]}}
+          {{statusText[ticketInfo.status] || statusText[ticketInfo.realStatus]}}
         </t-tag>
       </view>
       <view class="status-right">
@@ -163,8 +163,8 @@
   
   <!-- 底部操作栏 -->
   <view class="bottom-actions safe-bottom" wx:if="{{showActions}}">
-    <!-- 待处理状态 -->
-    <view wx:if="{{ticketInfo.status === 'pending'}}" class="action-group">
+    <!-- 待处理状态（真正的待处理，无负责人） -->
+    <view wx:if="{{ticketInfo.realStatus === 'pending' && !ticketInfo.assigneeOpenid}}" class="action-group">
       <!-- 工程师：未分配工单显示开始处理按钮 -->
       <button 
         wx:if="{{canAccept}}"
@@ -173,21 +173,22 @@
       >
         开始处理
       </button>
-      <!-- 负责人：显示退回和继续处理按钮 -->
-      <block wx:elif="{{isAssignee}}">
-        <button 
-          class="custom-action-btn btn-reject"
-          bindtap="rejectTicket"
-        >
-          退回
-        </button>
-        <button 
-          class="custom-action-btn btn-continue"
-          bindtap="startProcessing"
-        >
-          继续处理
-        </button>
-      </block>
+    </view>
+    
+    <!-- 暂停状态（pending但有负责人） -->
+    <view wx:elif="{{ticketInfo.status === 'paused' && isAssignee}}" class="action-group">
+      <button 
+        class="custom-action-btn btn-reject"
+        bindtap="rejectTicket"
+      >
+        退回工单
+      </button>
+      <button 
+        class="custom-action-btn btn-continue"
+        bindtap="startProcessing"
+      >
+        继续处理
+      </button>
     </view>
     
     <!-- 处理中状态 -->

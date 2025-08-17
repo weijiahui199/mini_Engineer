@@ -22,7 +22,8 @@ Page({
       processing: '处理中',
       resolved: '已解决',
       cancelled: '已取消',
-      closed: '已关闭'
+      closed: '已关闭',
+      paused: '已暂停'
     },
     
     // 统计信息
@@ -126,9 +127,11 @@ Page({
       const skip = append ? (this.data.page - 1) * this.data.pageSize : 0;
       
       // 查询工单数据
+      // 优先按优先级排序，然后按更新时间排序（这样最近有动作的工单会排在前面）
       const res = await this.db.collection('tickets')
         .where(where)
-        .orderBy('createTime', 'desc')
+        .orderBy('priority', 'desc')  // 紧急工单优先
+        .orderBy('updateTime', 'desc')  // 最近更新的优先
         .skip(skip)
         .limit(this.data.pageSize)
         .get();
@@ -138,19 +141,29 @@ Page({
         // 确保status字段是干净的字符串
         const cleanStatus = ticket.status ? String(ticket.status).trim() : 'pending';
         
+        // 判断是否是暂停状态（pending但有assignee）
+        let displayStatus = cleanStatus;
+        if (cleanStatus === 'pending' && ticket.assigneeOpenid) {
+          displayStatus = 'paused';  // UI显示为暂停
+        }
+        
         const formatted = {
           id: ticket._id,
           ticketNo: '#' + ticket.ticketNo,
           title: ticket.title,
           category: ticket.category,
           priority: ticket.priority,
-          status: cleanStatus,  // 使用清理后的状态
+          status: displayStatus,  // 使用显示状态
+          realStatus: cleanStatus,  // 保留真实状态
           submitter: ticket.submitterName,
           location: ticket.location,
           createTime: this.formatTime(ticket.createTime),
+          updateTime: this.formatTime(ticket.updateTime || ticket.createTime),  // 显示更新时间
+          displayTime: ticket.updateTime ? this.formatTime(ticket.updateTime) : this.formatTime(ticket.createTime),  // 智能显示时间
           assigned: !!ticket.assigneeOpenid,
           assigneeOpenid: ticket.assigneeOpenid || '',  // 添加assigneeOpenid字段
-          assigneeName: ticket.assigneeName || ''
+          assigneeName: ticket.assigneeName || '',
+          isPaused: cleanStatus === 'pending' && !!ticket.assigneeOpenid  // 标记是否为暂停状态
         };
         
         return formatted;
@@ -858,6 +871,51 @@ Page({
           'tempFilters.assignee': 'my'
         });
       }
+    }
+  },
+
+  // 继续处理暂停的工单
+  async continueProcessing(e) {
+    // 阻止事件冒泡
+    if (e && e.stopPropagation) {
+      e.stopPropagation();
+    }
+    
+    const ticketId = e.currentTarget.dataset.id;
+    
+    wx.showLoading({ title: '处理中...' });
+    
+    try {
+      // 使用专门的继续处理云函数
+      const cloudResult = await wx.cloud.callFunction({
+        name: 'submitTicket',
+        data: {
+          action: 'continueTicket',
+          ticketId: ticketId
+        }
+      });
+      
+      if (cloudResult.result && cloudResult.result.code === 200) {
+        wx.hideLoading();
+        wx.showToast({
+          title: '继续处理',
+          icon: 'success'
+        });
+        
+        // 刷新列表
+        setTimeout(() => {
+          this.refreshList();
+        }, 500);
+      } else {
+        throw new Error(cloudResult.result?.message || '操作失败');
+      }
+    } catch (error) {
+      console.error('[continueProcessing] 错误:', error);
+      wx.hideLoading();
+      wx.showToast({
+        title: '操作失败',
+        icon: 'error'
+      });
     }
   },
 

@@ -23,7 +23,8 @@ Page({
       pending: '待处理',
       processing: '处理中',
       resolved: '已解决',
-      closed: '已关闭'
+      closed: '已关闭',
+      paused: '已暂停'  // 虽然数据库中是pending，但UI显示为暂停
     },
     
     // 处理时间线 - 初始为空，等待加载真实数据
@@ -32,31 +33,25 @@ Page({
     // 解决方案
     solutionText: '',
     
-    
     // 显示操作按钮
-    showActions: true
+    showActions: true,
+    
+    // 防重复点击标志
+    isProcessing: false,
+    isRejecting: false
   },
 
   onLoad(options) {
-    console.log('[TicketDetail] onLoad 开始执行');
-    console.log('[TicketDetail] 接收到的参数:', options);
-    
     // 获取app实例和数据库
     this.app = getApp();
     this.db = this.app.globalData.db || wx.cloud.database();
     
-    console.log('[TicketDetail] app实例:', this.app);
-    console.log('[TicketDetail] 数据库实例:', this.db);
-    console.log('[TicketDetail] globalData:', this.app.globalData);
-    
     if (options.id) {
-      console.log('[TicketDetail] 工单ID:', options.id);
       this.setData({
         ticketId: options.id
       });
       this.loadTicketDetail(options.id);
     } else {
-      console.error('[TicketDetail] 错误：缺少工单ID');
       // 没有工单ID，显示错误
       wx.showModal({
         title: '参数错误',
@@ -100,13 +95,20 @@ Page({
       // 构建时间线
       const timeline = this.buildTimeline(ticket);
       
+      // 判断实际显示状态（暂停状态特殊处理）
+      let displayStatus = ticket.status || 'pending';
+      if (ticket.status === 'pending' && ticket.assigneeOpenid) {
+        displayStatus = 'paused';  // UI上显示为暂停状态
+      }
+      
       // 格式化工单信息
       const ticketInfo = {
         ticketNo: ticket.ticketNo ? '#' + ticket.ticketNo : '#' + ticket._id.slice(-6).toUpperCase(),
         title: ticket.title || ticket.description || '工单',
         category: ticket.category || '其他',
         priority: ticket.priority || 'normal',
-        status: ticket.status || 'pending',
+        status: displayStatus,  // 使用显示状态
+        realStatus: ticket.status,  // 保留真实状态用于操作判断
         submitter: ticket.submitterName || ticket.userName || '用户',
         phone: ticket.phone || ticket.submitterPhone || '',
         location: ticket.location || ticket.department || '未知位置',
@@ -197,19 +199,17 @@ Page({
     timeline.push({
       id: 'create',
       title: '工单创建',
-      time: createTimeFormatted,
+      time: this.formatDateTime(ticket.createTime || ticket.createdAt),
       description: `${ticket.submitterName || '用户'}创建工单`,
       isActive: true
     });
     
     // 接单节点
     if (ticket.acceptTime) {
-      const acceptTimeFormatted = this.formatDateTime(ticket.acceptTime);
-      console.log('[buildTimeline] 接单时间格式化结果:', acceptTimeFormatted);
       timeline.push({
         id: 'accept',
         title: '工程师接单',
-        time: acceptTimeFormatted,
+        time: this.formatDateTime(ticket.acceptTime),
         description: `${ticket.assigneeName || '工程师'}接单处理`,
         isActive: true
       });
@@ -221,16 +221,11 @@ Page({
       let processTime = ticket.processTime ? this.formatDateTime(ticket.processTime) : '进行中';
       let isProcessingActive = ticket.status === 'processing';
       
-      console.log('[buildTimeline] 处理节点 - processTime原始值:', ticket.processTime);
-      console.log('[buildTimeline] 处理节点 - processTime格式化:', processTime);
-      
       // 如果是暂停状态（pending但有负责人）
       if (ticket.status === 'pending' && ticket.assigneeOpenid) {
         processDescription = '已暂停';
         processTime = ticket.rejectTime ? this.formatDateTime(ticket.rejectTime) : '暂停中';
         isProcessingActive = false;
-        console.log('[buildTimeline] 暂停状态 - rejectTime:', ticket.rejectTime);
-        console.log('[buildTimeline] 暂停状态 - 格式化时间:', processTime);
       }
       
       timeline.push({
@@ -244,12 +239,10 @@ Page({
     
     // 已解决节点
     if (ticket.status === 'resolved' || ticket.status === 'closed') {
-      const resolveTimeFormatted = ticket.resolveTime ? this.formatDateTime(ticket.resolveTime) : '';
-      console.log('[buildTimeline] 解决时间格式化结果:', resolveTimeFormatted);
       timeline.push({
         id: 'resolved',
         title: '已解决',
-        time: resolveTimeFormatted,
+        time: ticket.resolveTime ? this.formatDateTime(ticket.resolveTime) : '',
         description: ticket.solution || '问题已解决',
         isActive: ticket.status === 'resolved'
       });
@@ -257,55 +250,40 @@ Page({
     
     // 已关闭节点
     if (ticket.status === 'closed') {
-      const closeTimeFormatted = ticket.closeTime ? this.formatDateTime(ticket.closeTime) : '';
-      console.log('[buildTimeline] 关闭时间格式化结果:', closeTimeFormatted);
       timeline.push({
         id: 'closed',
         title: '已关闭',
-        time: closeTimeFormatted,
+        time: ticket.closeTime ? this.formatDateTime(ticket.closeTime) : '',
         description: '工单已关闭',
         isActive: true
       });
     }
-    
-    console.log('[buildTimeline] 最终时间线:', timeline);
-    console.log('==================================');
     
     return timeline;
   },
   
   // 格式化日期时间
   formatDateTime(date) {
-    console.log('[formatDateTime] 输入参数:', date, '类型:', typeof date);
-    
-    if (!date) {
-      console.log('[formatDateTime] 日期为空，返回空字符串');
-      return '';
-    }
+    if (!date) return '';
     
     // 处理不同的日期格式
     let d;
     if (date.$date) {
       // MongoDB日期格式 { $date: "2025-08-16T03:20:40.122Z" }
-      console.log('[formatDateTime] 检测到MongoDB日期格式:', date.$date);
       d = new Date(date.$date);
     } else if (typeof date === 'string') {
       // 字符串日期
-      console.log('[formatDateTime] 字符串日期:', date);
       d = new Date(date);
     } else if (date instanceof Date) {
       // Date对象
-      console.log('[formatDateTime] Date对象:', date);
       d = date;
     } else {
       // 尝试直接转换
-      console.log('[formatDateTime] 未知格式，尝试直接转换:', date);
       d = new Date(date);
     }
     
     // 检查日期是否有效
     if (isNaN(d.getTime())) {
-      console.error('[formatDateTime] 无效日期:', date);
       return '时间格式错误';
     }
     
@@ -315,10 +293,7 @@ Page({
     const hour = String(d.getHours()).padStart(2, '0');
     const minute = String(d.getMinutes()).padStart(2, '0');
     
-    const result = `${year}-${month}-${day} ${hour}:${minute}`;
-    console.log('[formatDateTime] 格式化结果:', result);
-    
-    return result;
+    return `${year}-${month}-${day} ${hour}:${minute}`;
   },
 
   // 返回
@@ -327,33 +302,93 @@ Page({
   },
 
 
-  // 开始处理
-  startProcessing() {
+  // 开始处理（继续处理）
+  async startProcessing() {
     wx.showModal({
-      title: '确认开始',
-      content: '确定要开始处理这个工单吗？',
-      success: (res) => {
+      title: '继续处理',
+      content: '确定要继续处理这个工单吗？',
+      success: async (res) => {
         if (res.confirm) {
-          this.updateTicketStatus('processing');
+          wx.showLoading({ title: '处理中...' });
+          
+          try {
+            // 使用专门的继续处理云函数
+            const result = await wx.cloud.callFunction({
+              name: 'submitTicket',
+              data: {
+                action: 'continueTicket',
+                ticketId: this.data.ticketId
+              }
+            });
+            
+            if (result.result && result.result.code === 200) {
+              wx.hideLoading();
+              wx.showToast({
+                title: '继续处理',
+                icon: 'success'
+              });
+              
+              // 重新加载工单详情
+              setTimeout(() => {
+                this.loadTicketDetail(this.data.ticketId);
+              }, 1500);
+            } else {
+              throw new Error(result.result?.message || '操作失败');
+            }
+          } catch (error) {
+            console.error('[startProcessing] 错误:', error);
+            wx.hideLoading();
+            wx.showToast({
+              title: '操作失败',
+              icon: 'error'
+            });
+          }
         }
       }
     });
   },
 
   // 暂停处理
-  pauseProcessing() {
-    console.log('==================================');
-    console.log('[pauseProcessing] 暂停按钮被点击');
-    console.log('[pauseProcessing] 当前工单状态:', this.data.ticketInfo.status);
-    console.log('[pauseProcessing] isAssignee:', this.data.isAssignee);
-    console.log('==================================');
-    
+  async pauseProcessing() {
     wx.showModal({
       title: '暂停处理',
-      content: '确定要暂停处理吗？',
-      success: (res) => {
+      content: '确定要暂停处理吗？暂停后可以随时继续。',
+      success: async (res) => {
         if (res.confirm) {
-          this.updateTicketStatus('pending');
+          wx.showLoading({ title: '处理中...' });
+          
+          try {
+            // 使用专门的暂停云函数
+            const result = await wx.cloud.callFunction({
+              name: 'submitTicket',
+              data: {
+                action: 'pauseTicket',
+                ticketId: this.data.ticketId
+              }
+            });
+            
+            if (result.result && result.result.code === 200) {
+              wx.hideLoading();
+              wx.showToast({
+                title: '已暂停',
+                icon: 'success'
+              });
+              
+              // 重新加载工单详情
+              setTimeout(() => {
+                this.loadTicketDetail(this.data.ticketId);
+              }, 1500);
+            } else {
+              throw new Error(result.result?.message || '暂停失败');
+            }
+          } catch (error) {
+            console.error('[pauseProcessing] 错误:', error);
+            wx.hideLoading();
+            wx.showToast({
+              title: '暂停失败',
+              icon: 'error'
+            });
+          }
         }
       }
     });
@@ -439,7 +474,6 @@ Page({
       cancelText: '取消',
       success: (res) => {
         if (res.confirm) {
-          console.log('[reopenTicket] 重新处理工单');
           this.updateTicketStatus('processing');
         }
       }
@@ -456,7 +490,6 @@ Page({
       confirmColor: '#dc2626',
       success: (res) => {
         if (res.confirm) {
-          console.log('[closeTicket] 关闭工单');
           this.updateTicketStatus('closed');
         }
       }
@@ -485,8 +518,6 @@ Page({
                 ticketId: ticketId
               }
             });
-            
-            console.log('[acceptTicket] 云函数返回:', result);
             
             if (result.result && result.result.code === 200) {
               wx.hideLoading();
@@ -528,14 +559,25 @@ Page({
   
   // 退回工单 - 使用云函数清空负责人信息
   rejectTicket() {
+    // 防重复点击
+    if (this.data.isRejecting) {
+      console.log('正在处理中，请勿重复操作');
+      return;
+    }
+    
     const that = this;
+    
+    // 显示确认对话框
     wx.showModal({
       title: '退回工单',
-      content: '退回后工单将重新进入待接单状态',
+      content: '提示：退回后工单将重新进入待接单状态，其他工程师可以接单处理。',
       editable: true,
       placeholderText: '请输入退回原因（选填）',
       success: async function(res) {
         if (res.confirm) {
+          // 设置处理中标志
+          that.setData({ isRejecting: true });
+          
           wx.showLoading({
             title: '退回中...'
           });
@@ -543,9 +585,6 @@ Page({
           try {
             const ticketId = that.data.ticketId;
             const rejectReason = res.content || '';  // 如果没有输入原因，保持为空
-            
-            console.log('[rejectTicket] 退回工单:', ticketId);
-            console.log('[rejectTicket] 退回原因:', rejectReason || '(未填写)');
             
             // 调用云函数退回工单
             const result = await wx.cloud.callFunction({
@@ -557,7 +596,6 @@ Page({
               }
             });
             
-            console.log('[rejectTicket] 云函数返回:', result);
             
             if (result.result && result.result.code === 200) {
               wx.hideLoading();
@@ -565,6 +603,9 @@ Page({
                 title: '退回成功',
                 icon: 'success'
               });
+              
+              // 重置标志
+              that.setData({ isRejecting: false });
               
               // 1.5秒后返回上一页
               setTimeout(() => {
@@ -577,9 +618,11 @@ Page({
             console.error('[rejectTicket] 错误:', error);
             wx.hideLoading();
             
+            // 重置标志
+            that.setData({ isRejecting: false });
+            
             // 如果云函数没有rejectTicket方法，使用updateStatus方法
             try {
-              console.log('[rejectTicket] 尝试使用updateStatus方法...');
               
               // 直接更新数据库，清空负责人信息
               const updateData = {
@@ -600,13 +643,15 @@ Page({
                 data: updateData
               });
               
-              console.log('[rejectTicket] 数据库更新结果:', updateResult);
               
               if (updateResult.stats.updated > 0) {
                 wx.showToast({
                   title: '退回成功',
                   icon: 'success'
                 });
+                
+                // 重置标志
+                that.setData({ isRejecting: false });
                 
                 setTimeout(() => {
                   wx.navigateBack();
@@ -616,6 +661,8 @@ Page({
                   title: '退回失败',
                   icon: 'error'
                 });
+                // 重置标志
+                that.setData({ isRejecting: false });
               }
             } catch (dbError) {
               console.error('[rejectTicket] 数据库更新失败:', dbError);
@@ -623,6 +670,8 @@ Page({
                 title: '操作失败',
                 icon: 'error'
               });
+              // 重置标志
+              that.setData({ isRejecting: false });
             }
           }
         }

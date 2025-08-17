@@ -137,6 +137,14 @@
         arrow
         bind:click="goToAbout"
       />
+      <!-- 测试入口（仅开发环境） -->
+      <t-cell 
+        title="历史功能测试" 
+        note="验证processHistory"
+        left-icon="tools"
+        arrow
+        bind:click="goToHistoryTest"
+      />
     </t-cell-group>
   </view>
 
