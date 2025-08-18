@@ -5,13 +5,18 @@ const NetworkHandler = require('../../utils/network-handler');
 
 Page({
   data: {
+    // 用户角色标识
+    userRole: '',      // 当前用户角色
+    isEngineer: false, // 是否是工程师
+    isManager: false,  // 是否是经理
+    
     // 工程师信息
     engineerInfo: {
       name: '张工程师',
       avatar: '',
-      currentTasks: 5,
-      maxTasks: 10,
-      location: '行政楼2楼'
+      currentTasks: 0,  // 改为0
+      maxTasks: 0,       // 改为0
+      location: ''       // 改为空字符串
     },
     
     // 状态文本映射
@@ -28,11 +33,11 @@ Page({
     
     // 今日统计
     todayStats: [
-      { key: 'pending', label: '待处理', value: 3, colorClass: 'text-orange', icon: '/assets/icons/pending-icon.png' },
-      { key: 'processing', label: '进行中', value: 5, colorClass: 'text-blue', icon: '/assets/icons/processing-icon.png' },
+      { key: 'pending', label: '待处理', value: 0, colorClass: 'text-orange', icon: '/assets/icons/pending-icon.png' },
+      { key: 'processing', label: '进行中', value: 0, colorClass: 'text-blue', icon: '/assets/icons/processing-icon.png' },
       { key: 'paused', label: '已暂停', value: 0, colorClass: 'text-orange', icon: '/assets/icons/pause-icon.png' },
-      { key: 'resolved', label: '已完成', value: 2, colorClass: 'text-green', icon: '/assets/icons/completed-icon.png' },
-      { key: 'urgent', label: '紧急', value: 1, colorClass: 'text-red', icon: '/assets/icons/urgent-icon.png' }
+      { key: 'resolved', label: '已完成', value: 0, colorClass: 'text-green', icon: '/assets/icons/completed-icon.png' },
+      { key: 'urgent', label: '紧急', value: 0, colorClass: 'text-red', icon: '/assets/icons/urgent-icon.png' }
     ],
     
     // 紧急工单
@@ -507,7 +512,15 @@ Page({
     const { avatarUrl } = e.detail;
     console.log('[Dashboard] 选择的头像:', avatarUrl);
     
-    if (!avatarUrl) return;
+    if (!avatarUrl) {
+      console.error('[Dashboard] 头像URL为空');
+      return;
+    }
+
+    // 先显示选中的头像（临时URL）
+    this.setData({
+      'engineerInfo.avatar': avatarUrl
+    });
 
     // 检查网络状态
     if (!NetworkHandler.isNetworkConnected()) {
@@ -525,6 +538,7 @@ Page({
       // 获取openid
       const openid = this.app.globalData.openid || wx.getStorageSync('openid');
       if (!openid) {
+        wx.hideLoading();
         wx.showToast({
           title: '请先登录',
           icon: 'none'
@@ -532,41 +546,64 @@ Page({
         return;
       }
 
-      // 上传头像到云存储（带重试）
-      const cloudPath = `avatars/${openid}_${Date.now()}.png`;
+      // 先保存临时文件到本地（解决开发者工具的临时文件问题）
+      let tempFilePath = avatarUrl;
+      
+      // 如果是临时文件，先保存到本地
+      if (avatarUrl.startsWith('wxfile://') || avatarUrl.startsWith('http://tmp/')) {
+        try {
+          const savedFile = await wx.saveFile({
+            tempFilePath: avatarUrl
+          });
+          tempFilePath = savedFile.savedFilePath;
+          console.log('[Dashboard] 临时文件已保存到:', tempFilePath);
+        } catch (saveError) {
+          console.warn('[Dashboard] 保存临时文件失败，使用原路径:', saveError);
+          // 如果保存失败，仍然尝试使用原路径
+        }
+      }
+
+      // 上传头像到云存储（带重试）- 使用固定文件名实现覆盖
+      const cloudPath = `avatars/${openid}.png`;
       const uploadRes = await NetworkHandler.uploadFileWithRetry({
         cloudPath,
-        filePath: avatarUrl
+        filePath: tempFilePath
       });
 
       console.log('[Dashboard] 头像上传成功:', uploadRes.fileID);
 
-      // 更新数据库中的用户头像（带重试）
-      await NetworkHandler.databaseOperationWithRetry(async () => {
-        return this.db.collection('users').where({
-          openid: openid
-        }).update({
-          data: {
-            avatar: uploadRes.fileID,
-            avatarUpdateTime: new Date(),
-            updateTime: new Date()
-          }
-        });
+      // 使用云函数更新数据库（避免权限问题）
+      const updateRes = await NetworkHandler.callFunctionWithRetry({
+        name: 'userProfile',
+        data: {
+          action: 'updateUserProfile',
+          avatar: uploadRes.fileID
+        }
       });
 
-      // 更新本地显示
+      if (!updateRes.result || updateRes.result.code !== 200) {
+        throw new Error(updateRes.result?.message || '数据库更新失败');
+      }
+
+      // 获取带版本号的头像URL
+      const avatarVersion = updateRes.result.data?.avatarVersion || Date.now();
+      const avatarUrlWithVersion = `${uploadRes.fileID}?v=${avatarVersion}`;
+
+      // 更新本地显示（带版本号）
       this.setData({
-        'engineerInfo.avatar': uploadRes.fileID
+        'engineerInfo.avatar': avatarUrlWithVersion
       });
 
-      // 更新缓存
+      // 更新缓存（包含版本号）
       const userInfo = wx.getStorageSync('userInfo') || {};
       userInfo.avatar = uploadRes.fileID;
+      userInfo.avatarVersion = avatarVersion;
       wx.setStorageSync('userInfo', userInfo);
 
       // 更新全局数据
       if (this.app.globalData.userInfo) {
         this.app.globalData.userInfo.avatar = uploadRes.fileID;
+        this.app.globalData.userInfo.avatarVersion = avatarVersion;
       }
       
       // 更新头像缓存并触发全局事件
@@ -607,6 +644,19 @@ Page({
       // 使用缓存管理器获取用户信息
       const userInfo = await UserCache.getUserInfo(forceRefresh);
       console.log('[Dashboard.loadUserInfo] 获取到的用户信息:', userInfo);
+      
+      // 设置角色标识
+      const roleGroup = userInfo?.roleGroup || '用户';
+      this.setData({
+        userRole: roleGroup,
+        isEngineer: roleGroup === '工程师',
+        isManager: roleGroup === '经理'
+      });
+      console.log('[Dashboard.loadUserInfo] 角色标识已设置:', {
+        userRole: roleGroup,
+        isEngineer: roleGroup === '工程师',
+        isManager: roleGroup === '经理'
+      });
       
       if (!userInfo) {
         console.log('[Dashboard.loadUserInfo] 用户信息为空，返回默认值');
@@ -659,6 +709,12 @@ Page({
       else {
         avatarUrl = userInfo.avatar || '';
         console.log('[Dashboard.loadUserInfo] 使用默认头像或空');
+      }
+      
+      // 如果有版本号，添加版本参数解决缓存问题
+      if (avatarUrl && userInfo.avatarVersion) {
+        const separator = avatarUrl.includes('?') ? '&' : '?';
+        avatarUrl = `${avatarUrl}${separator}v=${userInfo.avatarVersion}`;
       }
       
       console.log('[Dashboard.loadUserInfo] 最终决定使用的头像URL:', avatarUrl);
@@ -823,11 +879,13 @@ Page({
         
         const total = myPending.total + myProcessing.total + myResolved.total;
         
+        // 统一返回5个统计项，保持UI一致
         return [
-          { key: 'pending', label: '待处理', value: myPending.total || 0, colorClass: 'text-orange', icon: '/assets/icons/pending-icon.png' },
+          { key: 'pool', label: '待接单', value: 0, colorClass: 'text-green', icon: '/assets/icons/pending-icon.png' },  // 普通用户显示0
           { key: 'processing', label: '处理中', value: myProcessing.total || 0, colorClass: 'text-blue', icon: '/assets/icons/processing-icon.png' },
+          { key: 'paused', label: '已暂停', value: 0, colorClass: 'text-orange', icon: '/assets/icons/pause-icon.png' },  // 普通用户显示0
           { key: 'resolved', label: '已完成', value: myResolved.total || 0, colorClass: 'text-green', icon: '/assets/icons/completed-icon.png' },
-          { key: 'total', label: '全部', value: total, colorClass: 'text-gray', icon: '/assets/icons/stats-icon.png' }
+          { key: 'total', label: '我的工单', value: total, colorClass: 'text-gray', icon: '/assets/icons/urgent-icon.png' }
         ];
       }
     } catch (error) {

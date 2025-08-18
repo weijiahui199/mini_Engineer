@@ -48,12 +48,8 @@ async function uploadAvatar(event, wxContext) {
   }
   
   try {
-    // 生成文件路径
-    const date = new Date()
-    const year = date.getFullYear()
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const timestamp = date.getTime()
-    const ext = fileName ? fileName.split('.').pop().toLowerCase() : 'jpg'
+    // 获取文件扩展名
+    const ext = fileName ? fileName.split('.').pop().toLowerCase() : 'png'
     
     // 确保是支持的图片格式
     const allowedExts = ['jpg', 'jpeg', 'png', 'gif', 'webp']
@@ -64,8 +60,8 @@ async function uploadAvatar(event, wxContext) {
       }
     }
     
-    // 构建云存储路径
-    const cloudPath = `user-avatars/${year}/${month}/${openid}_${timestamp}.${ext}`
+    // 使用固定路径，实现覆盖更新
+    const cloudPath = `avatars/${openid}.${ext}`
     
     // 获取用户之前的头像
     const userResult = await db.collection('users').where({
@@ -103,17 +99,8 @@ async function uploadAvatar(event, wxContext) {
       })
     }
     
-    // 删除旧头像（如果存在且是云存储文件）
-    if (oldAvatarUrl && oldAvatarUrl.startsWith('cloud://')) {
-      try {
-        await cloud.deleteFile({
-          fileList: [oldAvatarUrl]
-        })
-        console.log('旧头像已删除:', oldAvatarUrl)
-      } catch (err) {
-        console.error('删除旧头像失败:', err)
-      }
-    }
+    // 由于使用固定文件名覆盖，不需要删除旧文件
+    // 云存储会自动覆盖同名文件
     
     return {
       success: true,

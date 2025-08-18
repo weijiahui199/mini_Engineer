@@ -234,6 +234,12 @@ Page({
         console.log('[Profile.loadUserInfo] 使用默认头像或空');
       }
       
+      // 如果有版本号，添加版本参数解决缓存问题
+      if (avatarUrl && userInfo.avatarVersion) {
+        const separator = avatarUrl.includes('?') ? '&' : '?';
+        avatarUrl = `${avatarUrl}${separator}v=${userInfo.avatarVersion}`;
+      }
+      
       console.log('[Profile.loadUserInfo] 决定使用的头像URL:', avatarUrl);
       console.log('[Profile.loadUserInfo] - localAvatar:', userInfo.localAvatar);
       console.log('[Profile.loadUserInfo] - avatar:', userInfo.avatar);
@@ -411,7 +417,12 @@ Page({
   // 选择头像 - 使用新的 open-type="chooseAvatar"
   onChooseAvatar(e) {
     const { avatarUrl } = e.detail;
-    console.log('选择的头像:', avatarUrl);
+    console.log('[Profile] 选择的头像:', avatarUrl);
+    
+    if (!avatarUrl) {
+      console.error('[Profile] 头像URL为空');
+      return;
+    }
     
     // 立即更新显示
     this.setData({
@@ -449,32 +460,65 @@ Page({
       const app = getApp();
       const openid = app.globalData.openid;
       
-      // 上传到云存储（带重试）
-      const cloudPath = `avatars/${openid}_${Date.now()}.png`;
+      if (!openid) {
+        wx.hideLoading();
+        wx.showToast({
+          title: '请先登录',
+          icon: 'none'
+        });
+        return;
+      }
+      
+      // 先保存临时文件到本地（解决开发者工具的临时文件问题）
+      let filePath = tempFilePath;
+      
+      // 如果是临时文件，先保存到本地
+      if (tempFilePath.startsWith('wxfile://') || tempFilePath.startsWith('http://tmp/')) {
+        try {
+          const savedFile = await wx.saveFile({
+            tempFilePath: tempFilePath
+          });
+          filePath = savedFile.savedFilePath;
+          console.log('[Profile] 临时文件已保存到:', filePath);
+        } catch (saveError) {
+          console.warn('[Profile] 保存临时文件失败，使用原路径:', saveError);
+          // 如果保存失败，仍然尝试使用原路径
+        }
+      }
+      
+      // 上传到云存储（带重试）- 使用固定文件名实现覆盖
+      const cloudPath = `avatars/${openid}.png`;
       const uploadRes = await NetworkHandler.uploadFileWithRetry({
         cloudPath,
-        filePath: tempFilePath
+        filePath: filePath
       });
       
-      // 更新数据库（带重试）
-      await NetworkHandler.databaseOperationWithRetry(async () => {
-        return this.db.collection('users').where({
-          openid: openid
-        }).update({
-          data: {
-            avatar: uploadRes.fileID,
-            avatarUpdateTime: new Date()
-          }
-        });
+      // 使用云函数更新数据库（避免权限问题）
+      const updateRes = await NetworkHandler.callFunctionWithRetry({
+        name: 'userProfile',
+        data: {
+          action: 'updateUserProfile',
+          avatar: uploadRes.fileID
+        }
       });
+
+      if (!updateRes.result || updateRes.result.code !== 200) {
+        throw new Error(updateRes.result?.message || '数据库更新失败');
+      }
+
+      // 获取带版本号的头像URL
+      const avatarVersion = updateRes.result.data?.avatarVersion || Date.now();
+      const avatarUrlWithVersion = `${uploadRes.fileID}?v=${avatarVersion}`;
       
-      // 更新本地缓存
+      // 更新本地缓存（包含版本号）
       const userInfo = wx.getStorageSync('userInfo') || {};
       userInfo.avatar = uploadRes.fileID;
+      userInfo.avatarVersion = avatarVersion;
       wx.setStorageSync('userInfo', userInfo);
       
-      // 更新全局数据
+      // 更新全局数据（包含版本号）
       app.globalData.userInfo.avatar = uploadRes.fileID;
+      app.globalData.userInfo.avatarVersion = avatarVersion;
       
       // 更新头像缓存并触发全局事件
       const UserCache = require('../../utils/user-cache');

@@ -1,4 +1,218 @@
-// 头像管理工具
+/**
+ * 头像管理工具
+ * 统一处理头像上传、更新、缓存
+ * 使用固定文件名实现覆盖更新，节省存储空间
+ */
+
+const NetworkHandler = require('./network-handler');
+const UserCache = require('./user-cache');
+
+class AvatarManager {
+  /**
+   * 更新用户头像
+   * @param {string} tempFilePath - 临时文件路径
+   * @param {string} openid - 用户openid
+   * @returns {Promise<{success: boolean, fileID?: string, error?: string}>}
+   */
+  static async updateAvatar(tempFilePath, openid) {
+    if (!tempFilePath || !openid) {
+      return {
+        success: false,
+        error: '缺少必要参数'
+      };
+    }
+
+    try {
+      // 1. 检查网络状态
+      if (!NetworkHandler.isNetworkConnected()) {
+        throw new Error('网络未连接');
+      }
+
+      // 2. 上传到云存储（覆盖模式）
+      const cloudPath = `avatars/${openid}.png`;
+      console.log('[AvatarManager] 上传头像，使用覆盖模式:', cloudPath);
+      
+      const uploadRes = await NetworkHandler.uploadFileWithRetry({
+        cloudPath,
+        filePath: tempFilePath
+      });
+
+      if (!uploadRes || !uploadRes.fileID) {
+        throw new Error('上传失败，未获得文件ID');
+      }
+
+      // 3. 更新数据库（通过云函数）
+      const updateRes = await NetworkHandler.callFunctionWithRetry({
+        name: 'userProfile',
+        data: {
+          action: 'updateUserProfile',
+          avatar: uploadRes.fileID
+        }
+      });
+
+      if (!updateRes.result || updateRes.result.code !== 200) {
+        throw new Error(updateRes.result?.message || '数据库更新失败');
+      }
+
+      // 获取版本号
+      const avatarVersion = updateRes.result.data?.avatarVersion || Date.now();
+
+      // 4. 更新本地缓存（包含版本号）
+      await UserCache.updateAvatarCache(uploadRes.fileID);
+
+      // 5. 更新全局数据
+      const app = getApp();
+      if (app.globalData.userInfo) {
+        app.globalData.userInfo.avatar = uploadRes.fileID;
+        app.globalData.userInfo.avatarVersion = avatarVersion;
+      }
+
+      // 6. 更新本地存储
+      const userInfo = wx.getStorageSync('userInfo') || {};
+      userInfo.avatar = uploadRes.fileID;
+      userInfo.avatarVersion = avatarVersion;
+      wx.setStorageSync('userInfo', userInfo);
+
+      console.log('[AvatarManager] 头像更新成功:', uploadRes.fileID, '版本:', avatarVersion);
+      
+      return {
+        success: true,
+        fileID: uploadRes.fileID,
+        avatarVersion: avatarVersion,
+        avatarUrlWithVersion: `${uploadRes.fileID}?v=${avatarVersion}`
+      };
+
+    } catch (error) {
+      console.error('[AvatarManager] 头像更新失败:', error);
+      return {
+        success: false,
+        error: error.message || '更新失败'
+      };
+    }
+  }
+
+  /**
+   * 处理头像选择事件
+   * @param {object} event - 微信选择头像事件
+   * @param {object} options - 配置选项
+   * @returns {Promise<{success: boolean, fileID?: string}>}
+   */
+  static async handleChooseAvatar(event, options = {}) {
+    const { avatarUrl } = event.detail;
+    const { 
+      openid,
+      onSuccess = () => {},
+      onError = () => {},
+      showLoading = true
+    } = options;
+
+    if (!avatarUrl) {
+      console.error('[AvatarManager] 未选择头像');
+      return { success: false };
+    }
+
+    if (!openid) {
+      wx.showToast({
+        title: '请先登录',
+        icon: 'none'
+      });
+      return { success: false };
+    }
+
+    if (showLoading) {
+      wx.showLoading({ title: '上传中...' });
+    }
+
+    try {
+      // 处理临时文件
+      let filePath = avatarUrl;
+      if (avatarUrl.startsWith('wxfile://') || avatarUrl.startsWith('http://tmp/')) {
+        try {
+          const savedFile = await wx.saveFile({
+            tempFilePath: avatarUrl
+          });
+          filePath = savedFile.savedFilePath;
+        } catch (e) {
+          console.warn('[AvatarManager] 保存临时文件失败，使用原路径');
+        }
+      }
+
+      // 更新头像
+      const result = await this.updateAvatar(filePath, openid);
+      
+      if (result.success) {
+        if (showLoading) {
+          wx.hideLoading();
+        }
+        wx.showToast({
+          title: '头像更新成功',
+          icon: 'success'
+        });
+        onSuccess(result.avatarUrlWithVersion || result.fileID);
+      } else {
+        throw new Error(result.error);
+      }
+
+      return result;
+
+    } catch (error) {
+      if (showLoading) {
+        wx.hideLoading();
+      }
+      
+      // 显示错误提示
+      NetworkHandler.showErrorDialog(error, {
+        title: '头像更新失败',
+        confirmText: '重试',
+        cancelText: '取消',
+        onConfirm: () => {
+          // 重试
+          this.handleChooseAvatar(event, options);
+        },
+        onCancel: onError
+      });
+
+      return { success: false };
+    }
+  }
+
+  /**
+   * 获取头像URL（处理缓存问题）
+   * @param {string} fileID - 云存储文件ID
+   * @param {number} version - 头像版本号
+   * @returns {string}
+   */
+  static getAvatarURL(fileID, version) {
+    if (!fileID) return '';
+    
+    // 如果有版本号，添加版本参数
+    if (version) {
+      const separator = fileID.includes('?') ? '&' : '?';
+      return `${fileID}${separator}v=${version}`;
+    }
+    
+    return fileID;
+  }
+
+  /**
+   * 从用户信息构建头像URL
+   * @param {object} userInfo - 用户信息对象
+   * @returns {string}
+   */
+  static getAvatarFromUserInfo(userInfo) {
+    if (!userInfo || !userInfo.avatar) return '';
+    
+    // 如果有版本号，使用版本号
+    if (userInfo.avatarVersion) {
+      return this.getAvatarURL(userInfo.avatar, userInfo.avatarVersion);
+    }
+    
+    // 否则直接返回
+    return userInfo.avatar;
+  }
+}
+
+module.exports = AvatarManager;
 // 处理头像选择、压缩、上传等功能
 
 /**

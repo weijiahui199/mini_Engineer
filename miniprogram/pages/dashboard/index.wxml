@@ -176,13 +176,23 @@
         
         <!-- 操作按钮独立区域 - 不触发跳转 -->
         <view class="ticket-actions">
+          <!-- 只有工程师和经理显示"开始处理"按钮 -->
           <button 
-            wx:if="{{item.status === 'pending' && !item.assigneeOpenid}}"
+            wx:if="{{(isEngineer || isManager) && item.status === 'pending' && !item.assigneeOpenid}}"
             class="custom-action-btn btn-primary-action"
             catchtap="acceptTicket"
             data-id="{{item.id}}"
           >
             开始处理
+          </button>
+          <!-- 普通用户的待处理工单显示查看按钮 -->
+          <button 
+            wx:elif="{{!isEngineer && !isManager && item.status === 'pending'}}"
+            class="custom-action-btn btn-view-detail"
+            catchtap="viewDetail"
+            data-id="{{item.id}}"
+          >
+            查看状态
           </button>
           <button 
             wx:elif="{{item.status === 'processing'}}"

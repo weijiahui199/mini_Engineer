@@ -145,7 +145,14 @@ async function updateUserProfile(event, wxContext) {
       if (nickName !== undefined) updateData.nickName = nickName || ''
       if (email !== undefined) updateData.email = email || ''
       if (employeeId !== undefined) updateData.employeeId = employeeId || ''
-      if (avatar !== undefined) updateData.avatar = avatar || ''
+      if (avatar !== undefined) {
+        updateData.avatar = avatar || ''
+        // 更新头像时同时更新版本号，用于解决缓存问题
+        if (avatar) {
+          updateData.avatarVersion = Date.now()
+          updateData.avatarUpdateTime = db.serverDate()
+        }
+      }
       
       const updateResult = await db.collection('users')
         .doc(userId)
@@ -187,7 +194,14 @@ async function updateUserProfile(event, wxContext) {
       if (nickName !== undefined) newUserData.nickName = nickName || ''
       if (email !== undefined) newUserData.email = email || ''
       if (employeeId !== undefined) newUserData.employeeId = employeeId || ''
-      if (avatar !== undefined) newUserData.avatar = avatar || ''
+      if (avatar !== undefined) {
+        newUserData.avatar = avatar || ''
+        // 新用户也需要设置头像版本号
+        if (avatar) {
+          newUserData.avatarVersion = Date.now()
+          newUserData.avatarUpdateTime = db.serverDate()
+        }
+      }
       
       const addResult = await db.collection('users').add({
         data: newUserData

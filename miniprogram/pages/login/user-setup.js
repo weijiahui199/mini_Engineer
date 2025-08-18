@@ -101,8 +101,9 @@ Page({
         wx.showLoading({ title: '上传头像中...' });
         
         try {
-          const cloudPath = `avatars/${this.data.openid}_${Date.now()}.png`;
-          console.log('[UserSetup] 准备上传头像到云存储:', {
+          // 使用固定文件名实现覆盖，节省存储空间
+          const cloudPath = `avatars/${this.data.openid}.png`;
+          console.log('[UserSetup] 准备上传头像到云存储（覆盖模式）:', {
             cloudPath: cloudPath,
             tempPath: this.data.avatarUrl
           });
