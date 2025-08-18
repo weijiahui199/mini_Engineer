@@ -6,6 +6,35 @@ cloud.init({
 
 const db = cloud.database()
 
+// 获取用户角色 - 从数据库查询真实角色，不依赖前端传递
+async function getUserRole(openid) {
+  try {
+    const userResult = await db.collection('users').where({
+      openid: openid
+    }).limit(1).get()
+    
+    if (userResult.data.length > 0) {
+      return userResult.data[0].roleGroup || '用户'
+    }
+    return '用户' // 默认为普通用户
+  } catch (error) {
+    console.error('获取用户角色失败:', error)
+    return '用户' // 出错时默认为普通用户
+  }
+}
+
+// 检查用户是否有工程师或经理权限
+async function checkEngineerPermission(openid) {
+  const role = await getUserRole(openid)
+  return role === '工程师' || role === '经理'
+}
+
+// 检查用户是否有经理权限
+async function checkManagerPermission(openid) {
+  const role = await getUserRole(openid)
+  return role === '经理'
+}
+
 // 云函数入口函数
 exports.main = async (event, context) => {
   const wxContext = cloud.getWXContext()
@@ -156,20 +185,23 @@ async function submitTicket(event, wxContext) {
 
 // 获取工单列表 - 支持新的权限模型
 async function getTicketListByRole(event, wxContext) {
-  const { page = 1, limit = 20, status, roleGroup, filter } = event
+  const { page = 1, limit = 20, status, filter } = event
   const _ = db.command
+  
+  // 从数据库获取用户真实角色，不依赖前端传递
+  const userRole = await getUserRole(wxContext.OPENID)
   
   let query
   
-  // 根据角色构建查询条件
-  if (roleGroup === '经理') {
+  // 根据真实角色构建查询条件
+  if (userRole === '经理') {
     // 经理查看所有或筛选
     if (filter === 'my') {
       query = { assigneeOpenid: wxContext.OPENID }
     } else {
       query = {}
     }
-  } else if (roleGroup === '工程师') {
+  } else if (userRole === '工程师') {
     // 工程师查看工单池 + 自己的
     query = _.or([
       _.and([
@@ -451,29 +483,44 @@ async function updateTicketStatus(event, wxContext) {
     const ticket = existResult.data
     const currentStatus = ticket.status
     
+    // 获取用户真实角色
+    const userRole = await getUserRole(wxContext.OPENID)
+    
     // 权限检查 - 根据不同场景判断
     // 1. 工单创建者可以取消
     // 2. 负责人可以更新状态
-    // 3. 工程师可以接单（pending -> processing）
+    // 3. 工程师/经理可以接单（pending -> processing）
+    // 4. 经理可以操作任何工单
     const isOwner = ticket.openid === wxContext.OPENID
     const isAssignee = ticket.assigneeOpenid === wxContext.OPENID
+    const isManager = userRole === '经理'
+    const isEngineer = userRole === '工程师'
     
     // 特殊处理：状态转换权限
     if (currentStatus === 'pending' && status === 'processing') {
       if (!ticket.assigneeOpenid) {
-        // 这是接单操作，任何工程师都可以接
+        // 这是接单操作，只有工程师或经理可以接单
+        if (!isEngineer && !isManager) {
+          await transaction.rollback()
+          return {
+            code: 403,
+            message: '只有工程师或经理可以接单'
+          }
+        }
       } else if (ticket.assigneeOpenid === wxContext.OPENID) {
         // 这是继续处理操作（从暂停恢复），只有负责人可以继续
       } else {
-        // 其他人不能接已分配的工单
-        await transaction.rollback()
-        return {
-          code: 403,
-          message: '此工单已分配给其他工程师'
+        // 其他人不能接已分配的工单，除非是经理
+        if (!isManager) {
+          await transaction.rollback()
+          return {
+            code: 403,
+            message: '此工单已分配给其他工程师'
+          }
         }
       }
-    } else if (!isOwner && !isAssignee) {
-      // 其他情况需要是创建者或负责人
+    } else if (!isOwner && !isAssignee && !isManager) {
+      // 其他情况需要是创建者、负责人或经理
       await transaction.rollback()
       return {
         code: 403,
@@ -614,6 +661,15 @@ async function acceptTicket(event, wxContext) {
     return {
       code: 400,
       message: '工单ID不能为空'
+    }
+  }
+  
+  // 首先检查用户权限
+  const hasPermission = await checkEngineerPermission(wxContext.OPENID)
+  if (!hasPermission) {
+    return {
+      code: 403,
+      message: '只有工程师或经理可以接单'
     }
   }
   
@@ -832,12 +888,16 @@ async function pauseTicket(event, wxContext) {
       }
     }
     
-    // 检查权限：只有负责人可以暂停
-    if (ticket.data.assigneeOpenid !== wxContext.OPENID) {
+    // 检查权限：只有负责人或经理可以暂停
+    const userRole = await getUserRole(wxContext.OPENID)
+    const isAssignee = ticket.data.assigneeOpenid === wxContext.OPENID
+    const isManager = userRole === '经理'
+    
+    if (!isAssignee && !isManager) {
       await transaction.rollback()
       return {
         code: 403,
-        message: '只有负责人可以暂停工单'
+        message: '只有负责人或经理可以暂停工单'
       }
     }
     
@@ -926,12 +986,16 @@ async function continueTicket(event, wxContext) {
       }
     }
     
-    // 检查权限：只有负责人可以继续
-    if (ticket.data.assigneeOpenid !== wxContext.OPENID) {
+    // 检查权限：只有负责人或经理可以继续
+    const userRole = await getUserRole(wxContext.OPENID)
+    const isAssignee = ticket.data.assigneeOpenid === wxContext.OPENID
+    const isManager = userRole === '经理'
+    
+    if (!isAssignee && !isManager) {
       await transaction.rollback()
       return {
         code: 403,
-        message: '只有负责人可以继续处理工单'
+        message: '只有负责人或经理可以继续处理工单'
       }
     }
     

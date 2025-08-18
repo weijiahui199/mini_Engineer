@@ -246,6 +246,32 @@ App({
       RefreshManager.reset();
     });
     
+    // 监听工单相关事件
+    this.eventBus.on(EVENTS.TICKET_CREATED, () => {
+      console.log('[App] 监听到工单创建事件');
+      RefreshManager.handleGlobalEvent('TICKET_CREATED');
+    });
+    
+    this.eventBus.on(EVENTS.TICKET_UPDATED, () => {
+      console.log('[App] 监听到工单更新事件');
+      RefreshManager.handleGlobalEvent('TICKET_UPDATED');
+    });
+    
+    this.eventBus.on(EVENTS.TICKET_ACCEPTED, () => {
+      console.log('[App] 监听到工单接单事件');
+      RefreshManager.handleGlobalEvent('TICKET_ACCEPTED');
+    });
+    
+    this.eventBus.on(EVENTS.TICKET_COMPLETED, () => {
+      console.log('[App] 监听到工单完成事件');
+      RefreshManager.handleGlobalEvent('TICKET_COMPLETED');
+    });
+    
+    this.eventBus.on(EVENTS.TICKET_REJECTED, () => {
+      console.log('[App] 监听到工单退回事件');
+      RefreshManager.handleGlobalEvent('TICKET_REJECTED');
+    });
+    
     console.log('[App] 全局事件处理器设置完成');
   }
 });

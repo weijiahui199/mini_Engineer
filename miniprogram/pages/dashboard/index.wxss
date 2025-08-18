@@ -305,7 +305,9 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12rpx;
+  margin-bottom: 16rpx;
+  padding-bottom: 16rpx;
+  border-bottom: 1px solid #f0f0f0;
 }
 
 .ticket-left {
@@ -314,37 +316,114 @@
   gap: 12rpx;
 }
 
+.ticket-right {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+
 .ticket-no {
   font-weight: 600;
   color: #374151;
+  font-size: 28rpx;
 }
 
 .ticket-content {
+  margin-bottom: 20rpx;
+}
+
+.content-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 12rpx;
 }
 
 .ticket-title {
   font-size: 32rpx;
   color: #111827;
-  display: block;
-  margin-bottom: 12rpx;
+  font-weight: 500;
+  flex: 1;
+  margin-right: 12rpx;
 }
 
-.ticket-meta {
+.assignee-tag {
   display: flex;
-  flex-wrap: wrap;
-  gap: 24rpx;
+  align-items: center;
+  background: #f3f4f6;
+  padding: 4rpx 12rpx;
+  border-radius: 8rpx;
+  flex-shrink: 0;
 }
 
-.meta-item {
+.assignee-icon {
+  width: 24rpx;
+  height: 24rpx;
+  margin-right: 6rpx;
+}
+
+.assignee-text {
+  font-size: 24rpx;
+  color: #6b7280;
+}
+
+.ticket-category {
   display: flex;
   align-items: center;
   font-size: 26rpx;
   color: #6b7280;
 }
 
-.meta-icon {
+.category-icon {
+  width: 32rpx;
+  height: 32rpx;
   margin-right: 8rpx;
+}
+
+.category-text {
+  color: #6b7280;
+}
+
+/* 工单信息 - 2列布局 */
+.ticket-info {
+  margin-bottom: 20rpx;
+}
+
+.info-row {
+  display: flex;
+  gap: 24rpx;
+  margin-bottom: 12rpx;
+}
+
+.info-row:last-child {
+  margin-bottom: 0;
+}
+
+.info-item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  font-size: 26rpx;
+  color: #6b7280;
+  min-width: 0;
+}
+
+.info-item.full-width {
+  flex: 1 1 100%;
+}
+
+.info-icon {
+  width: 32rpx;
+  height: 32rpx;
+  margin-right: 8rpx;
+  flex-shrink: 0;
+}
+
+.info-text {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ticket-actions {

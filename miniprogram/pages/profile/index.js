@@ -715,13 +715,6 @@ Page({
     });
   },
 
-  // 跳转到历史功能测试页
-  goToHistoryTest() {
-    wx.navigateTo({
-      url: '/pages/test-history/index'
-    });
-  },
-
   // 设置相关
   closeSettings() {
     this.setData({

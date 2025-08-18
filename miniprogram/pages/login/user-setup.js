@@ -2,6 +2,10 @@
 const NetworkHandler = require('../../utils/network-handler');
 const UserCache = require('../../utils/user-cache');
 
+// 调试：检查模块是否正确加载
+console.log('[UserSetup] UserCache module loaded:', typeof UserCache);
+console.log('[UserSetup] UserCache methods:', Object.getOwnPropertyNames(UserCache).filter(name => typeof UserCache[name] === 'function'));
+
 Page({
   data: {
     avatarUrl: '',
@@ -113,8 +117,24 @@ Page({
           console.log('[UserSetup] 头像上传成功:', finalAvatarUrl);
           
           // 更新头像缓存并触发全局事件
-          await UserCache.updateAvatarCache(finalAvatarUrl);
-          console.log('[UserSetup] 已更新头像缓存并触发全局事件');
+          try {
+            console.log('[UserSetup] 准备调用 UserCache.updateAvatarCache');
+            console.log('[UserSetup] UserCache type:', typeof UserCache);
+            console.log('[UserSetup] updateAvatarCache type:', typeof UserCache.updateAvatarCache);
+            
+            if (UserCache && typeof UserCache.updateAvatarCache === 'function') {
+              await UserCache.updateAvatarCache(finalAvatarUrl);
+              console.log('[UserSetup] 已更新头像缓存并触发全局事件');
+            } else {
+              console.error('[UserSetup] UserCache.updateAvatarCache 不可用');
+              // 作为备用方案，直接保存到存储
+              wx.setStorageSync('cached_avatar_fileID', finalAvatarUrl);
+              wx.setStorageSync('cached_avatar_cache_time', Date.now());
+            }
+          } catch (cacheError) {
+            console.error('[UserSetup] 更新头像缓存时出错:', cacheError);
+            // 继续执行，不影响主流程
+          }
         } catch (uploadError) {
           console.error('[UserSetup] 头像上传失败:', uploadError);
           
@@ -242,7 +262,6 @@ Page({
       }
       
       // 清除UserCache缓存，强制下次重新获取
-      const UserCache = require('../../utils/user-cache');
       UserCache.clearUserInfoCache();
       console.log('[UserSetup] 已清除用户信息缓存');
 

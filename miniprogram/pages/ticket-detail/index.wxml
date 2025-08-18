@@ -129,16 +129,34 @@
     <view class="section-title">处理进度</view>
     <view class="timeline">
       <view 
-        class="timeline-item {{item.isActive ? 'active' : ''}}" 
+        class="timeline-item {{item.isActive ? 'active' : ''}} {{item.action}}" 
         wx:for="{{processTimeline}}" 
         wx:key="id"
       >
-        <view class="timeline-dot {{item.isActive ? 'active' : ''}}"></view>
+        <view class="timeline-dot {{item.isActive ? 'active' : ''}} {{item.action}}"></view>
         <view class="timeline-content">
           <view class="timeline-title">{{item.title}}</view>
           <view class="timeline-time">{{item.time}}</view>
           <view class="timeline-desc" wx:if="{{item.description}}">
             {{item.description}}
+          </view>
+          
+          <!-- 退回原因突出显示 -->
+          <view class="reject-reason-box" wx:if="{{item.rejectReason}}">
+            <view class="reject-reason-label">
+              <t-icon name="error-circle" size="32rpx" color="#ef4444" />
+              <text>退回原因</text>
+            </view>
+            <text class="reject-reason-text">{{item.rejectReason}}</text>
+          </view>
+          
+          <!-- 解决方案显示 -->
+          <view class="solution-box" wx:if="{{item.solution}}">
+            <view class="solution-label">
+              <t-icon name="check-circle" size="32rpx" color="#10b981" />
+              <text>解决方案</text>
+            </view>
+            <text class="solution-text">{{item.solution}}</text>
           </view>
         </view>
       </view>
@@ -224,8 +242,8 @@
     </view>
     
     <!-- 已关闭状态 - 不显示任何操作按钮 -->
-    <view wx:elif="{{ticketInfo.status === 'closed'}}" class="action-group">
-      <text style="color: #999; font-size: 28rpx; text-align: center; display: block;">
+    <view wx:elif="{{ticketInfo.status === 'closed'}}" class="action-group" style="justify-content: center;">
+      <text style="color: #999; font-size: 28rpx; text-align: center; display: block; width: 100%;">
         工单已关闭，无法进行任何操作
       </text>
     </view>

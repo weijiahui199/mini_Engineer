@@ -284,7 +284,12 @@ const EVENTS = {
   USER_INFO_UPDATED: 'user-info-updated',     // 用户信息更新
   USER_LOGOUT: 'user-logout',                 // 用户登出
   CACHE_CLEARED: 'cache-cleared',             // 缓存清除
-  THEME_CHANGED: 'theme-changed'              // 主题切换
+  THEME_CHANGED: 'theme-changed',             // 主题切换
+  TICKET_CREATED: 'ticket-created',           // 工单创建
+  TICKET_UPDATED: 'ticket-updated',           // 工单更新
+  TICKET_ACCEPTED: 'ticket-accepted',         // 工单接单
+  TICKET_COMPLETED: 'ticket-completed',       // 工单完成
+  TICKET_REJECTED: 'ticket-rejected'          // 工单退回
 };
 
 // 导出

@@ -57,51 +57,309 @@
   box-shadow: var(--shadow-light);
 }
 
-/* 筛选容器 */
-.filter-container {
+
+/* 抽屉式筛选容器 */
+.filter-container-drawer {
   background: white;
-  padding: 0 32rpx 24rpx;
-  border-bottom: 1rpx solid #e5e7eb;
+  padding: 16rpx 24rpx;
+  border-bottom: 1px solid #f0f0f0;
+  position: relative;
+  z-index: 10;
 }
 
-/* 负责人显示 */
-.assignee-display {
+/* 主筛选行 */
+.filter-main-row {
+  display: flex;
+  gap: 20rpx;
+  align-items: center;
+  flex-wrap: nowrap;
+  overflow: visible;
+  padding: 4rpx 0;
+}
+
+/* 响应式布局样式 */
+.compact-layout {
+  padding: 12rpx 16rpx;
+}
+
+.compact-layout .filter-main-row {
+  gap: 12rpx;
+}
+
+.comfortable-layout {
+  padding: 20rpx 32rpx;
+}
+
+.comfortable-layout .filter-main-row {
+  gap: 20rpx;
+}
+
+/* 删除旧的布局样式 - 不再需要 */
+
+/* 删除旧的标签样式 - 不再需要 */
+
+/* 删除旧的紧急标签样式 - 不再需要 */
+
+.filter-count {
+  margin-left: 4rpx;
+  font-size: 24rpx;
+  color: #999;
+}
+
+/* 状态选择包装器 */
+.status-selector-wrapper {
+  flex: 0 0 auto;
+  min-width: 160rpx;
+  position: relative;
+  z-index: 20;
+}
+
+/* 状态选择按钮 */
+.status-selector-btn {
   display: flex;
   align-items: center;
-  padding: 16rpx 0;
-  border-bottom: 1rpx solid #f3f4f6;
-  margin-bottom: 16rpx;
+  justify-content: space-between;
+  gap: 8rpx;
+  padding: 10rpx 20rpx;
+  background: #f5f5f5;
+  border: 1px solid #e0e0e0;
+  border-radius: 20rpx;
+  font-size: 26rpx;
+  color: #333;
+  transition: all 0.3s;
+  width: 100%;
+  min-height: 60rpx;
+  box-sizing: border-box;
 }
 
-.assignee-label {
-  font-size: 28rpx;
-  color: #6b7280;
-  margin-right: 12rpx;
+.status-selector-btn.active {
+  background: #e6f4ff;
+  border-color: #1890ff;
+  color: #1890ff;
 }
 
-.assignee-value {
+.status-selector-btn.open {
+  background: #e6f4ff;
+  border-color: #1890ff;
+  color: #1890ff;
+}
+
+.status-selector-btn .dropdown-icon {
+  font-size: 20rpx;
+  transition: transform 0.3s;
+}
+
+.status-selector-btn.open .dropdown-icon {
+  transform: rotate(180deg);
+}
+
+/* 按钮内容样式 */
+.btn-content {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;  /* 增加图标和文字之间的间距 */
+  flex: 1;
+  overflow: hidden;
+}
+
+.btn-icon {
+  flex-shrink: 0;
+  font-size: 26rpx;
+  display: inline-block;
+  margin-right: 12rpx;  /* 备用方案：使用margin确保间距 */
+}
+
+.btn-text {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 26rpx;
+  display: inline-block;
+}
+
+/* 状态下拉面板 */
+.status-dropdown-panel {
+  position: absolute;
+  top: calc(100% + 12rpx);
+  left: 0;
+  min-width: 220rpx;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12rpx;
+  box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.12);
+  z-index: 1000;
+  overflow: hidden;
+  max-height: 400rpx;
+  overflow-y: auto;
+}
+
+.status-option {
+  padding: 14rpx 20rpx;
+  border-bottom: 1px solid #f0f0f0;
   font-size: 28rpx;
-  color: #111827;
+  color: #333;
+  transition: background 0.2s;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.status-option:last-child {
+  border-bottom: none;
+}
+
+.status-option:active {
+  background: #f5f5f5;
+}
+
+.status-option.selected {
+  background: #e6f4ff;
+  color: #1890ff;
   font-weight: 500;
 }
 
-.filter-scroll {
-  width: 100%;
+.status-option.urgent-option {
+  color: #ff4d4f;
 }
 
-.filter-tabs {
-  display: flex;
-  gap: 16rpx;
-  white-space: nowrap;
+.status-option.selected.urgent-option {
+  background: #fff1f0;
+  color: #ff4d4f;
 }
 
-.filter-count {
+.option-label {
+  flex: 1;
+}
+
+.option-count {
+  font-size: 24rpx;
+  color: #999;
   margin-left: 8rpx;
-  font-weight: 600;
 }
 
-.filter-icon {
+.status-option.selected .option-count {
+  color: #1890ff;
+}
+
+/* 时间选择包装器 */
+.time-selector-wrapper {
+  flex: 0 0 auto;
+  min-width: 160rpx;
+  position: relative;
+  z-index: 19;
+}
+
+/* 时间选择按钮 */
+.time-selector-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8rpx;
+  padding: 10rpx 20rpx;
+  background: #f5f5f5;
+  border: 1px solid #e0e0e0;
+  border-radius: 20rpx;
+  font-size: 26rpx;
+  color: #333;
+  transition: all 0.3s;
+  width: 100%;
+  min-height: 60rpx;
+  box-sizing: border-box;
+}
+
+/* 紧凑布局时间按钮 */
+.compact-layout .time-selector-btn {
+  font-size: 24rpx;
+  padding: 8rpx 12rpx;
+}
+
+/* 舒适布局时间按钮 */
+.comfortable-layout .time-selector-btn {
+  font-size: 28rpx;
+  padding: 12rpx 20rpx;
+}
+
+.time-selector-btn.active {
+  background: #fff7e6;
+  border-color: #faad14;
+  color: #faad14;
+}
+
+.time-selector-btn .dropdown-icon {
+  font-size: 20rpx;
+  transition: transform 0.3s;
+}
+
+.time-selector-btn.open {
+  background: #fff7e6;
+  border-color: #faad14;
+  color: #faad14;
+}
+
+.time-selector-btn.open .dropdown-icon {
+  transform: rotate(180deg);
+}
+
+
+/* 时间选择下拉面板 */
+.time-dropdown-panel {
+  position: absolute;
+  top: calc(100% + 12rpx);
+  left: 0;
+  min-width: 200rpx;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12rpx;
+  box-shadow: 0 4rpx 12rpx rgba(0,0,0,0.1);
+  z-index: 999;
+  overflow: hidden;
+}
+
+.time-option {
+  padding: 16rpx 24rpx;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 28rpx;
+  color: #333;
+  transition: background 0.2s;
+}
+
+.time-option:last-child {
+  border-bottom: none;
+}
+
+.time-option:active {
+  background: #f5f5f5;
+}
+
+.time-option.selected {
+  background: #e0f2fe;
+  color: #0ea5e9;
+  font-weight: 500;
+}
+
+.time-option.selected::before {
+  content: '✓';
   margin-right: 8rpx;
+  color: #0ea5e9;
+}
+
+/* 已关闭工单提示 */
+.closed-tip {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 12rpx 16rpx;
+  background: #fff7e6;
+  border-radius: 8rpx;
+  margin-top: 16rpx;
+  position: relative;
+  z-index: 1;
+}
+
+.closed-tip .tip-text {
+  font-size: 24rpx;
+  color: #f59e0b;
 }
 
 /* 统计栏 */
@@ -168,12 +426,20 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 16rpx;
+  padding-bottom: 16rpx;
+  border-bottom: 1px solid #f0f0f0;
 }
 
 .header-left {
   display: flex;
   align-items: center;
   gap: 12rpx;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
 }
 
 .ticket-no {
@@ -184,39 +450,101 @@
 
 /* 卡片内容 */
 .card-content {
-  margin-bottom: 16rpx;
+  margin-bottom: 20rpx;
+}
+
+.content-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12rpx;
 }
 
 .ticket-title {
   font-size: 32rpx;
   color: #111827;
   font-weight: 500;
-  display: block;
-  margin-bottom: 8rpx;
+  flex: 1;
+  margin-right: 12rpx;
 }
 
-.ticket-category {
-  font-size: 26rpx;
+.assignee-tag {
+  display: flex;
+  align-items: center;
+  background: #f3f4f6;
+  padding: 4rpx 12rpx;
+  border-radius: 8rpx;
+  flex-shrink: 0;
+}
+
+.assignee-icon {
+  width: 24rpx;
+  height: 24rpx;
+  margin-right: 6rpx;
+}
+
+.assignee-text {
+  font-size: 24rpx;
   color: #6b7280;
 }
 
-/* 卡片信息 */
-.card-info {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 24rpx;
-  margin-bottom: 20rpx;
-}
-
-.info-item {
+.ticket-category {
   display: flex;
   align-items: center;
   font-size: 26rpx;
   color: #6b7280;
 }
 
-.info-icon {
+.category-icon {
+  width: 32rpx;
+  height: 32rpx;
   margin-right: 8rpx;
+}
+
+.category-text {
+  color: #6b7280;
+}
+
+/* 卡片信息 - 2列布局 */
+.card-info {
+  margin-bottom: 20rpx;
+}
+
+.info-row {
+  display: flex;
+  gap: 24rpx;
+  margin-bottom: 12rpx;
+}
+
+.info-row:last-child {
+  margin-bottom: 0;
+}
+
+.info-item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  font-size: 26rpx;
+  color: #6b7280;
+  min-width: 0;
+}
+
+.info-item.full-width {
+  flex: 1 1 100%;
+}
+
+.info-icon {
+  width: 32rpx;
+  height: 32rpx;
+  margin-right: 8rpx;
+  flex-shrink: 0;
+}
+
+.info-text {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* 卡片操作 */
@@ -365,49 +693,6 @@
   justify-content: center;
 }
 
-/* 高级筛选弹窗 */
-.filter-popup {
-  background: white;
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  padding: 32rpx;
-  padding-bottom: calc(32rpx + env(safe-area-inset-bottom));
-}
-
-.popup-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 32rpx;
-}
-
-.popup-title {
-  font-size: 36rpx;
-  font-weight: 600;
-  color: #111827;
-}
-
-.popup-actions {
-  display: flex;
-  align-items: center;
-  gap: 24rpx;
-}
-
-.reset-btn {
-  font-size: 28rpx;
-  color: #6b7280;
-}
-
-.filter-section {
-  margin-bottom: 32rpx;
-}
-
-.filter-label {
-  font-size: 30rpx;
-  font-weight: 500;
-  color: #374151;
-  display: block;
-  margin-bottom: 16rpx;
-}
 
 /* 滑动操作样式 */
 .swipe-accept {

@@ -979,20 +979,24 @@ Page({
         
         return {
           id: ticket._id,
-          ticketNo: ticket.ticketNo ? '#' + ticket.ticketNo : '#' + ticket._id.slice(-6).toUpperCase(),
+          ticketNo: ticket.ticketNo || ticket._id.slice(-6).toUpperCase(),  // 去掉#前缀
           title: ticket.title || ticket.description || '工单',
+          category: ticket.category || '其他',  // 新增问题类型
           priority: ticket.priority || 'normal',
           status: displayStatus,  // 使用显示状态
           realStatus: ticket.status,  // 保留真实状态
           submitter: ticket.submitterName || ticket.userName || '用户',
+          company: ticket.company || '',  // 新增公司字段
           location: ticket.location || ticket.department || '未知位置',
-          createTime: this.formatTime(ticket.createTime || ticket.createdAt),
-          updateTime: this.formatTime(ticket.updateTime || ticket.createTime || ticket.createdAt),  // 优先显示更新时间
+          createTime: ticket.createTime || ticket.createdAt,
+          createTimeDisplay: this.formatTime(ticket.createTime || ticket.createdAt),  // 专门用于显示创建时间
+          updateTime: this.formatTime(ticket.updateTime || ticket.createTime || ticket.createdAt),
           // 标记工单类型
           isPool: !ticket.assigneeOpenid && ticket.status === 'pending',  // 工单池
           isMine: ticket.assigneeOpenid === openid,  // 我的工单
           isPaused: ticket.status === 'pending' && ticket.assigneeOpenid === openid,  // 我的暂停工单
-          assigneeName: ticket.assigneeName  // 负责人名称（经理可见）
+          assigneeName: ticket.assigneeName || '',  // 负责人名称，所有角色可见
+          assigneeOpenid: ticket.assigneeOpenid || ''
         };
       });
     } catch (error) {

@@ -213,6 +213,83 @@
   color: #9ca3af;
 }
 
+/* 不同状态的时间线点样式 */
+.timeline-dot.rejected {
+  background: #ef4444;
+}
+
+.timeline-dot.accepted {
+  background: #3b82f6;
+}
+
+.timeline-dot.paused {
+  background: #f59e0b;
+}
+
+.timeline-dot.continued {
+  background: #3b82f6;
+}
+
+.timeline-dot.resolved {
+  background: #10b981;
+}
+
+.timeline-dot.closed {
+  background: #6b7280;
+}
+
+/* 退回原因突出显示 */
+.reject-reason-box {
+  margin-top: 20rpx;
+  padding: 20rpx;
+  background: #fef2f2;
+  border-left: 6rpx solid #ef4444;
+  border-radius: 8rpx;
+}
+
+.reject-reason-label {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  font-weight: 600;
+  color: #dc2626;
+  margin-bottom: 12rpx;
+  font-size: 28rpx;
+}
+
+.reject-reason-text {
+  color: #7f1d1d;
+  line-height: 1.6;
+  font-size: 28rpx;
+  display: block;
+}
+
+/* 解决方案显示样式 */
+.solution-box {
+  margin-top: 20rpx;
+  padding: 20rpx;
+  background: #f0fdf4;
+  border-left: 6rpx solid #10b981;
+  border-radius: 8rpx;
+}
+
+.solution-label {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  font-weight: 600;
+  color: #059669;
+  margin-bottom: 12rpx;
+  font-size: 28rpx;
+}
+
+.solution-text {
+  color: #064e3b;
+  line-height: 1.6;
+  font-size: 28rpx;
+  display: block;
+}
+
 /* 解决方案框 */
 .solution-box {
   background: white;

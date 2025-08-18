@@ -111,64 +111,66 @@
         <!-- 可点击区域 - 只包含头部和内容 -->
         <view class="ticket-clickable" bindtap="navigateToTicketDetail" data-id="{{item.id}}">
           <view class="ticket-header">
-          <view class="ticket-left">
-            <view class="priority-dot priority-{{item.priority}}"></view>
-            <text class="ticket-no">{{item.ticketNo}}</text>
-            <!-- 工单池标记 -->
-            <t-tag 
-              wx:if="{{item.isPool}}"
-              theme="success"
-              variant="light"
-              size="small"
-            >
-              待接单
-            </t-tag>
-            <!-- 我的工单标记 -->
-            <t-tag 
-              wx:elif="{{item.isMine}}"
-              theme="primary"
-              variant="light"
-              size="small"
-            >
-              我的
-            </t-tag>
-            <t-tag 
-              wx:if="{{item.priority === 'urgent'}}"
-              theme="danger"
-              variant="light"
-              size="small"
-            >
-              紧急
-            </t-tag>
-          </view>
-          <view class="ticket-status">
-            <t-tag 
-              theme="{{getStatusTheme(item.status)}}"
-              variant="light"
-              size="small"
-            >
-              {{statusText[item.status]}}
-            </t-tag>
-          </view>
-        </view>
-        
-        <view class="ticket-content">
-          <text class="ticket-title">{{item.title}}</text>
-          <view class="ticket-meta">
-            <view class="meta-item">
-              <text class="meta-icon">👤</text>
-              <text class="meta-text">{{item.submitter}}</text>
+            <view class="ticket-left">
+              <view class="priority-dot priority-{{item.priority}}"></view>
+              <text class="ticket-no">#{{item.ticketNo}}</text>
             </view>
-            <view class="meta-item">
-              <text class="meta-icon">📍</text>
-              <text class="meta-text">{{item.location}}</text>
-            </view>
-            <view class="meta-item">
-              <text class="meta-icon">⏰</text>
-              <text class="meta-text">{{item.updateTime}}</text>
+            <view class="ticket-right">
+              <t-tag 
+                theme="{{getStatusTheme(item.status)}}"
+                variant="light"
+                size="small"
+              >
+                {{statusText[item.status]}}
+              </t-tag>
+              <t-tag 
+                wx:if="{{item.priority === 'urgent'}}"
+                theme="danger"
+                variant="light"
+                size="small"
+              >
+                紧急
+              </t-tag>
             </view>
           </view>
-        </view>
+          
+          <view class="ticket-content">
+            <view class="content-header">
+              <text class="ticket-title">{{item.title}}</text>
+              <view class="assignee-tag" wx:if="{{item.assigneeName}}">
+                <image class="assignee-icon" src="/assets/icons/engineer.png" mode="aspectFit"/>
+                <text class="assignee-text">{{item.assigneeName}}</text>
+              </view>
+            </view>
+            <view class="ticket-category">
+              <image class="category-icon" src="/assets/icons/category.png" mode="aspectFit"/>
+              <text class="category-text">{{item.category}}</text>
+            </view>
+          </view>
+          
+          <!-- 工单信息 - 2列布局 -->
+          <view class="ticket-info">
+            <view class="info-row">
+              <view class="info-item" wx:if="{{item.company}}">
+                <image class="info-icon" src="/assets/icons/company.png" mode="aspectFit"/>
+                <text class="info-text">{{item.company}}</text>
+              </view>
+              <view class="info-item">
+                <image class="info-icon" src="/assets/icons/location.png" mode="aspectFit"/>
+                <text class="info-text">{{item.location}}</text>
+              </view>
+            </view>
+            <view class="info-row">
+              <view class="info-item">
+                <image class="info-icon" src="/assets/icons/user.png" mode="aspectFit"/>
+                <text class="info-text">{{item.submitter}}</text>
+              </view>
+              <view class="info-item">
+                <image class="info-icon" src="/assets/icons/time.png" mode="aspectFit"/>
+                <text class="info-text">{{item.createTimeDisplay}}</text>
+              </view>
+            </view>
+          </view>
         </view>
         <!-- 结束可点击区域 -->
         

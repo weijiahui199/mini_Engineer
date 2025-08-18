@@ -10,46 +10,74 @@
     />
   </view>
 
-  <!-- 筛选栏 -->
-  <view class="filter-container">
-    <!-- 负责人显示 -->
-    <view class="assignee-display" wx:if="{{userRoleGroup === '经理' || currentAssignee === 'my'}}">
-      <text class="assignee-label">负责人：</text>
-      <text class="assignee-value">
-        <block wx:if="{{currentAssignee === 'all'}}">全部</block>
-        <block wx:elif="{{currentAssignee === 'my'}}">我负责的</block>
-        <block wx:else>
-          <block wx:for="{{assigneeOptions}}" wx:key="value">
-            <text wx:if="{{item.value === currentAssignee}}">{{item.label}}</text>
-          </block>
-        </block>
-      </text>
+  <!-- 筛选栏 - 双抽屉式设计 -->
+  <view class="filter-container-drawer {{layoutMode}}-layout">
+    <!-- 主筛选栏：状态和时间抽屉 -->
+    <view class="filter-main-row">
+      <!-- 状态选择按钮（抽屉式） -->
+      <view class="status-selector-wrapper">
+        <view 
+          class="status-selector-btn {{statusDropdownOpen ? 'open' : ''}} {{currentFilter !== 'all' ? 'active' : ''}}"
+          bindtap="toggleStatusDropdown"
+        >
+          <view class="btn-content">
+            <text class="btn-icon">{{currentFilter === 'urgent' ? '🔥' : '📊'}}</text>
+            <text class="btn-text">{{currentFilter === 'all' ? '全部' : currentFilter === 'pending' ? '待处理' : currentFilter === 'processing' ? '处理中' : currentFilter === 'resolved' ? '已解决' : currentFilter === 'closed' ? '已关闭' : currentFilter === 'urgent' ? '紧急' : '全部'}}</text>
+          </view>
+          <text class="dropdown-icon">▼</text>
+        </view>
+        
+        <!-- 状态选择下拉面板 -->
+        <view class="status-dropdown-panel" wx:if="{{statusDropdownOpen}}" catchtap="preventClose">
+          <view 
+            wx:for="{{filterOptions}}" 
+            wx:key="value"
+            class="status-option {{item.value === currentFilter ? 'selected' : ''}} {{item.value === 'urgent' ? 'urgent-option' : ''}}"
+            bindtap="selectStatus"
+            data-value="{{item.value}}"
+          >
+            <text class="option-label">
+              {{item.value === 'urgent' ? '🔥 ' : ''}}
+              {{item.label}}
+            </text>
+            <text class="option-count" wx:if="{{item.count > 0}}">({{item.count}})</text>
+          </view>
+        </view>
+      </view>
+    
+      
+      <!-- 时间选择按钮（抽屉式） -->
+      <view class="time-selector-wrapper" wx:if="{{currentFilter !== 'closed'}}">
+        <view 
+          class="time-selector-btn {{timeDropdownOpen ? 'open' : ''}} {{timeRangeFilter !== 'month' ? 'active' : ''}}"
+          bindtap="toggleTimeDropdown"
+        >
+          <view class="btn-content">
+            <text class="btn-icon">📅</text>
+            <text class="btn-text">{{timeRangeFilter === 'week' ? '近7天' : timeRangeFilter === 'month' ? '近1月' : timeRangeFilter === 'halfYear' ? '近6月' : timeRangeFilter === 'year' ? '近1年' : timeRangeFilter === 'overYear' ? '一年以上' : '近1月'}}</text>
+          </view>
+          <text class="dropdown-icon">▼</text>
+        </view>
+        
+        <!-- 时间选择下拉面板 -->
+        <view class="time-dropdown-panel" wx:if="{{timeDropdownOpen}}" catchtap="preventClose">
+          <view 
+            wx:for="{{timeRangeOptions}}" 
+            wx:key="value"
+            class="time-option {{item.value === timeRangeFilter ? 'selected' : ''}}"
+            bindtap="selectTimeRange"
+            data-value="{{item.value}}"
+          >
+            {{item.label}}
+          </view>
+        </view>
+      </view>
     </view>
     
-    <scroll-view scroll-x class="filter-scroll">
-      <view class="filter-tabs">
-        <t-tag 
-          wx:for="{{filterOptions}}" 
-          wx:key="value"
-          theme="{{item.value === currentFilter ? 'primary' : 'default'}}"
-          variant="{{item.value === currentFilter ? 'dark' : 'outline'}}"
-          bind:click="onFilterClick"
-          data-value="{{item.value}}"
-        >
-          {{item.label}}
-          <text wx:if="{{item.count > 0}}" class="filter-count">({{item.count}})</text>
-        </t-tag>
-        
-        <t-tag 
-          theme="default"
-          variant="outline"
-          bind:click="showMoreFilters"
-        >
-          <text class="filter-icon">⚙️</text>
-          更多
-        </t-tag>
-      </view>
-    </scroll-view>
+    <!-- 已关闭工单提示 -->
+    <view class="closed-tip" wx:if="{{currentFilter === 'closed'}}">
+      <text class="tip-text">💡 下滑自动加载更早的已关闭工单（当前：{{closedTimeRange === 'month' ? '近1月' : closedTimeRange === 'halfYear' ? '近6月' : closedTimeRange === 'year' ? '近1年' : '全部'}}）</text>
+    </view>
   </view>
 
   <!-- 统计信息 -->
@@ -85,62 +113,67 @@
           <view class="card-clickable" bindtap="navigateToDetail" data-id="{{item.id}}">
             <!-- 工单头部 -->
             <view class="card-header">
-            <view class="header-left">
-              <view class="priority-dot priority-{{item.priority}}"></view>
-              <text class="ticket-no">{{item.ticketNo}}</text>
-              <t-tag 
-                wx:if="{{item.priority === 'urgent'}}"
-                theme="danger"
-                variant="light"
-                size="small"
-              >
-                紧急
-              </t-tag>
-              <t-tag 
-                wx:elif="{{item.priority === 'high'}}"
-                theme="warning"
-                variant="light"
-                size="small"
-              >
-                高
-              </t-tag>
+              <view class="header-left">
+                <view class="priority-dot priority-{{item.priority}}"></view>
+                <text class="ticket-no">#{{item.ticketNo}}</text>
+              </view>
+              <view class="header-right">
+                <t-tag 
+                  theme="{{item.status === 'paused' ? 'warning' : getStatusTheme(item.status)}}"
+                  variant="light"
+                  size="small"
+                >
+                  {{statusText[item.status]}}
+                </t-tag>
+                <t-tag 
+                  wx:if="{{item.priority === 'urgent'}}"
+                  theme="danger"
+                  variant="light"
+                  size="small"
+                >
+                  紧急
+                </t-tag>
+              </view>
             </view>
-            <view class="header-right">
-              <t-tag 
-                theme="{{item.status === 'paused' ? 'warning' : getStatusTheme(item.status)}}"
-                variant="light"
-                size="small"
-              >
-                {{statusText[item.status]}}
-              </t-tag>
+            
+            <!-- 工单内容 -->
+            <view class="card-content">
+              <view class="content-header">
+                <text class="ticket-title">{{item.title}}</text>
+                <view class="assignee-tag" wx:if="{{item.assigneeName}}">
+                  <image class="assignee-icon" src="/assets/icons/engineer.png" mode="aspectFit"/>
+                  <text class="assignee-text">{{item.assigneeName}}</text>
+                </view>
+              </view>
+              <view class="ticket-category">
+                <image class="category-icon" src="/assets/icons/category.png" mode="aspectFit"/>
+                <text class="category-text">{{item.category}}</text>
+              </view>
             </view>
-          </view>
-          
-          <!-- 工单内容 -->
-          <view class="card-content">
-            <text class="ticket-title">{{item.title}}</text>
-            <text class="ticket-category">{{item.category}}</text>
-          </view>
-          
-          <!-- 工单信息 -->
-          <view class="card-info">
-            <view class="info-item">
-              <text class="info-icon">👤</text>
-              <text class="info-text">{{item.submitter}}</text>
+            
+            <!-- 工单信息 - 2列布局 -->
+            <view class="card-info">
+              <view class="info-row">
+                <view class="info-item" wx:if="{{item.company}}">
+                  <image class="info-icon" src="/assets/icons/company.png" mode="aspectFit"/>
+                  <text class="info-text">{{item.company}}</text>
+                </view>
+                <view class="info-item">
+                  <image class="info-icon" src="/assets/icons/location.png" mode="aspectFit"/>
+                  <text class="info-text">{{item.location}}</text>
+                </view>
+              </view>
+              <view class="info-row">
+                <view class="info-item">
+                  <image class="info-icon" src="/assets/icons/user.png" mode="aspectFit"/>
+                  <text class="info-text">{{item.submitter}}</text>
+                </view>
+                <view class="info-item">
+                  <image class="info-icon" src="/assets/icons/time.png" mode="aspectFit"/>
+                  <text class="info-text">{{item.createTimeDisplay}}</text>
+                </view>
+              </view>
             </view>
-            <view class="info-item">
-              <text class="info-icon">📍</text>
-              <text class="info-text">{{item.location}}</text>
-            </view>
-            <view class="info-item">
-              <text class="info-icon">⏰</text>
-              <text class="info-text">{{item.displayTime}}</text>
-            </view>
-            <view class="info-item" wx:if="{{item.assigneeName && userRoleGroup === '经理' && currentAssignee === 'all'}}">
-              <text class="info-icon">👷</text>
-              <text class="info-text">{{item.assigneeName}}</text>
-            </view>
-          </view>
           </view>
           <!-- 结束可点击区域 -->
           
@@ -258,85 +291,4 @@
     </view>
   </scroll-view>
 
-  <!-- 高级筛选弹窗 -->
-  <t-popup 
-    visible="{{filterPopupVisible}}" 
-    placement="bottom"
-    bind:visible-change="handleFilterPopupChange"
-  >
-    <view class="filter-popup">
-      <view class="popup-header">
-        <text class="popup-title">更多选项</text>
-        <view class="popup-actions">
-          <text class="reset-btn" bindtap="resetFilters">重置</text>
-          <t-button theme="primary" size="small" bind:click="applyFilters">
-            确定
-          </t-button>
-        </view>
-      </view>
-      
-      <view class="filter-section" wx:if="{{showAssigneeFilter && assigneeOptions.length > 0}}">
-        <text class="filter-label">负责人</text>
-        <t-radio-group 
-          value="{{tempFilters.assignee}}"
-          bind:change="onAssigneeFilterChange"
-        >
-          <t-radio label="全部" value="all" />
-          <t-radio label="我负责的" value="my" />
-          <t-radio 
-            wx:for="{{assigneeOptions}}" 
-            wx:key="value"
-            wx:if="{{item.value !== 'all' && item.value !== 'my'}}"
-            label="{{item.label}}"
-            value="{{item.value}}"
-          />
-        </t-radio-group>
-      </view>
-      
-      <view class="filter-section">
-        <text class="filter-label">时间范围</text>
-        <t-radio-group 
-          value="{{tempFilters.timeRange}}"
-          bind:change="onTimeRangeChange"
-        >
-          <t-radio 
-            wx:for="{{timeRangeOptions}}" 
-            wx:key="value"
-            label="{{item.label}}"
-            value="{{item.value}}"
-          />
-        </t-radio-group>
-      </view>
-      
-      <!-- 问题类型筛选 -->
-      <view class="filter-section">
-        <text class="filter-label">问题类型</text>
-        <t-radio-group 
-          value="{{tempFilters.category}}"
-          bind:change="onCategoryChange"
-        >
-          <t-radio label="全部" value="all" />
-          <t-radio label="硬件故障" value="hardware" />
-          <t-radio label="软件问题" value="software" />
-          <t-radio label="网络问题" value="network" />
-          <t-radio label="账号权限" value="account" />
-          <t-radio label="其他" value="other" />
-        </t-radio-group>
-      </view>
-      
-      <!-- 优先级筛选 -->
-      <view class="filter-section">
-        <text class="filter-label">优先级</text>
-        <t-checkbox-group 
-          value="{{tempFilters.priority}}"
-          bind:change="onPriorityChange"
-        >
-          <t-checkbox label="紧急" value="urgent" />
-          <t-checkbox label="高" value="high" />
-          <t-checkbox label="中" value="medium" />
-          <t-checkbox label="低" value="low" />
-        </t-checkbox-group>
-      </view>
-    </view>
-  </t-popup>
 </view>

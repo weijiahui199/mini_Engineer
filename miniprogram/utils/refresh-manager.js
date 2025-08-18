@@ -16,12 +16,17 @@ class RefreshManager {
       ticketList: {
         minInterval: 10 * 1000,       // 最小刷新间隔：10秒
         maxCacheTime: 2 * 60 * 1000,  // 最大缓存时间：2分钟
-        forceRefreshEvents: ['TICKET_UPDATED', 'TICKET_CREATED']
+        forceRefreshEvents: ['TICKET_UPDATED', 'TICKET_CREATED', 'TICKET_ACCEPTED', 'TICKET_COMPLETED', 'TICKET_REJECTED']
       },
       dashboard: {
         minInterval: 15 * 1000,       // 最小刷新间隔：15秒
         maxCacheTime: 3 * 60 * 1000,  // 最大缓存时间：3分钟
-        forceRefreshEvents: ['USER_INFO_UPDATED', 'TICKET_UPDATED']
+        forceRefreshEvents: ['USER_INFO_UPDATED', 'TICKET_UPDATED', 'TICKET_ACCEPTED', 'TICKET_COMPLETED']
+      },
+      ticketDetail: {
+        minInterval: 5 * 1000,        // 最小刷新间隔：5秒
+        maxCacheTime: 1 * 60 * 1000,  // 最大缓存时间：1分钟
+        forceRefreshEvents: ['TICKET_UPDATED', 'TICKET_ACCEPTED', 'TICKET_COMPLETED', 'TICKET_REJECTED']
       },
       default: {
         minInterval: 20 * 1000,       // 默认最小刷新间隔：20秒

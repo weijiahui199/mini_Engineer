@@ -1,7 +1,10 @@
 // 工单列表页面
+const RefreshManager = require('../../utils/refresh-manager');
+const CacheManager = require('../../utils/cache-manager');
+
 Page({
   data: {
-    userRoleGroup: '工程师', // 用户 | 工程师 | 经理
+    userRoleGroup: '', // 用户 | 工程师 | 经理 - 初始为空，等待获取实际角色
     searchKeyword: '',
     currentFilter: 'all',
     currentAssignee: 'all', // 当前选中的负责人筛选：all | my | openid
@@ -15,6 +18,24 @@ Page({
       { label: '已关闭', value: 'closed', count: 0 },
       { label: '紧急', value: 'urgent', count: 1 }
     ],
+    
+    // 时间范围筛选
+    timeRangeFilter: 'month',  // 默认近1个月
+    timeRangeOptions: [
+      { label: '近7天', value: 'week' },
+      { label: '近1月', value: 'month' },
+      { label: '近6月', value: 'halfYear' },
+      { label: '近1年', value: 'year' },
+      { label: '一年以上', value: 'overYear' }
+    ],
+    
+    // 已关闭工单的动态时间范围
+    closedTimeRange: 'month',  // 初始1个月
+    closedLoadStage: 0,  // 加载阶段：0=1月, 1=6月, 2=1年, 3=全部
+    
+    // 下拉面板状态
+    timeDropdownOpen: false,
+    statusDropdownOpen: false,
     
     // 状态文本
     statusText: {
@@ -43,27 +64,14 @@ Page({
     loadingMore: false,
     refreshing: false,
     
-    // 高级筛选
-    filterPopupVisible: false,
-    tempFilters: {
-      timeRange: 'all',
-      assignee: 'all', // 负责人筛选
-      category: 'all', // 问题类型
-      priority: [] // 优先级（多选）
-    },
-    
-    // 负责人选项列表
+    // 负责人选项列表（保留但暂不使用）
     assigneeOptions: [],
     
+    emptyText: '暂无工单',
     
-    timeRangeOptions: [
-      { label: '全部', value: 'all' },
-      { label: '今天', value: 'today' },
-      { label: '本周', value: 'week' },
-      { label: '本月', value: 'month' }
-    ],
-    
-    emptyText: '暂无工单'
+    // 响应式布局
+    screenWidth: 375,  // 默认屏幕宽度
+    layoutMode: 'medium'  // 布局模式: compact(紧凑) | medium(中等) | comfortable(舒适)
   },
 
   onLoad(options) {
@@ -71,11 +79,33 @@ Page({
     this.app = getApp();
     this.db = this.app.globalData.db || wx.cloud.database();
     
+    // 注册页面到刷新管理器
+    RefreshManager.setPageActive('ticket-list', true);
+    
+    // 获取系统信息，判断屏幕尺寸
+    wx.getSystemInfo({
+      success: (res) => {
+        const screenWidth = res.windowWidth;
+        let layoutMode = 'medium'; // 默认中等布局
+        
+        // 根据屏幕宽度设置布局模式
+        if (screenWidth < 350) {
+          layoutMode = 'compact'; // 紧凑布局（小屏）
+        } else if (screenWidth >= 414) {
+          layoutMode = 'comfortable'; // 舒适布局（大屏）
+        }
+        
+        this.setData({ 
+          screenWidth,
+          layoutMode 
+        });
+        
+        console.log(`屏幕宽度: ${screenWidth}px, 布局模式: ${layoutMode}`);
+      }
+    });
+    
     // 获取用户角色
     this.getUserRole();
-    
-    // 加载负责人列表
-    this.loadAssigneeList();
     
     // 处理路由参数
     if (options.filter) {
@@ -86,13 +116,30 @@ Page({
     
     // 延迟加载数据，等待app初始化完成
     setTimeout(() => {
-      this.loadTicketList();
+      this.smartRefreshList();
     }, 500);
   },
 
-  onShow() {
-    // 页面显示时刷新数据
-    this.refreshList();
+  async onShow() {
+    // 页面显示时设置为活跃状态
+    RefreshManager.setPageActive('ticket-list', true);
+    
+    // 重新获取用户角色（可能在其他页面或数据库中已更新）
+    await this.refreshUserRole();
+    
+    // 智能刷新决策
+    const decisions = RefreshManager.makeRefreshDecision('ticket-list', ['ticketList']);
+    if (decisions.ticketList) {
+      console.log('[工单列表] 根据智能刷新决策，需要刷新数据');
+      this.smartRefreshList();
+    } else {
+      console.log('[工单列表] 数据仍在有效期内，无需刷新');
+    }
+  },
+  
+  onHide() {
+    // 页面隐藏时设置为非活跃状态
+    RefreshManager.setPageActive('ticket-list', false);
   },
 
   // 获取用户角色并设置权限相关UI
@@ -102,6 +149,8 @@ Page({
     const openid = this.app.globalData.openid;
     const roleGroup = userInfo?.roleGroup || wx.getStorageSync('userRoleGroup') || '用户';
     
+    console.log('[工单列表] 获取用户角色:', roleGroup, 'openid:', openid);
+    
     // 根据角色设置UI控制
     this.setData({
       userRoleGroup: roleGroup,
@@ -110,7 +159,97 @@ Page({
       openid: openid  // 保存openid用于页面判断
     });
   },
+  
+  // 刷新用户角色（强制从数据库获取最新信息）
+  async refreshUserRole() {
+    try {
+      console.log('[工单列表] 开始刷新用户角色信息');
+      
+      // 如果有openid，尝试从数据库获取最新用户信息
+      const openid = this.app.globalData.openid;
+      if (openid) {
+        const db = wx.cloud.database();
+        const res = await db.collection('users')
+          .where({ openid: openid })
+          .get();
+        
+        if (res.data && res.data.length > 0) {
+          const userData = res.data[0];
+          const newRoleGroup = userData.roleGroup || '用户';
+          
+          // 检查角色是否发生变化
+          const oldRoleGroup = this.data.userRoleGroup;
+          
+          console.log(`[工单列表] 数据库角色: ${newRoleGroup}, 当前角色: ${oldRoleGroup}`);
+          
+          if (!oldRoleGroup || oldRoleGroup !== newRoleGroup) {
+            console.log(`[工单列表] 角色已更新: ${oldRoleGroup || '未设置'} -> ${newRoleGroup}`);
+            
+            // 更新全局数据
+            if (this.app.globalData.userInfo) {
+              this.app.globalData.userInfo.roleGroup = newRoleGroup;
+            } else {
+              this.app.globalData.userInfo = { roleGroup: newRoleGroup };
+            }
+            
+            // 更新本地缓存
+            wx.setStorageSync('userRoleGroup', newRoleGroup);
+            
+            // 更新页面数据
+            this.setData({
+              userRoleGroup: newRoleGroup,
+              showAssigneeFilter: newRoleGroup === '经理',
+              currentAssignee: newRoleGroup === '工程师' ? 'pool' : 'all'
+            });
+            
+            // 角色变化后强制刷新工单列表
+            console.log('[工单列表] 角色变化，强制刷新列表');
+            RefreshManager.setForceRefreshFlag('ticketList');
+            this.refreshList();
+          } else {
+            console.log('[工单列表] 角色未变化:', newRoleGroup);
+          }
+        } else {
+          console.log('[工单列表] 未找到用户数据');
+          // 没有找到用户数据，使用默认值
+          this.getUserRole();
+        }
+      } else {
+        console.log('[工单列表] 没有openid，使用缓存数据');
+        // 没有openid时，使用原方法获取角色
+        this.getUserRole();
+      }
+    } catch (error) {
+      console.error('[工单列表] 刷新用户角色失败:', error);
+      // 失败时使用原方法获取角色
+      this.getUserRole();
+    }
+  },
 
+  // 智能刷新列表
+  smartRefreshList() {
+    // 检查是否需要刷新
+    if (RefreshManager.shouldRefresh('ticketList', { pageActive: true })) {
+      console.log('[工单列表] 执行智能刷新');
+      this.refreshList();
+    } else {
+      console.log('[工单列表] 使用缓存数据，无需刷新');
+      // 尝试从缓存获取数据
+      const cachedData = CacheManager.get('ticket_list', 'ticketList');
+      if (cachedData && cachedData.list) {
+        this.setData({
+          ticketList: cachedData.list,
+          hasMore: cachedData.hasMore || false
+        });
+        // 更新筛选计数
+        this.updateFilterCounts();
+      } else {
+        // 缓存无效，强制刷新
+        this.refreshList();
+      }
+    }
+  },
+  
   // 加载工单列表
   async loadTicketList(append = false) {
     if (this.data.loadingMore) return;
@@ -149,20 +288,22 @@ Page({
         
         const formatted = {
           id: ticket._id,
-          ticketNo: '#' + ticket.ticketNo,
+          ticketNo: ticket.ticketNo,  // 去掉#前缀，在视图层添加
           title: ticket.title,
           category: ticket.category,
           priority: ticket.priority,
           status: displayStatus,  // 使用显示状态
           realStatus: cleanStatus,  // 保留真实状态
           submitter: ticket.submitterName,
+          company: ticket.company || '',  // 新增公司字段
           location: ticket.location,
           createTime: this.formatTime(ticket.createTime),
-          updateTime: this.formatTime(ticket.updateTime || ticket.createTime),  // 显示更新时间
-          displayTime: ticket.updateTime ? this.formatTime(ticket.updateTime) : this.formatTime(ticket.createTime),  // 智能显示时间
+          createTimeDisplay: this.formatTime(ticket.createTime),  // 专门用于显示创建时间
+          updateTime: this.formatTime(ticket.updateTime || ticket.createTime),
+          displayTime: this.formatTime(ticket.createTime),  // 改为显示创建时间
           assigned: !!ticket.assigneeOpenid,
           assigneeOpenid: ticket.assigneeOpenid || '',  // 添加assigneeOpenid字段
-          assigneeName: ticket.assigneeName || '',
+          assigneeName: ticket.assigneeName || '',  // 确保所有角色可见
           isPaused: cleanStatus === 'pending' && !!ticket.assigneeOpenid  // 标记是否为暂停状态
         };
         
@@ -195,6 +336,16 @@ Page({
           hasMore: res.data.length === this.data.pageSize,
           page: 0
         });
+      }
+      
+      // 记录刷新时间和缓存数据（只在非追加模式下）
+      if (!append) {
+        RefreshManager.recordRefresh('ticketList');
+        CacheManager.set('ticket_list', {
+          list: formattedList,
+          hasMore: res.data.length === this.data.pageSize,
+          timestamp: Date.now()
+        }, 'ticketList');
       }
     } catch (error) {
       console.error('加载工单列表失败:', error);
@@ -239,49 +390,201 @@ Page({
   // 筛选点击
   onFilterClick(e) {
     const value = e.currentTarget.dataset.value;
+    
+    // 重置已关闭工单的加载阶段
+    if (value === 'closed') {
+      this.setData({
+        closedLoadStage: 0,
+        closedTimeRange: 'month'
+      });
+    }
+    
     this.setData({
       currentFilter: value,
       page: 1
     });
     this.loadTicketList();
   },
-
-  // 显示更多筛选
-  showMoreFilters() {
+  
+  // 时间范围筛选点击
+  onTimeRangeClick(e) {
+    const value = e.currentTarget.dataset.value;
+    
+    // 已关闭工单不响应时间范围筛选
+    if (this.data.currentFilter === 'closed') {
+      wx.showToast({
+        title: '已关闭工单自动扩展时间范围',
+        icon: 'none'
+      });
+      return;
+    }
+    
     this.setData({
-      filterPopupVisible: true,
-      tempFilters: {
-        timeRange: 'all',
-        assignee: this.data.currentAssignee // 保持当前选中的负责人
-      }
+      timeRangeFilter: value,
+      page: 1
+    });
+    this.loadTicketList();
+  },
+  
+  // 切换状态选择下拉面板
+  toggleStatusDropdown() {
+    this.setData({
+      statusDropdownOpen: !this.data.statusDropdownOpen,
+      timeDropdownOpen: false  // 关闭时间下拉
     });
   },
+  
+  // 选择状态筛选
+  selectStatus(e) {
+    const value = e.currentTarget.dataset.value;
+    
+    // 设置新的状态筛选并关闭下拉面板
+    this.setData({
+      currentFilter: value,
+      statusDropdownOpen: false,
+      page: 1
+    });
+    
+    // 如果选择了已关闭，重置已关闭相关状态
+    if (value === 'closed') {
+      this.setData({
+        closedTimeRange: 'month',
+        closedLoadStage: 0
+      });
+    }
+    
+    // 重新加载工单列表
+    this.loadTicketList();
+    this.updateFilterCounts();
+  },
+  
+  // 获取当前筛选标签文字
+  getCurrentFilterLabel() {
+    const current = this.data.filterOptions.find(item => item.value === this.data.currentFilter);
+    if (current) {
+      return current.value === 'urgent' ? `🔥 ${current.label}` : current.label;
+    }
+    return '全部';
+  },
+  
+  // 切换时间选择下拉面板
+  toggleTimeDropdown() {
+    // 如果是已关闭状态，不允许打开时间筛选
+    if (this.data.currentFilter === 'closed') {
+      wx.showToast({
+        title: '已关闭工单自动管理时间范围',
+        icon: 'none'
+      });
+      return;
+    }
+    
+    this.setData({
+      timeDropdownOpen: !this.data.timeDropdownOpen,
+      statusDropdownOpen: false  // 关闭状态下拉
+    });
+  },
+  
+  // 选择时间范围
+  selectTimeRange(e) {
+    const value = e.currentTarget.dataset.value;
+    
+    // 设置新的时间范围并关闭下拉面板
+    this.setData({
+      timeRangeFilter: value,
+      timeDropdownOpen: false,
+      page: 1
+    });
+    
+    // 重新加载工单列表
+    this.loadTicketList();
+  },
+  
+  // 防止点击下拉面板内部时关闭
+  preventClose() {
+    // 空函数，仅用于阻止事件冒泡
+    return;
+  },
+
 
   // 下拉刷新
   async onPullDownRefresh() {
+    console.log('[工单列表] 用户触发下拉刷新');
+    
+    // 下拉刷新时也刷新用户角色
+    await this.refreshUserRole();
+    
+    // 设置强制刷新标记
+    RefreshManager.setForceRefreshFlag('ticketList');
+    
     this.setData({
       refreshing: true,
       page: 1
     });
+    
+    // 强制刷新数据
     await this.loadTicketList();
+    
+    // 记录刷新时间
+    RefreshManager.recordRefresh('ticketList');
+    
     // 确保刷新状态被重置
     this.setData({
       refreshing: false
+    });
+    
+    // 显示刷新成功提示
+    wx.showToast({
+      title: '刷新成功',
+      icon: 'success',
+      duration: 1000
     });
   },
 
   // 加载更多
   onLoadMore() {
+    if (this.data.currentFilter === 'closed') {
+      // 已关闭工单：扩大时间范围
+      if (!this.data.hasMore && this.data.closedLoadStage < 3) {
+        this.expandClosedTimeRange();
+        return;
+      }
+    }
+    
+    // 其他状态：正常分页
     if (this.data.hasMore && !this.data.loadingMore) {
       console.log('加载更多，当前页码:', this.data.page);
       this.loadTicketList(true);
+    }
+  },
+  
+  // 扩大已关闭工单时间范围
+  expandClosedTimeRange() {
+    const stages = ['month', 'halfYear', 'year', 'all'];
+    const stageLabels = ['近1个月', '近6个月', '近1年', '全部'];
+    const nextStage = this.data.closedLoadStage + 1;
+    
+    if (nextStage < stages.length) {
+      this.setData({
+        closedLoadStage: nextStage,
+        closedTimeRange: stages[nextStage],
+        hasMore: true,  // 重置加载标志
+        page: 1  // 重置页码
+      });
+      
+      wx.showToast({
+        title: `扩展到${stageLabels[nextStage]}`,
+        icon: 'none'
+      });
+      
+      // 重新加载数据
+      this.loadTicketList(false);
     }
   },
 
   // 刷新列表
   refreshList() {
     this.setData({
-      page: 0,
+      page: 1,  // 修复：page 应该从 1 开始，而不是 0
       ticketList: [],
       hasMore: true
     });
@@ -337,7 +640,11 @@ Page({
             showCancel: false,
             confirmText: '知道了',
             success: () => {
-              // 刷新列表
+              // 触发工单更新事件
+              this.app.eventBus.emit(this.app.EVENTS.TICKET_UPDATED, { ticketId });
+              
+              // 设置强制刷新标记并刷新列表
+              RefreshManager.setForceRefreshFlag('ticketList');
               this.refreshList();
             }
           });
@@ -363,8 +670,12 @@ Page({
           icon: 'success' 
         });
         
+        // 触发工单接单事件
+        this.app.eventBus.emit(this.app.EVENTS.TICKET_ACCEPTED, { ticketId });
+        
         // 刷新列表和统计
         setTimeout(() => {
+          RefreshManager.setForceRefreshFlag('ticketList');
           this.refreshList();
           this.updateFilterCounts();
         }, 500);
@@ -379,6 +690,7 @@ Page({
           showCancel: false,
           confirmText: '知道了',
           success: () => {
+            RefreshManager.setForceRefreshFlag('ticketList');
             this.refreshList();
           }
         });
@@ -461,6 +773,7 @@ Page({
               
               // 刷新列表
               setTimeout(() => {
+                RefreshManager.setForceRefreshFlag('ticketList');
                 that.refreshList();
                 that.updateFilterCounts();
               }, 1500);
@@ -515,59 +828,22 @@ Page({
     return themes[status] || 'default';
   },
 
-  // 时间范围变化
-  onTimeRangeChange(e) {
-    this.setData({
-      'tempFilters.timeRange': e.detail.value
-    });
-  },
-  
-  // 问题类型变化
-  onCategoryChange(e) {
-    this.setData({
-      'tempFilters.category': e.detail.value
-    });
-  },
-  
-  // 优先级变化（多选）
-  onPriorityChange(e) {
-    this.setData({
-      'tempFilters.priority': e.detail.value
-    });
-  },
 
-  // 重置筛选
-  resetFilters() {
-    this.setData({
-      tempFilters: {
-        timeRange: 'all',
-        assignee: this.data.userRoleGroup === '工程师' ? 'my' : 'all',
-        category: 'all',
-        priority: []
-      }
-    });
-  },
-
-  // 应用筛选
-  applyFilters() {
-    this.setData({
-      filterPopupVisible: false,
-      currentAssignee: this.data.tempFilters.assignee,
-      page: 1
-    });
-    this.loadTicketList();
-  },
-
-  // 处理筛选弹窗变化
-  handleFilterPopupChange(e) {
-    this.setData({
-      filterPopupVisible: e.detail.visible
-    });
-  },
-
-  // 刷新
-  onRefresh() {
+  // 刷新按钮点击
+  async onRefresh() {
+    console.log('[工单列表] 用户点击刷新按钮');
+    
+    // 刷新用户角色
+    await this.refreshUserRole();
+    
+    RefreshManager.setForceRefreshFlag('ticketList');
     this.refreshList();
+    
+    wx.showToast({
+      title: '刷新中...',
+      icon: 'loading',
+      duration: 500
+    });
   },
 
   // 构建查询条件 - 重构版本
@@ -612,15 +888,30 @@ Page({
         break;
     }
     
-    // 状态筛选
-    if (this.data.currentFilter !== 'all') {
-      if (this.data.currentFilter === 'urgent') {
-        // 紧急工单筛选
-        conditions.push({ priority: 'urgent' });
-      } else {
-        // 具体状态筛选
-        conditions.push({ status: this.data.currentFilter });
+    // 状态筛选（改进）
+    if (this.data.currentFilter === 'all') {
+      // "全部"排除已关闭
+      conditions.push({ status: _.neq('closed') });
+      // 默认添加1个月时间限制
+      if (!this.data.timeRangeFilter || this.data.timeRangeFilter === 'month') {
+        conditions.push(this.getTimeRangeCondition('month'));
       }
+    } else if (this.data.currentFilter === 'closed') {
+      // 已关闭工单特殊处理
+      conditions.push({ status: 'closed' });
+      // 使用动态时间范围
+      conditions.push(this.getTimeRangeCondition(this.data.closedTimeRange));
+    } else if (this.data.currentFilter === 'urgent') {
+      // 紧急工单筛选
+      conditions.push({ priority: 'urgent' });
+    } else {
+      // 其他状态正常筛选
+      conditions.push({ status: this.data.currentFilter });
+    }
+    
+    // 时间范围筛选（新增，但不应用于已关闭工单）
+    if (this.data.timeRangeFilter && this.data.timeRangeFilter !== 'month' && this.data.currentFilter !== 'closed') {
+      conditions.push(this.getTimeRangeCondition(this.data.timeRangeFilter));
     }
     
     // 关键词搜索（搜索工单号、标题或提交人）
@@ -646,40 +937,7 @@ Page({
     
     // 应用高级筛选
     
-    // 问题类型筛选
-    if (this.data.tempFilters.category && this.data.tempFilters.category !== 'all') {
-      conditions.push({ category: this.data.tempFilters.category });
-    }
-    
-    // 优先级筛选（多选）
-    if (this.data.tempFilters.priority && this.data.tempFilters.priority.length > 0) {
-      conditions.push({ priority: _.in(this.data.tempFilters.priority) });
-    }
-    
-    // 时间范围筛选
-    if (this.data.tempFilters.timeRange && this.data.tempFilters.timeRange !== 'all') {
-      const now = new Date();
-      let startTime;
-      
-      switch(this.data.tempFilters.timeRange) {
-        case 'today':
-          startTime = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-          break;
-        case 'week':
-          startTime = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-          break;
-        case 'month':
-          startTime = new Date(now.getFullYear(), now.getMonth(), 1);
-          break;
-      }
-      
-      if (startTime) {
-        conditions.push(_.or([
-          { createTime: _.gte(startTime) },
-          { createdAt: _.gte(startTime) }
-        ]));
-      }
-    }
+    // 高级筛选中的时间范围（已移至主筛选）
     
     // 如果有多个条件，使用and连接
     if (conditions.length === 0) {
@@ -689,6 +947,63 @@ Page({
     } else {
       return _.and(conditions);
     }
+  },
+  
+  // 获取时间范围标签文字（供WXML使用）
+  获取时间范围标签(range) {
+    const labels = {
+      'week': '近7天',
+      'month': '近1月',
+      'halfYear': '近6月',
+      'year': '近1年',
+      'overYear': '一年以上',
+      'all': '全部时间'
+    };
+    return labels[range] || '近1月';
+  },
+  
+  // 获取时间范围条件
+  getTimeRangeCondition(range) {
+    const _ = this.db.command;
+    const now = new Date();
+    let startTime, endTime;
+    
+    switch(range) {
+      case 'week':
+        startTime = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case 'month':
+        const monthAgo = new Date();
+        monthAgo.setMonth(monthAgo.getMonth() - 1);
+        startTime = monthAgo;
+        break;
+      case 'halfYear':
+        const halfYearAgo = new Date();
+        halfYearAgo.setMonth(halfYearAgo.getMonth() - 6);
+        startTime = halfYearAgo;
+        break;
+      case 'year':
+        const yearAgo = new Date();
+        yearAgo.setFullYear(yearAgo.getFullYear() - 1);
+        startTime = yearAgo;
+        break;
+      case 'overYear':
+        const overYearAgo = new Date();
+        overYearAgo.setFullYear(overYearAgo.getFullYear() - 1);
+        endTime = overYearAgo;
+        return _.or([
+          { createTime: _.lt(endTime) },
+          { createdAt: _.lt(endTime) }
+        ]);
+    }
+    
+    if (startTime) {
+      return _.or([
+        { createTime: _.gte(startTime) },
+        { createdAt: _.gte(startTime) }
+      ]);
+    }
+    return {};
   },
   
   // 更新筛选项的计数
@@ -799,14 +1114,9 @@ Page({
   },
   
   // 负责人筛选变化
-  onAssigneeFilterChange(e) {
-    this.setData({
-      'tempFilters.assignee': e.detail.value
-    });
-  },
   
-  // 加载负责人列表
-  async loadAssigneeList() {
+  // 删除负责人列表函数
+  /* async loadAssigneeList() {
     try {
       const _ = this.db.command;
       const userRoleGroup = this.data.userRoleGroup;
@@ -841,8 +1151,7 @@ Page({
         options.push({ label: '我负责的', value: 'my' });
         // 设置默认选中为"我负责的"
         this.setData({
-          currentAssignee: 'my',
-          'tempFilters.assignee': 'my'
+          currentAssignee: 'my'
         });
       }
       
@@ -867,12 +1176,11 @@ Page({
       
       if (this.data.userRoleGroup === '工程师') {
         this.setData({
-          currentAssignee: 'my',
-          'tempFilters.assignee': 'my'
+          currentAssignee: 'my'
         });
       }
     }
-  },
+  }, */
 
   // 继续处理暂停的工单
   async continueProcessing(e) {
@@ -902,8 +1210,12 @@ Page({
           icon: 'success'
         });
         
+        // 触发工单更新事件
+        this.app.eventBus.emit(this.app.EVENTS.TICKET_UPDATED, { ticketId });
+        
         // 刷新列表
         setTimeout(() => {
+          RefreshManager.setForceRefreshFlag('ticketList');
           this.refreshList();
         }, 500);
       } else {

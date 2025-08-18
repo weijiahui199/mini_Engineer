@@ -30,6 +30,9 @@ Page({
     // 处理时间线 - 初始为空，等待加载真实数据
     processTimeline: [],
     
+    // 处理历史记录
+    processHistory: [],
+    
     // 解决方案
     solutionText: '',
     
@@ -92,8 +95,8 @@ Page({
       const canOperate = this.checkOperatePermission(ticket);
       const isAssignee = ticket.assigneeOpenid === this.app.globalData.openid;
       
-      // 构建时间线
-      const timeline = this.buildTimeline(ticket);
+      // 使用processHistory或构建兼容时间线
+      const timeline = this.buildTimelineFromHistory(ticket);
       
       // 判断实际显示状态（暂停状态特殊处理）
       let displayStatus = ticket.status || 'pending';
@@ -123,6 +126,7 @@ Page({
       this.setData({
         ticketInfo: ticketInfo,
         processTimeline: timeline,
+        processHistory: ticket.processHistory || [],
         showActions: canOperate,
         isAssignee: isAssignee,
         canAccept: !ticket.assigneeOpenid && canOperate && ticket.status === 'pending'
@@ -191,7 +195,51 @@ Page({
     }
   },
   
-  // 构建处理时间线
+  // 从processHistory构建时间线
+  buildTimelineFromHistory(ticket) {
+    // 如果有processHistory，使用新的历史记录
+    if (ticket.processHistory && ticket.processHistory.length > 0) {
+      return this.formatProcessHistory(ticket.processHistory);
+    }
+    
+    // 否则使用旧的构建方式（兼容旧数据）
+    return this.buildTimeline(ticket);
+  },
+  
+  // 格式化处理历史
+  formatProcessHistory(history) {
+    const timeline = [];
+    const actionTextMap = {
+      'created': '工单创建',
+      'accepted': '接单处理',
+      'rejected': '退回工单',
+      'paused': '暂停处理',
+      'continued': '继续处理',
+      'resolved': '已解决',
+      'closed': '已关闭'
+    };
+    
+    history.forEach((item, index) => {
+      const timelineItem = {
+        id: item.id || `history_${index}`,
+        title: actionTextMap[item.action] || item.description,
+        time: this.formatDateTime(item.timestamp),
+        description: `${item.operator}${item.description}`,
+        isActive: true,
+        action: item.action,
+        // 特别标记退回原因
+        rejectReason: item.action === 'rejected' ? item.reason : null,
+        // 解决方案
+        solution: item.action === 'resolved' ? item.solution : null
+      };
+      
+      timeline.push(timelineItem);
+    });
+    
+    return timeline;
+  },
+  
+  // 构建处理时间线（兼容旧数据）
   buildTimeline(ticket) {
     const timeline = [];
     
@@ -201,7 +249,8 @@ Page({
       title: '工单创建',
       time: this.formatDateTime(ticket.createTime || ticket.createdAt),
       description: `${ticket.submitterName || '用户'}创建工单`,
-      isActive: true
+      isActive: true,
+      action: 'created'
     });
     
     // 接单节点
@@ -211,7 +260,21 @@ Page({
         title: '工程师接单',
         time: this.formatDateTime(ticket.acceptTime),
         description: `${ticket.assigneeName || '工程师'}接单处理`,
-        isActive: true
+        isActive: true,
+        action: 'accepted'
+      });
+    }
+    
+    // 退回节点（兼容旧数据的rejectReason字段）
+    if (ticket.rejectReason && ticket.rejectTime) {
+      timeline.push({
+        id: 'reject',
+        title: '退回工单',
+        time: this.formatDateTime(ticket.rejectTime),
+        description: `${ticket.assigneeName || '工程师'}退回工单`,
+        isActive: true,
+        action: 'rejected',
+        rejectReason: ticket.rejectReason
       });
     }
     
@@ -233,7 +296,8 @@ Page({
         title: '处理中',
         time: processTime,
         description: processDescription,
-        isActive: isProcessingActive
+        isActive: isProcessingActive,
+        action: ticket.status === 'pending' && ticket.assigneeOpenid ? 'paused' : 'processing'
       });
     }
     
@@ -244,7 +308,9 @@ Page({
         title: '已解决',
         time: ticket.resolveTime ? this.formatDateTime(ticket.resolveTime) : '',
         description: ticket.solution || '问题已解决',
-        isActive: ticket.status === 'resolved'
+        isActive: ticket.status === 'resolved',
+        action: 'resolved',
+        solution: ticket.solution
       });
     }
     
@@ -255,7 +321,8 @@ Page({
         title: '已关闭',
         time: ticket.closeTime ? this.formatDateTime(ticket.closeTime) : '',
         description: '工单已关闭',
-        isActive: true
+        isActive: true,
+        action: 'closed'
       });
     }
     
@@ -569,8 +636,8 @@ Page({
     
     // 显示确认对话框
     wx.showModal({
-      title: '退回工单',
-      content: '提示：退回后工单将重新进入待接单状态，其他工程师可以接单处理。',
+      title: '退回工单（将改为待接单状态）',
+      content: '',
       editable: true,
       placeholderText: '请输入退回原因（选填）',
       success: async function(res) {
