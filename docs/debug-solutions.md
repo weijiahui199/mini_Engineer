@@ -902,11 +902,126 @@ console.log('缓存信息:', {
   3. **角色变化要触发刷新**：权限改变时相关数据都要更新
   4. **调试日志很重要**：记录角色获取和变化过程
 
+### 问题 #20：Fuse.js 搜索功能无法正常工作
+- **发生时间**：2025-08-18
+- **问题描述**：
+  1. 搜索任何关键词都没有反应
+  2. 控制台报错：module 'utils/fuse.js' is not defined
+  3. NPM 构建后 miniprogram_npm 中没有 fuse.js
+- **错误信息**：
+  ```
+  Error: module 'utils/fuse.js' is not defined, require args is 'fuse.js'
+  ```
+- **问题原因**：
+  1. **NPM 构建问题**：虽然安装了 fuse.js，但构建 NPM 时没有正确生成到 miniprogram_npm
+  2. **模块路径错误**：require('fuse.js') 在小程序中无法正确解析
+  3. **初始化时机问题**：搜索索引在数据加载前就尝试初始化
+- **解决方案**：
+  1. **实现备用搜索引擎**：
+     - 创建 simple-search.js 作为备用方案
+     - 当 Fuse.js 加载失败时自动降级
+  2. **修复初始化流程**：
+     - 将搜索初始化移到 loadTicketList 成功后
+     - 确保 allTickets 数据正确设置
+  3. **多路径尝试加载**：
+     - 尝试多个可能的 Fuse.js 路径
+     - 最终降级到简单搜索
+- **相关文件**：
+  - `/miniprogram/utils/search-manager.js` - 添加多路径加载和降级逻辑
+  - `/miniprogram/utils/simple-search.js` - 创建备用搜索引擎
+  - `/miniprogram/pages/ticket-list/index.js` - 修复初始化时机
+- **验证结果**：
+  - 搜索功能可以正常工作（使用备用引擎）
+  - 支持工单号、标题、提交人等字段搜索
+  - 性能依然良好（本地搜索）
+- **经验总结**：
+  1. **NPM 构建注意事项**：
+     - 需要在项目根目录正确配置 project.config.json
+     - 构建后检查 miniprogram_npm 内容
+  2. **模块加载策略**：
+     - 始终提供降级方案
+     - 尝试多个可能的路径
+  3. **调试技巧**：
+     - 添加详细的加载日志
+     - 记录使用的搜索引擎类型
+
+### 问题 #21：Fuse.js npm 构建失败 - 文件名不兼容
+- **发生时间**：2025-08-18
+- **问题描述**：
+  1. 构建 npm 时报错：fuse.cjs.js: Npm package entry file not found
+  2. 微信小程序期望 .cjs.js 扩展名，但 fuse.js v7 使用 .cjs
+  3. 搜索降级到简单搜索引擎，功能受限
+- **错误信息**：
+  ```
+  /node_modules/fuse.js/dist/fuse.cjs.js: Npm package entry file not found
+  [SearchManager] Fuse.js 加载失败，使用简单搜索引擎
+  ```
+- **问题原因**：
+  1. **版本兼容性**：Fuse.js v7 改变了文件命名规范
+  2. **微信构建工具限制**：构建工具期望特定的文件扩展名
+  3. **模块系统差异**：CommonJS 和 ES6 模块的处理方式不同
+- **解决方案**：
+  1. **创建本地版本**：
+     ```bash
+     cp node_modules/fuse.js/dist/fuse.js miniprogram/utils/fuse-local.js
+     ```
+  2. **修改加载优先级**：
+     - 优先加载本地版本 require('./fuse-local')
+     - 避免 npm 构建问题
+  3. **保持降级机制**：
+     - 本地版本失败时降级到简单搜索
+- **相关文件**：
+  - `/miniprogram/utils/fuse-local.js` - 本地 Fuse.js 完整版
+  - `/miniprogram/utils/search-manager.js` - 修改加载顺序
+- **验证结果**：
+  - ✅ Fuse.js 成功加载（本地版本）
+  - ✅ 支持模糊搜索和拼写容错
+  - ✅ 搜索性能显著提升
+- **经验总结**：
+  1. **本地化策略**：当 npm 包有兼容性问题时，考虑本地化
+  2. **多重降级**：本地版本 → npm版本 → 简单搜索
+  3. **版本选择**：选择与平台兼容的包版本
+
+### 问题 #22：搜索负责人名字无结果
+- **发生时间**：2025-08-18
+- **问题描述**：
+  1. 搜索负责人名字（如"逸"）没有匹配结果
+  2. 工单明明显示有该负责人，但搜索不到
+  3. 控制台显示"无结果"
+- **问题原因**：
+  1. **字段缺失**：formatTicket 没有包含 assigneeName 字段
+  2. **搜索配置**：SearchManager 的 keys 配置中缺少 assigneeName
+  3. **数据不一致**：搜索索引使用的数据可能缺少负责人信息
+- **解决方案**：
+  1. **添加 assigneeName 到搜索配置**：
+     - 在 SearchManager 的 keys 配置中添加 assigneeName 字段
+     - 设置权重为 1.2（比提交人稍高）
+  2. **确保数据完整性**：
+     - formatTicket 方法已包含 assigneeName 字段
+     - 搜索索引使用格式化后的数据
+  3. **测试验证**：
+     - 创建测试脚本 test-assignee-search.js
+     - 验证负责人搜索功能
+- **相关文件**：
+  - `/miniprogram/utils/search-manager.js` - 已添加 assigneeName 到搜索字段
+  - `/miniprogram/pages/ticket-list/index.js` - formatTicket 已包含负责人信息
+  - `/miniprogram/pages/ticket-list/test-assignee-search.js` - 测试脚本
+- **验证结果**：
+  - ✅ assigneeName 字段已添加到搜索配置
+  - ✅ 支持搜索负责人名字
+  - ✅ 支持部分匹配（如搜索"逸"）
+- **经验总结**：
+  1. **搜索字段要完整**：确保所有显示的字段都可搜索
+  2. **数据一致性**：搜索索引和显示数据要使用相同的格式化方法
+  3. **测试覆盖**：为每个搜索字段创建测试用例
+
 ## 更新日志
 
 - 2025-08-12：创建文档，整理调试模板和技巧
 - 2025-08-16：添加工单按钮风格统一问题及解决方案
 - 2025-08-16：添加时间线显示错误、日期格式处理、处理时间重复设置、退回预填内容等问题及解决方案
+- 2025-08-18：添加 Fuse.js npm 构建失败的解决方案（问题 #21）
+- 2025-08-18：添加搜索负责人名字无结果的解决方案（问题 #22）
 - 2025-08-16：记录工单状态意外变化问题（待调查）
 - 2025-08-16：添加工单暂停状态实现方案和容易遗漏的关键点
 - 2025-08-18：添加工单列表下拉刷新问题及智能刷新管理解决方案

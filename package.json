@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "fuse.js": "^7.1.0",
     "tdesign-miniprogram": "^1.10.0"
   }
 }

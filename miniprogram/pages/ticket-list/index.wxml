@@ -80,14 +80,6 @@
     </view>
   </view>
 
-  <!-- 统计信息 -->
-  <view class="stats-bar" wx:if="{{showStats}}">
-    <view class="stats-content">
-      <text class="stats-text">今日工单: {{todayStats.assigned}}个</text>
-      <text class="stats-highlight">完成率: {{todayStats.completionRate}}%</text>
-    </view>
-  </view>
-
   <!-- 工单列表 -->
   <scroll-view 
     scroll-y="{{true}}"
@@ -104,13 +96,12 @@
       <t-swipe-cell 
         wx:for="{{ticketList}}" 
         wx:key="id"
-        right="{{getSwipeActions(item)}}"
       >
         <view 
           class="ticket-card {{item.priority === 'urgent' ? 'urgent-border' : ''}} {{!item.assigneeOpenid && item.status === 'pending' ? 'pool-ticket' : ''}} {{item.assigneeOpenid && item.assigneeOpenid !== openid ? 'taken' : ''}} {{item.assigneeOpenid === openid ? 'my-ticket' : ''}}"
         >
           <!-- 可点击区域 - 点击查看详情 -->
-          <view class="card-clickable" bindtap="navigateToDetail" data-id="{{item.id}}">
+          <view class="card-clickable" bindtap="onTicketClick" data-ticket="{{item}}" data-index="{{index}}">
             <!-- 工单头部 -->
             <view class="card-header">
               <view class="header-left">
@@ -119,7 +110,7 @@
               </view>
               <view class="header-right">
                 <t-tag 
-                  theme="{{item.status === 'paused' ? 'warning' : getStatusTheme(item.status)}}"
+                  theme="{{item.status === 'paused' ? 'warning' : item.status === 'pending' ? 'warning' : item.status === 'processing' ? 'primary' : item.status === 'resolved' ? 'success' : 'default'}}"
                   variant="light"
                   size="small"
                 >

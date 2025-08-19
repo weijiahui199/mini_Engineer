@@ -1,6 +1,8 @@
 // 工单列表页面
 const RefreshManager = require('../../utils/refresh-manager');
 const CacheManager = require('../../utils/cache-manager');
+const SearchManager = require('../../utils/search-manager');
+const { logSearch, logSearchClick } = require('../../utils/search-logger');
 
 Page({
   data: {
@@ -8,6 +10,12 @@ Page({
     searchKeyword: '',
     currentFilter: 'all',
     currentAssignee: 'all', // 当前选中的负责人筛选：all | my | openid
+    
+    // 搜索相关
+    searchManager: null,      // Fuse.js 搜索管理器
+    allTickets: [],           // 保存所有工单（用于搜索）
+    searchMode: 'local',      // 搜索模式：local/database
+    isSearching: false,       // 是否正在搜索
     
     // 筛选选项
     filterOptions: [
@@ -47,13 +55,6 @@ Page({
       paused: '已暂停'
     },
     
-    // 统计信息
-    showStats: true,
-    todayStats: {
-      assigned: 8,
-      completionRate: 75
-    },
-    
     // 工单列表
     ticketList: [],
     
@@ -78,6 +79,9 @@ Page({
     // 获取app实例和数据库
     this.app = getApp();
     this.db = this.app.globalData.db || wx.cloud.database();
+    
+    // 初始化搜索管理器
+    this.searchManager = new SearchManager();
     
     // 注册页面到刷新管理器
     RefreshManager.setPageActive('ticket-list', true);
@@ -275,40 +279,19 @@ Page({
         .limit(this.data.pageSize)
         .get();
       
-      // 处理查询结果
-      const formattedList = res.data.map(ticket => {
-        // 确保status字段是干净的字符串
-        const cleanStatus = ticket.status ? String(ticket.status).trim() : 'pending';
-        
-        // 判断是否是暂停状态（pending但有assignee）
-        let displayStatus = cleanStatus;
-        if (cleanStatus === 'pending' && ticket.assigneeOpenid) {
-          displayStatus = 'paused';  // UI显示为暂停
-        }
-        
-        const formatted = {
-          id: ticket._id,
-          ticketNo: ticket.ticketNo,  // 去掉#前缀，在视图层添加
-          title: ticket.title,
-          category: ticket.category,
-          priority: ticket.priority,
-          status: displayStatus,  // 使用显示状态
-          realStatus: cleanStatus,  // 保留真实状态
-          submitter: ticket.submitterName,
-          company: ticket.company || '',  // 新增公司字段
-          location: ticket.location,
-          createTime: this.formatTime(ticket.createTime),
-          createTimeDisplay: this.formatTime(ticket.createTime),  // 专门用于显示创建时间
-          updateTime: this.formatTime(ticket.updateTime || ticket.createTime),
-          displayTime: this.formatTime(ticket.createTime),  // 改为显示创建时间
-          assigned: !!ticket.assigneeOpenid,
-          assigneeOpenid: ticket.assigneeOpenid || '',  // 添加assigneeOpenid字段
-          assigneeName: ticket.assigneeName || '',  // 确保所有角色可见
-          isPaused: cleanStatus === 'pending' && !!ticket.assigneeOpenid  // 标记是否为暂停状态
-        };
-        
-        return formatted;
-      });
+      // 处理查询结果 - 使用统一的 formatTicket 方法
+      const formattedList = res.data
+        .map(ticket => this.formatTicket(ticket))
+        .filter(ticket => ticket !== null);  // 过滤掉格式化失败的数据
+      
+      // 记录格式化情况
+      if (formattedList.length < res.data.length) {
+        console.warn('[loadTicketList] 部分工单格式化失败:', {
+          原始数量: res.data.length,
+          成功数量: formattedList.length,
+          失败数量: res.data.length - formattedList.length
+        });
+      }
       
       // 更新统计数据
       await this.updateFilterCounts();
@@ -336,6 +319,14 @@ Page({
           hasMore: res.data.length === this.data.pageSize,
           page: 0
         });
+        
+        // 在设置了 ticketList 后，初始化搜索索引
+        // 注意：这里直接用 formattedList 初始化搜索
+        this.searchManager.initSearch(formattedList);
+        this.setData({
+          allTickets: formattedList
+        });
+        console.log('[loadTicketList] 搜索索引已初始化，工单数:', formattedList.length);
       }
       
       // 记录刷新时间和缓存数据（只在非追加模式下）
@@ -363,6 +354,13 @@ Page({
           hasMore: data.hasMore,
           page: 1
         });
+        
+        // 使用模拟数据初始化搜索
+        this.searchManager.initSearch(data.list);
+        this.setData({
+          allTickets: data.list
+        });
+        console.log('[loadTicketList] 使用模拟数据初始化搜索，工单数:', data.list.length);
       }
     } finally {
       this.setData({
@@ -374,17 +372,31 @@ Page({
 
   // 搜索变化
   onSearchChange(e) {
-    this.setData({
-      searchKeyword: e.detail.value
-    });
+    const keyword = e.detail.value.trim();
+    this.setData({ searchKeyword: keyword });
+    
+    // 清空搜索
+    if (!keyword) {
+      this.clearSearch();
+      return;
+    }
+    
+    // 防抖处理
+    if (this.searchTimer) {
+      clearTimeout(this.searchTimer);
+    }
+    
+    this.searchTimer = setTimeout(() => {
+      this.executeLocalSearch(keyword);
+    }, 300);
   },
 
-  // 执行搜索
+  // 执行搜索（保留兼容）
   onSearch() {
-    this.setData({
-      page: 1
-    });
-    this.loadTicketList();
+    const keyword = this.data.searchKeyword;
+    if (keyword) {
+      this.executeLocalSearch(keyword);
+    }
   },
 
   // 筛选点击
@@ -1294,5 +1306,190 @@ Page({
       ],
       hasMore: true
     };
+  },
+
+  // ============ 新增：本地搜索相关方法 ============
+  
+  /**
+   * 加载所有工单用于搜索（已废弃，搜索初始化已移到 loadTicketList）
+   */
+  async loadAllTicketsForSearch() {
+    console.log('[loadAllTicketsForSearch] 此方法已废弃，搜索初始化已在 loadTicketList 中完成');
+    return;
+  },
+  
+  /**
+   * 格式化工单数据
+   */
+  formatTicket(ticket) {
+    // 数据验证
+    if (!ticket) {
+      console.error('[formatTicket] 接收到空工单数据');
+      return null;
+    }
+    
+    // 确保必需字段存在
+    const id = ticket._id || ticket.id || '';
+    if (!id) {
+      console.error('[formatTicket] 工单缺少ID:', ticket);
+      return null;
+    }
+    
+    // 确保status字段是干净的字符串
+    const cleanStatus = ticket.status ? String(ticket.status).trim() : 'pending';
+    
+    // 判断是否是暂停状态（pending但有assignee）
+    let displayStatus = cleanStatus;
+    if (cleanStatus === 'pending' && ticket.assigneeOpenid) {
+      displayStatus = 'paused';  // UI显示为暂停
+    }
+    
+    // 格式化时间显示
+    const createTimeDisplay = this.formatTime(ticket.createTime);
+    
+    return {
+      // 核心字段
+      id: id,
+      _id: id,  // 保持兼容性
+      ticketNo: ticket.ticketNo || '',
+      title: ticket.title || '未命名工单',
+      
+      // 分类和优先级
+      category: ticket.category || '其他',
+      priority: ticket.priority || 'medium',
+      
+      // 状态相关
+      status: displayStatus,
+      realStatus: cleanStatus,
+      
+      // 提交人信息
+      submitter: ticket.submitterName || ticket.submitter || '未知',
+      submitterName: ticket.submitterName || ticket.submitter || '未知',
+      company: ticket.company || '',
+      location: ticket.location || '未指定',
+      
+      // 时间相关
+      createTime: ticket.createTime,
+      createTimeDisplay: createTimeDisplay,
+      updateTime: this.formatTime(ticket.updateTime || ticket.createTime),
+      displayTime: createTimeDisplay,
+      
+      // 负责人相关
+      assigned: !!ticket.assigneeOpenid,
+      assigneeOpenid: ticket.assigneeOpenid || '',
+      assigneeName: ticket.assigneeName || '',
+      isPaused: cleanStatus === 'pending' && !!ticket.assigneeOpenid,
+      
+      // 其他字段（保持原始数据）
+      description: ticket.description || '',
+      phone: ticket.phone || '',
+      department: ticket.department || ''
+    };
+  },
+  
+  /**
+   * 执行本地搜索
+   */
+  executeLocalSearch(keyword) {
+    console.log('[executeLocalSearch] 开始搜索:', keyword);
+    
+    if (!keyword) {
+      this.clearSearch();
+      return;
+    }
+    
+    // 检查搜索管理器状态
+    console.log('[executeLocalSearch] 搜索管理器状态:', {
+      hasManager: !!this.searchManager,
+      isInitialized: this.searchManager?.isInitialized,
+      ticketCount: this.searchManager?.getTicketCount()
+    });
+    
+    // 显示搜索中状态
+    this.setData({ isSearching: true });
+    
+    const startTime = Date.now();
+    
+    try {
+      // 使用 Fuse.js 搜索
+      const results = this.searchManager.search(keyword);
+      const searchTime = Date.now() - startTime;
+      
+      console.log('[executeLocalSearch] 搜索完成:', {
+        keyword: keyword,
+        resultCount: results.length,
+        searchTime: searchTime,
+        results: results.slice(0, 3) // 只显示前3个结果
+      });
+      
+      // 记录搜索日志
+      logSearch(keyword, results.length, {
+        searchType: 'manual',
+        searchTime: searchTime,
+        page: 'ticket-list'
+      });
+      
+      // 更新显示
+      this.setData({
+        ticketList: results,
+        isSearching: false,
+        hasMore: false  // 搜索结果不分页
+      });
+      
+      // 如果没有结果，记录无结果搜索
+      if (results.length === 0) {
+        console.log('[搜索] 无结果:', keyword);
+      }
+      
+    } catch (error) {
+      console.error('[搜索] 执行失败:', error);
+      this.setData({ isSearching: false });
+      wx.showToast({
+        title: '搜索失败',
+        icon: 'none'
+      });
+    }
+  },
+  
+  /**
+   * 清空搜索
+   */
+  clearSearch() {
+    const allTickets = this.data.allTickets || [];
+    this.setData({
+      searchKeyword: '',
+      ticketList: allTickets.slice(0, this.data.pageSize),
+      hasMore: allTickets.length > this.data.pageSize
+    });
+  },
+  
+  /**
+   * 点击工单时记录搜索点击
+   */
+  onTicketClick(e) {
+    console.log('[onTicketClick] 事件数据:', e.currentTarget.dataset);
+    
+    const ticket = e.currentTarget.dataset.ticket;
+    const index = e.currentTarget.dataset.index;
+    
+    // 添加空值检查
+    if (!ticket || !ticket.id) {
+      console.error('[onTicketClick] 工单数据无效:', ticket);
+      wx.showToast({
+        title: '工单信息错误',
+        icon: 'none'
+      });
+      return;
+    }
+    
+    // 如果正在搜索，记录点击
+    if (this.data.searchKeyword) {
+      logSearchClick(this.data.searchKeyword, index);
+    }
+    
+    // 跳转到详情页
+    wx.navigateTo({
+      url: `/pages/ticket-detail/index?id=${ticket.id}`
+    });
   }
 });
