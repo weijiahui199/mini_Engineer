@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>耗材列表</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background: #f3f3f3;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+        }
+        
+        /* TDesign 颜色 */
+        .td-primary { color: #0052d9; }
+        .td-primary-bg { background-color: #0052d9; }
+        .td-success { color: #00a870; }
+        .td-warning { color: #ed7b2f; }
+        .td-error { color: #e34d59; }
+        
+        /* 左侧类目样式 */
+        .category-sidebar {
+            width: 90px;
+            background: white;
+            border-right: 1px solid #e7e7e7;
+            position: fixed;
+            left: 0;
+            top: 60px;
+            bottom: 60px;
+            overflow-y: auto;
+        }
+        
+        .category-item {
+            padding: 12px 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+        
+        .category-item.active {
+            background: #f0f6ff;
+            color: #0052d9;
+        }
+        
+        .category-item.active::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 3px;
+            height: 24px;
+            background: #0052d9;
+            border-radius: 2px 0 0 2px;
+        }
+        
+        /* 右侧内容区 */
+        .content-area {
+            margin-left: 90px;
+            padding: 70px 12px 70px 12px;
+        }
+        
+        /* 产品卡片 */
+        .product-card {
+            background: white;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            transition: all 0.3s;
+        }
+        
+        .product-card:active {
+            transform: scale(0.98);
+        }
+        
+        /* 数量步进器 */
+        .stepper-btn {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        
+        .stepper-btn:active {
+            transform: scale(0.9);
+        }
+        
+        /* 底部栏 */
+        .bottom-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: white;
+            border-top: 1px solid #e7e7e7;
+            box-shadow: 0 -4px 12px rgba(0,0,0,0.04);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 12px;
+            z-index: 100;
+        }
+        
+        /* 库存状态标签 */
+        .stock-badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        
+        .stock-normal {
+            background: #e3f9e9;
+            color: #00a870;
+        }
+        
+        .stock-warning {
+            background: #fff5ed;
+            color: #ed7b2f;
+        }
+        
+        .stock-danger {
+            background: #fef1f1;
+            color: #e34d59;
+        }
+        
+        /* 选规格按钮 */
+        .select-spec-btn {
+            background: #f0f6ff;
+            color: #0052d9;
+            padding: 6px 16px;
+            border-radius: 16px;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        
+        .select-spec-btn:active {
+            background: #0052d9;
+            color: white;
+        }
+        
+        /* 添加按钮 */
+        .add-btn {
+            background: #f5f5f5;
+            color: #666;
+            padding: 8px;
+            text-align: center;
+            font-size: 13px;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        
+        .add-btn:hover {
+            background: #ececec;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- 顶部导航栏 -->
+    <div class="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200" style="height: 60px;">
+        <div class="flex items-center justify-between h-full px-4">
+            <div class="flex items-center">
+                <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                </svg>
+                <h1 class="text-lg font-medium">耗材管理</h1>
+            </div>
+            <button class="flex items-center px-3 py-1.5 bg-gray-100 rounded-full text-sm">
+                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+                搜索
+            </button>
+        </div>
+    </div>
+
+    <!-- 左侧类目栏 -->
+    <div class="category-sidebar">
+        <div class="category-item active">
+            <div class="text-2xl mb-1">🔥</div>
+            <div class="text-xs">常用</div>
+        </div>
+        <div class="category-item">
+            <div class="text-2xl mb-1">📄</div>
+            <div class="text-xs">纸张</div>
+        </div>
+        <div class="category-item">
+            <div class="text-2xl mb-1">✏️</div>
+            <div class="text-xs">书写</div>
+        </div>
+        <div class="category-item">
+            <div class="text-2xl mb-1">🖨️</div>
+            <div class="text-xs">打印耗材</div>
+        </div>
+        <div class="category-item">
+            <div class="text-2xl mb-1">🧹</div>
+            <div class="text-xs">清洁/杂项</div>
+        </div>
+        
+        <!-- 添加类目按钮 -->
+        <div class="add-btn border-t border-gray-200">
+            + 添加耗材类型
+        </div>
+    </div>
+
+    <!-- 右侧内容区 -->
+    <div class="content-area">
+        <!-- 产品卡片 1 - 单规格 -->
+        <div class="product-card">
+            <div class="flex justify-between mb-2">
+                <div class="flex-1">
+                    <h3 class="font-medium text-gray-900 text-base">晨光A4复印纸</h3>
+                    <p class="text-xs text-gray-500 mt-0.5">70g/500张 标准装</p>
+                </div>
+                <span class="stock-badge stock-normal">充足</span>
+            </div>
+            
+            <div class="flex justify-between items-center mt-3">
+                <div>
+                    <p class="text-lg font-semibold td-primary">¥25.00</p>
+                    <p class="text-xs text-gray-400">库存: 120包</p>
+                </div>
+                
+                <!-- 单规格：数量步进器 -->
+                <div class="flex items-center">
+                    <button class="stepper-btn bg-gray-100">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>
+                        </svg>
+                    </button>
+                    <input type="text" value="0" class="w-10 text-center mx-2 text-sm font-medium">
+                    <button class="stepper-btn td-primary-bg text-white">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 产品卡片 2 - 多规格 -->
+        <div class="product-card">
+            <div class="flex justify-between mb-2">
+                <div class="flex-1">
+                    <h3 class="font-medium text-gray-900 text-base">得力中性笔</h3>
+                    <p class="text-xs text-gray-500 mt-0.5">0.5mm/0.7mm 多色可选</p>
+                </div>
+                <span class="stock-badge stock-warning">库存少</span>
+            </div>
+            
+            <div class="flex justify-between items-center mt-3">
+                <div>
+                    <p class="text-lg font-semibold td-primary">¥2.00-3.50</p>
+                    <p class="text-xs text-gray-400">库存: 8-25支</p>
+                </div>
+                
+                <!-- 多规格：选规格按钮 -->
+                <button class="select-spec-btn">
+                    选规格
+                </button>
+            </div>
+        </div>
+
+        <!-- 产品卡片 3 - 单规格 -->
+        <div class="product-card">
+            <div class="flex justify-between mb-2">
+                <div class="flex-1">
+                    <h3 class="font-medium text-gray-900 text-base">HP 803墨盒</h3>
+                    <p class="text-xs text-gray-500 mt-0.5">黑色墨盒 标准容量</p>
+                </div>
+                <span class="stock-badge stock-normal">充足</span>
+            </div>
+            
+            <div class="flex justify-between items-center mt-3">
+                <div>
+                    <p class="text-lg font-semibold td-primary">¥89.00</p>
+                    <p class="text-xs text-gray-400">库存: 15个</p>
+                </div>
+                
+                <div class="flex items-center">
+                    <button class="stepper-btn bg-gray-100">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>
+                        </svg>
+                    </button>
+                    <input type="text" value="1" class="w-10 text-center mx-2 text-sm font-medium">
+                    <button class="stepper-btn td-primary-bg text-white">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 产品卡片 4 - 库存不足 -->
+        <div class="product-card border-l-4 border-red-500">
+            <div class="flex justify-between mb-2">
+                <div class="flex-1">
+                    <h3 class="font-medium text-gray-900 text-base">得力订书钉</h3>
+                    <p class="text-xs text-gray-500 mt-0.5">24/6规格 1000枚/盒</p>
+                </div>
+                <span class="stock-badge stock-danger">缺货</span>
+            </div>
+            
+            <div class="flex justify-between items-center mt-3">
+                <div>
+                    <p class="text-lg font-semibold td-primary">¥5.00</p>
+                    <p class="text-xs td-error font-medium">库存: 仅剩2盒</p>
+                </div>
+                
+                <div class="flex items-center">
+                    <button class="stepper-btn bg-gray-100">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>
+                        </svg>
+                    </button>
+                    <input type="text" value="0" class="w-10 text-center mx-2 text-sm font-medium">
+                    <button class="stepper-btn td-primary-bg text-white">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 产品卡片 5 - 多规格 -->
+        <div class="product-card">
+            <div class="flex justify-between mb-2">
+                <div class="flex-1">
+                    <h3 class="font-medium text-gray-900 text-base">3M便利贴</h3>
+                    <p class="text-xs text-gray-500 mt-0.5">多尺寸 多色可选</p>
+                </div>
+                <span class="stock-badge stock-normal">充足</span>
+            </div>
+            
+            <div class="flex justify-between items-center mt-3">
+                <div>
+                    <p class="text-lg font-semibold td-primary">¥8.00-15.00</p>
+                    <p class="text-xs text-gray-400">库存: 50-80本</p>
+                </div>
+                
+                <button class="select-spec-btn">
+                    选规格
+                </button>
+            </div>
+        </div>
+
+        <!-- 添加耗材产品按钮 -->
+        <div class="product-card add-btn text-center">
+            <svg class="w-6 h-6 mx-auto mb-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            </svg>
+            <p class="text-sm text-gray-600">添加耗材产品</p>
+        </div>
+    </div>
+
+    <!-- 底部栏 -->
+    <div class="bottom-bar">
+        <!-- 左侧：仓库与库存策略 -->
+        <div class="flex items-center">
+            <div class="pr-3 border-r border-gray-200">
+                <p class="text-xs text-gray-500">当前仓库</p>
+                <p class="text-sm font-medium text-gray-900">总部仓</p>
+            </div>
+            <div class="pl-3">
+                <p class="text-xs text-gray-500">库存策略</p>
+                <p class="text-sm font-medium text-gray-900">实时扣减</p>
+            </div>
+        </div>
+        
+        <!-- 右侧：申领车汇总按钮 -->
+        <button class="flex items-center bg-gradient-to-r from-blue-500 to-blue-600 text-white px-4 py-2 rounded-full">
+            <div class="relative mr-3">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                </svg>
+                <span class="absolute -top-2 -right-2 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-medium">3</span>
+            </div>
+            <div class="text-left">
+                <p class="text-xs opacity-90">3件商品</p>
+                <p class="text-sm font-semibold">¥119.00</p>
+            </div>
+        </button>
+    </div>
+</body>
+</html>

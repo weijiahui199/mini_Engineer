@@ -6,7 +6,11 @@
     "pages/ticket-list/index",
     "pages/ticket-detail/index",
     "pages/profile/index",
-    "pages/user-info/index"
+    "pages/user-info/index",
+    "pages/material-list/index",
+    "pages/material-detail/index",
+    "pages/material-cart/index",
+    "pages/material-manage/index"
   ],
   "window": {
     "backgroundTextStyle": "light",

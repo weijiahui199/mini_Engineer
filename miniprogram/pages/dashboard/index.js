@@ -272,8 +272,38 @@ Page({
   onQuickAction(e) {
     const action = e.currentTarget.dataset.action;
     
+    // 检查用户权限
+    const userInfo = wx.getStorageSync('userInfo');
+    
+    // 耗材管理需要工程师或经理权限
+    if (action === 'materials') {
+      if (!userInfo || !userInfo.roleGroup) {
+        wx.showToast({
+          title: '请先登录',
+          icon: 'none',
+          duration: 2000
+        });
+        return;
+      }
+      
+      // 用户角色是'用户'时无权访问
+      if (userInfo.roleGroup === '用户') {
+        wx.showToast({
+          title: '无权限访问',
+          icon: 'none',
+          duration: 2000
+        });
+        return;
+      }
+      
+      wx.navigateTo({
+        url: '/pages/material-list/index'
+      });
+      return;
+    }
+    
     // 这些功能开发中
-    if (action === 'materials' || action === 'stats' || action === 'help') {
+    if (action === 'stats' || action === 'help') {
       wx.showToast({
         title: '功能开发中',
         icon: 'none',
@@ -768,17 +798,30 @@ Page({
       
       // 根据角色返回不同的统计
       if (roleGroup === '经理') {
-        // 经理：全局视角
-        const [allPending, allProcessing, todayResolved, allUrgent] = await Promise.all([
-          // 所有待处理
-          db.collection('tickets').where({ 
-            status: 'pending' 
-          }).count(),
+        // 经理：全局视角，包含已暂停统计
+        const [allPending, allProcessing, allPaused, todayResolved, allUrgent] = await Promise.all([
+          // 所有待处理（未分配的）
+          db.collection('tickets').where(_.and([
+            { status: 'pending' },
+            _.or([
+              { assigneeOpenid: _.exists(false) },
+              { assigneeOpenid: '' },
+              { assigneeOpenid: null }
+            ])
+          ])).count(),
           
           // 所有处理中
           db.collection('tickets').where({ 
             status: 'processing' 
           }).count(),
+          
+          // 所有暂停（pending状态但有assigneeOpenid）
+          db.collection('tickets').where(_.and([
+            { status: 'pending' },
+            { assigneeOpenid: _.exists(true) },
+            { assigneeOpenid: _.neq('') },
+            { assigneeOpenid: _.neq(null) }
+          ])).count(),
           
           // 今日完成（全部）
           db.collection('tickets').where({
@@ -796,6 +839,7 @@ Page({
         return [
           { key: 'pending', label: '待处理', value: allPending.total || 0, colorClass: 'text-orange', icon: '/assets/icons/pending-icon.png' },
           { key: 'processing', label: '处理中', value: allProcessing.total || 0, colorClass: 'text-blue', icon: '/assets/icons/processing-icon.png' },
+          { key: 'paused', label: '已暂停', value: allPaused.total || 0, colorClass: 'text-orange', icon: '/assets/icons/pause-icon.png' },
           { key: 'resolved', label: '今日完成', value: todayResolved.total || 0, colorClass: 'text-green', icon: '/assets/icons/completed-icon.png' },
           { key: 'urgent', label: '紧急', value: allUrgent.total || 0, colorClass: 'text-red', icon: '/assets/icons/urgent-icon.png' }
         ];

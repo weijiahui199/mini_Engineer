@@ -1,0 +1,9 @@
+{
+  "navigationBarTitleText": "耗材管理",
+  "enablePullDownRefresh": false,
+  "navigationStyle": "custom",
+  "backgroundTextStyle": "dark",
+  "usingComponents": {
+    "t-loading": "tdesign-miniprogram/loading/loading"
+  }
+}
