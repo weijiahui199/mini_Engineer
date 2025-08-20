@@ -3,6 +3,7 @@ const cloud = require('wx-server-sdk')
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 const _ = db.command
+const { isValidCategory, processCategoryParam } = require('../utils/categories')
 
 module.exports = async (event, wxContext) => {
   const {
@@ -14,6 +15,18 @@ module.exports = async (event, wxContext) => {
   } = event
   
   try {
+    // 验证类目参数
+    if (!isValidCategory(category)) {
+      console.error('[list] 无效的类目参数:', category)
+      return {
+        success: false,
+        error: `无效的类目: ${category}`
+      }
+    }
+    
+    // 处理类目参数（popular 转换为 all）
+    const processedCategory = processCategoryParam(category)
+    
     // 构建查询条件
     const where = {}
     
@@ -23,8 +36,8 @@ module.exports = async (event, wxContext) => {
     }
     
     // 类目筛选
-    if (category !== 'all') {
-      where.category = category
+    if (processedCategory !== 'all') {
+      where.category = processedCategory
     }
     
     // 关键词搜索（名称或描述）

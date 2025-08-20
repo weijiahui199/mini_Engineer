@@ -113,7 +113,7 @@ exports.main = async (event, context) => {
       {
         materialNo: 'MT20250819003',
         name: '订书机',
-        category: 'office',
+        category: 'writing',
         description: '标准型订书机，可装订20页',
         unit: '个',
         variants: [
@@ -138,7 +138,7 @@ exports.main = async (event, context) => {
       {
         materialNo: 'MT20250819004',
         name: '订书钉',
-        category: 'office',
+        category: 'writing',
         description: '24/6规格订书钉',
         unit: '盒',
         variants: [
@@ -231,7 +231,7 @@ exports.main = async (event, context) => {
       {
         materialNo: 'MT20250819007',
         name: '文件夹',
-        category: 'office',
+        category: 'paper',
         description: '双夹文件夹，A4规格',
         unit: '个',
         variants: [
