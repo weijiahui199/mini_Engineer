@@ -289,3 +289,44 @@ const transaction = await db.startTransaction()
   - 更新项目统计数据
   - 添加云函数submitTicket的详细说明
   - 强调updateTime字段的重要性
+- 2024-12-24: 添加微信小程序scroll-view渲染问题和解决方案
+
+### 1. 微信小程序布局陷阱
+
+#### ❌ 避免使用 scroll-view 在复杂布局中
+**问题**：scroll-view 组件在以下情况下容易出现内容不渲染的问题：
+- 父容器使用 fixed 定位
+- 多层 flex 布局嵌套
+- 高度使用百分比计算
+
+**错误示例**：
+```xml
+<!-- 不要这样做 -->
+<view class="main-content" style="position: fixed;">
+  <scroll-view class="product-list" scroll-y>
+    <view class="product-container">
+      <!-- 内容可能不显示 -->
+    </view>
+  </scroll-view>
+</view>
+```
+
+**正确做法**：
+```xml
+<!-- 推荐方案 -->
+<view class="main-content" style="position: fixed;">
+  <view class="product-list" style="overflow-y: auto;">
+    <view class="product-container">
+      <!-- 内容正常显示 -->
+    </view>
+  </view>
+</view>
+```
+
+#### ✅ 布局最佳实践
+1. **优先使用简单方案**：普通 view + CSS overflow 比 scroll-view 更可靠
+2. **避免过度嵌套**：DOM 层级越少越好
+3. **明确高度定义**：使用 calc() 或固定值，避免百分比
+4. **flex 布局要点**：
+   - 固定元素设置 `flex-shrink: 0`
+   - 可变元素设置 `flex: 1`

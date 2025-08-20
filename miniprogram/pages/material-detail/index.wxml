@@ -1,2 +1,146 @@
-<!--pages/material-detail/index.wxml-->
-<text>pages/material-detail/index.wxml</text>
+<!-- 耗材详情页 -->
+<view class="container">
+  <!-- 自定义导航栏 -->
+  <view class="navbar">
+    <view class="navbar-content">
+      <view class="navbar-left" bindtap="goBack">
+        <image src="/assets/icons/common/back.png" class="nav-icon" />
+        <text class="nav-title">耗材详情</text>
+      </view>
+      <view class="navbar-right">
+        <view class="cart-icon-wrapper" bindtap="goToCart">
+          <image src="/assets/icons/business/cart.png" class="nav-icon" />
+          <view wx:if="{{cartCount > 0}}" class="cart-badge">{{cartCount > 99 ? '99+' : cartCount}}</view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 主内容区 -->
+  <scroll-view class="main-content" scroll-y>
+    <!-- 图片展示区 -->
+    <view class="image-section">
+      <swiper class="image-swiper" 
+              indicator-dots="{{images.length > 1}}"
+              indicator-color="rgba(0, 0, 0, 0.3)"
+              indicator-active-color="#0052d9"
+              circular
+              autoplay="{{false}}">
+        <swiper-item wx:for="{{images}}" wx:key="index">
+          <image class="product-image" 
+                 src="{{item}}" 
+                 mode="aspectFill"
+                 bindtap="previewImage"
+                 data-url="{{item}}" />
+        </swiper-item>
+      </swiper>
+    </view>
+
+    <!-- 基本信息 -->
+    <view class="info-section">
+      <view class="info-header">
+        <view class="info-main">
+          <text class="product-name">{{material.name}}</text>
+          <text class="product-no">编号: {{material.materialNo}}</text>
+        </view>
+        <view class="category-badge">{{categoryLabel}}</view>
+      </view>
+
+      <!-- 库存信息 -->
+      <view class="stock-info">
+        <view class="stock-header">
+          <text class="stock-label">当前库存</text>
+          <text class="stock-value">{{currentVariant.stock || 0}} {{material.unit}}</text>
+        </view>
+        <view class="stock-progress">
+          <view class="stock-fill" style="width: {{stockPercentage}}%"></view>
+        </view>
+        <view class="stock-footer">
+          <text class="safety-stock">安全库存: {{currentVariant.safetyStock || 0}}{{material.unit}}</text>
+          <text class="stock-status stock-{{stockStatus}}">{{stockStatusText}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 规格选择 -->
+    <view class="variant-section" wx:if="{{material.variants && material.variants.length > 0}}">
+      <text class="section-title">选择规格</text>
+      <view class="variant-list">
+        <view wx:for="{{material.variants}}" 
+              wx:key="variantId"
+              class="variant-item {{selectedVariantId === item.variantId ? 'active' : ''}} {{item.stock === 0 ? 'disabled' : ''}}"
+              data-variant="{{item}}"
+              bindtap="selectVariant">
+          <view class="variant-content">
+            <text class="variant-label">{{item.label}}</text>
+            <text wx:if="{{item.stock === 0}}" class="variant-stock-out">缺货</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 产品信息 -->
+    <view class="detail-section">
+      <text class="section-title">产品信息</text>
+      <view class="detail-list">
+        <view class="detail-item">
+          <text class="detail-label">类目</text>
+          <text class="detail-value">{{categoryLabel}}</text>
+        </view>
+        <view class="detail-item">
+          <text class="detail-label">单位</text>
+          <text class="detail-value">{{material.unit}}</text>
+        </view>
+        <view class="detail-item" wx:if="{{currentVariant.label}}">
+          <text class="detail-label">规格</text>
+          <text class="detail-value">{{currentVariant.label}}</text>
+        </view>
+        <!-- Manager可见价格 -->
+        <view class="detail-item" wx:if="{{isManager && currentVariant.costPrice}}">
+          <text class="detail-label">成本价</text>
+          <text class="detail-value price">¥{{currentVariant.costPrice}}</text>
+        </view>
+        <view class="detail-item" wx:if="{{isManager && currentVariant.salePrice}}">
+          <text class="detail-label">销售价</text>
+          <text class="detail-value price">¥{{currentVariant.salePrice}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 产品描述 -->
+    <view class="description-section" wx:if="{{material.description}}">
+      <text class="section-title">产品描述</text>
+      <text class="description-text">{{material.description}}</text>
+    </view>
+
+    <!-- 底部占位 -->
+    <view class="bottom-placeholder"></view>
+  </scroll-view>
+
+  <!-- 底部操作栏 -->
+  <view class="bottom-bar">
+    <view class="quantity-section">
+      <text class="quantity-label">数量</text>
+      <view class="quantity-stepper">
+        <button class="stepper-btn minus {{quantity <= 0 ? 'disabled' : ''}}" 
+                bindtap="decreaseQuantity">
+          <image src="/assets/icons/common/minus.png" class="stepper-icon" />
+        </button>
+        <input type="number" 
+               class="quantity-input" 
+               value="{{quantity}}"
+               bindinput="onQuantityInput" />
+        <button class="stepper-btn plus {{quantity >= currentVariant.stock ? 'disabled' : ''}}" 
+                bindtap="increaseQuantity">
+          <image src="/assets/icons/common/plus.png" class="stepper-icon" />
+        </button>
+      </view>
+    </view>
+    
+    <button class="add-to-cart-btn {{currentVariant.stock === 0 ? 'disabled' : ''}}" 
+            bindtap="addToCart"
+            disabled="{{currentVariant.stock === 0}}">
+      {{currentVariant.stock === 0 ? '暂无库存' : '加入申领车'}}
+    </button>
+  </view>
+</view>
