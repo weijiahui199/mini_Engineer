@@ -1,0 +1,4 @@
+PLACEHOLDER for TDesign add icon
+Used in: material-list page - Add category button
+Size: 32rpx
+Replace this file with actual add.png icon

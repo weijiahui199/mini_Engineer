@@ -1,5 +1,8 @@
 {
-  "navigationStyle": "custom",
+  "navigationBarTitleText": "申领车",
+  "navigationBarBackgroundColor": "#4A8DD4",
+  "navigationBarTextStyle": "white",
+  "backgroundColor": "#F7F8FA",
   "disableScroll": true,
   "usingComponents": {}
 }

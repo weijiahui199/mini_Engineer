@@ -1,5 +1,4 @@
 {
-  "navigationStyle": "custom",
-  "disableScroll": true,
+  "navigationBarTitleText": "耗材详情",
   "usingComponents": {}
 }

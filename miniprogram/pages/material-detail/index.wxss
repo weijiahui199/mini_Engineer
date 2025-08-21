@@ -5,76 +5,9 @@
   padding-bottom: 120rpx;
 }
 
-/* 导航栏 */
-.navbar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  background: white;
-  z-index: 100;
-  padding-top: env(safe-area-inset-top);
-  border-bottom: 1rpx solid #e5e5e5;
-}
-
-.navbar-content {
-  height: 88rpx;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 32rpx;
-}
-
-.navbar-left {
-  display: flex;
-  align-items: center;
-}
-
-.nav-icon {
-  width: 48rpx;
-  height: 48rpx;
-}
-
-.nav-title {
-  font-size: 34rpx;
-  font-weight: 500;
-  color: #1a1a1a;
-  margin-left: 16rpx;
-}
-
-.navbar-right {
-  display: flex;
-  align-items: center;
-}
-
-.cart-icon-wrapper {
-  position: relative;
-  padding: 8rpx;
-}
-
-.cart-badge {
-  position: absolute;
-  top: 0;
-  right: 0;
-  min-width: 32rpx;
-  height: 32rpx;
-  background: #ff4444;
-  color: white;
-  font-size: 20rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 16rpx;
-  padding: 0 8rpx;
-}
-
 /* 主内容区 */
 .main-content {
-  position: fixed;
-  top: calc(88rpx + env(safe-area-inset-top));
-  bottom: 120rpx;
-  left: 0;
-  right: 0;
+  height: calc(100vh - 120rpx);
   background: #f5f5f5;
 }
 
@@ -425,4 +358,25 @@
 .add-to-cart-btn.disabled {
   background: #cccccc;
   opacity: 0.6;
+}
+
+/* 浮动购物车按钮 */
+.float-cart {
+  position: fixed;
+  right: 32rpx;
+  bottom: 240rpx;
+  width: 96rpx;
+  height: 96rpx;
+  background: #0052d9;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4rpx 16rpx rgba(0, 82, 217, 0.3);
+  z-index: 99;
+}
+
+.cart-icon {
+  width: 48rpx;
+  height: 48rpx;
 }

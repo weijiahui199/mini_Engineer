@@ -1,6 +1,8 @@
 // 耗材列表页面
 const app = getApp()
 const MATERIAL_CATEGORIES = require('../../config/material-categories')
+const CacheManager = require('../../utils/cache-manager')
+const RefreshManager = require('../../utils/refresh-manager')
 
 // 友好的错误提示文案
 const ERROR_MESSAGES = {
@@ -32,9 +34,6 @@ Page({
     currentCategory: 'popular',
     categories: MATERIAL_CATEGORIES.categories,
     
-    // 仓库信息
-    currentWarehouse: '总部仓',
-    stockStrategy: '实时扣减',
     
     // 购物车
     cart: {},
@@ -51,6 +50,9 @@ Page({
     // 获取用户信息
     const userInfo = wx.getStorageSync('userInfo')
     console.log('[material-list] 用户信息:', userInfo)
+    
+    // 获取设备信息用于诊断底部栏定位问题
+    this.logDeviceInfo()
     
     // 诊断各类目数据（开发时使用）
     // this.diagnoseCategoriesData()  // 生产环境注释掉
@@ -99,8 +101,35 @@ Page({
   },
 
   onShow() {
+    // 设置页面活跃状态
+    RefreshManager.setPageActive('material-list', true)
+    
     // 页面显示时更新购物车数据
     this.loadCart()
+    // 同步更新材料列表中的数量显示
+    this.syncMaterialQuantities()
+    
+    // 智能刷新决策
+    const category = this.data.currentCategory
+    const refreshKey = category === 'popular' ? 'materials_popular' : 'materials_other'
+    
+    // 检查是否需要刷新（例如：从详情页或购物车页面返回）
+    const shouldRefresh = RefreshManager.shouldRefresh(refreshKey, {
+      pageActive: true,
+      forceRefresh: false
+    })
+    
+    if (shouldRefresh) {
+      console.log(`[material-list] onShow 检测到需要刷新，类目: ${category}`)
+      this.loadMaterials(false) // 不是强制刷新，会先检查缓存
+    } else {
+      console.log(`[material-list] onShow 数据仍在有效期内，无需刷新`)
+    }
+  },
+  
+  onHide() {
+    // 页面隐藏时设置为非活跃状态
+    RefreshManager.setPageActive('material-list', false)
   },
   
   onUnload() {
@@ -133,6 +162,35 @@ Page({
       cartTotal: cartTotal.toFixed(2)
     })
   },
+  
+  // 同步材料列表的数量显示（从购物车数据同步）
+  syncMaterialQuantities() {
+    if (!this.data.materials || this.data.materials.length === 0) {
+      return
+    }
+    
+    const cart = this.data.cart || {}
+    const updatedMaterials = this.data.materials.map(material => {
+      // 只处理单规格产品
+      if (material.variants && material.variants.length === 1) {
+        const cartKey = `${material._id}_${material.variants[0].variantId}`
+        const cartItem = cart[cartKey]
+        // 更新数量，如果购物车中没有则设为0
+        return {
+          ...material,
+          quantity: cartItem ? cartItem.quantity : 0
+        }
+      }
+      return material
+    })
+    
+    // 批量更新材料列表
+    this.setData({
+      materials: updatedMaterials
+    })
+    
+    console.log('[material-list] 同步材料数量完成')
+  },
 
   // 保存购物车数据
   saveCart() {
@@ -146,6 +204,45 @@ Page({
       console.log('[material-list] 正在加载中，跳过重复请求')
       return
     }
+    
+    const category = this.data.currentCategory
+    const cacheKey = `materials_${category}`
+    const refreshKey = category === 'popular' ? 'materials_popular' : 'materials_other'
+    
+    // 如果不是强制刷新，先尝试使用缓存
+    if (!isRefresh) {
+      // 检查是否需要刷新
+      const shouldRefresh = RefreshManager.shouldRefresh(refreshKey, {
+        pageActive: true,
+        forceRefresh: false
+      })
+      
+      if (!shouldRefresh) {
+        // 尝试从缓存获取数据
+        const cachedData = CacheManager.get(cacheKey, 'materials')
+        if (cachedData && cachedData.list) {
+          console.log(`[material-list] 使用缓存数据，类目: ${category}`)
+          const materials = this.processMaterials(cachedData.list || [])
+          this.setData({
+            materials,
+            page: cachedData.page || 1,
+            hasMore: cachedData.hasMore || false,
+            total: cachedData.total || 0,
+            loading: false
+          })
+          this.isLoadingMaterials = false
+          // 同步购物车数量
+          this.syncMaterialQuantities()
+          return
+        }
+      }
+    } else {
+      // 强制刷新时清除该类目的缓存
+      console.log(`[material-list] 强制刷新，清除缓存: ${cacheKey}`)
+      wx.removeStorageSync(cacheKey)
+    }
+    
+    // 开始加载
     this.isLoadingMaterials = true
     
     if (isRefresh) {
@@ -222,6 +319,24 @@ Page({
         const finalMaterials = isRefresh ? materials : [...this.data.materials, ...materials]
         console.log('[material-list] 最终设置的materials:', finalMaterials)
         
+        // 缓存数据
+        const category = this.data.currentCategory
+        const cacheKey = `materials_${category}`
+        const refreshKey = category === 'popular' ? 'materials_popular' : 'materials_other'
+        
+        // 保存到缓存
+        CacheManager.set(cacheKey, {
+          list: list || [],
+          page: this.data.page,
+          hasMore,
+          total,
+          timestamp: Date.now()
+        }, 'materials')
+        
+        // 记录刷新时间
+        RefreshManager.recordRefresh(refreshKey)
+        console.log(`[material-list] 数据已缓存，类目: ${category}`)
+        
         this.setData({
           materials: finalMaterials,
           total,
@@ -272,48 +387,80 @@ Page({
     }
   },
 
-  // 搜索
-  onSearch(e) {
-    const keyword = e.detail.value
-    this.setData({
-      keyword,
-      searchValue: keyword
+  // 搜索提交
+  handleSearch(e) {
+    const searchValue = e.detail.value
+    console.log('[material-list] 搜索:', searchValue)
+    
+    if (!searchValue.trim()) {
+      return
+    }
+    
+    // TODO: 实现搜索功能
+    wx.showToast({
+      title: '搜索功能开发中',
+      icon: 'none'
     })
-    this.loadMaterials(true)
   },
-
+  
   // 清空搜索
-  onClearSearch() {
+  handleClearSearch() {
+    console.log('[material-list] 清空搜索')
     this.setData({
-      keyword: '',
       searchValue: ''
     })
+    // 重新加载默认数据
     this.loadMaterials(true)
   },
 
-  // 切换类目 - 优化过渡效果
-  switchCategory(e) {
-    const category = e.currentTarget.dataset.category
+  // TDesign侧边栏切换事件
+  onCategoryChange(e) {
+    const category = e.detail.value
     console.log('[material-list] 切换类目:', category, '当前类目:', this.data.currentCategory)
     
     if (category === this.data.currentCategory) return
     
-    // 先更新类目，保持左侧高亮，但不清空数据
+    // 更新当前类目
     this.setData({
       currentCategory: category,
-      loading: true, // 立即显示加载状态
       page: 1,
       hasMore: true
     })
     
-    // 延迟清空数据，避免闪烁
-    setTimeout(() => {
-      this.setData({
-        materials: []
+    // 检查缓存
+    const cacheKey = `materials_${category}`
+    const refreshKey = category === 'popular' ? 'materials_popular' : 'materials_other'
+    const cachedData = CacheManager.get(cacheKey, 'materials')
+    
+    // 如果有缓存且在有效期内，立即显示缓存数据
+    if (cachedData && cachedData.list) {
+      const shouldRefresh = RefreshManager.shouldRefresh(refreshKey, {
+        pageActive: true,
+        forceRefresh: false
       })
-      console.log('[material-list] 开始加载类目数据:', category)
-      this.loadMaterials(true)
-    }, 100)
+      
+      if (!shouldRefresh) {
+        console.log(`[material-list] 使用缓存快速切换，类目: ${category}`)
+        const materials = this.processMaterials(cachedData.list || [])
+        this.setData({
+          materials,
+          loading: false,
+          total: cachedData.total || 0
+        })
+        // 同步购物车数量
+        this.syncMaterialQuantities()
+        return
+      }
+    }
+    
+    // 没有缓存或需要刷新，显示加载状态
+    this.setData({
+      loading: true,
+      materials: [] // 清空当前数据
+    })
+    
+    console.log('[material-list] 开始加载类目数据:', category)
+    this.loadMaterials(false) // 不强制刷新，让 loadMaterials 内部决定
   },
 
   // 更新数量（点击步进器） - 优化性能
@@ -491,9 +638,80 @@ Page({
   // 选择规格（多规格产品）
   selectSpec(e) {
     const { id } = e.currentTarget.dataset
+    console.log('[material-list] 选择规格，跳转到详情页:', id)
+    
+    // 跳转到耗材详情页进行规格选择
     wx.navigateTo({
       url: `/pages/material-detail/index?id=${id}`
     })
+  },
+  
+  // 跳转到耗材详情页
+  goToDetail(e) {
+    const { id } = e.currentTarget.dataset
+    wx.navigateTo({
+      url: `/pages/material-detail/index?id=${id}`
+    })
+  },
+  
+  // 阻止事件冒泡
+  stopPropagation(e) {
+    // 阻止事件冒泡，防止触发卡片点击
+    return false
+  },
+  
+  // TDesign步进器数量变化
+  onQuantityChange(e) {
+    const { id } = e.currentTarget.dataset
+    const newQuantity = e.detail.value
+    const material = this.data.materials.find(m => m._id === id)
+    if (!material) {
+      console.error('[material-list] 未找到耗材:', id)
+      return
+    }
+    
+    console.log('[material-list] 数量变化:', id, newQuantity)
+    
+    // 检查是否有规格
+    if (!material.variants || material.variants.length === 0) {
+      console.error('[material-list] 耗材没有规格信息:', material)
+      return
+    }
+    
+    // 获取第一个规格（单规格产品）
+    const variant = material.variants[0]
+    if (!variant) {
+      console.error('[material-list] 未找到规格信息')
+      return
+    }
+    
+    // 检查库存
+    if (newQuantity > variant.stock) {
+      wx.showToast({
+        title: `库存仅剩${variant.stock}${material.unit || '个'}`,
+        icon: 'none'
+      })
+      // 重置为最大库存量
+      const materialIndex = this.data.materials.findIndex(m => m._id === id)
+      if (materialIndex !== -1) {
+        this.setData({
+          [`materials[${materialIndex}].quantity`]: variant.stock
+        })
+      }
+      this.updateCartItem(material, variant, variant.stock)
+      return
+    }
+    
+    // 更新显示的数量
+    const materialIndex = this.data.materials.findIndex(m => m._id === id)
+    if (materialIndex !== -1) {
+      this.setData({
+        [`materials[${materialIndex}].quantity`]: newQuantity
+      })
+    }
+    
+    // 更新购物车
+    this.updateCartItem(material, variant, newQuantity)
   },
 
   // 跳转购物车
@@ -511,12 +729,79 @@ Page({
       url: '/pages/material-cart/index'
     })
   },
+  
+  // 添加新耗材（经理专用）
+  addProduct() {
+    if (!this.data.isManager) {
+      wx.showToast({
+        title: '无权限操作',
+        icon: 'none'
+      })
+      return
+    }
+    
+    wx.navigateTo({
+      url: '/pages/material-manage/index?action=add'
+    })
+  },
+  
+  // 管理类目（经理专用）
+  manageCategories() {
+    if (!this.data.isManager) {
+      wx.showToast({
+        title: '无权限操作',
+        icon: 'none'
+      })
+      return
+    }
+    
+    wx.showModal({
+      title: '管理类目',
+      content: '类目管理功能正在开发中',
+      showCancel: false,
+      confirmText: '知道了'
+    })
+    
+    // TODO: 实现类目管理功能
+    // wx.navigateTo({
+    //   url: '/pages/category-manage/index'
+    // })
+  },
 
   // 下拉刷新
   async onRefresh() {
     this.setData({ refreshing: true })
+    // 强制刷新，清除缓存
+    const category = this.data.currentCategory
+    const refreshKey = category === 'popular' ? 'materials_popular' : 'materials_other'
+    RefreshManager.setForceRefreshFlag(refreshKey)
     await this.loadMaterials(true)
     this.setData({ refreshing: false })
+  },
+
+  // 系统下拉刷新
+  async onPullDownRefresh() {
+    console.log('[material-list] 执行系统下拉刷新')
+    try {
+      // 强制刷新，清除缓存
+      const category = this.data.currentCategory
+      const refreshKey = category === 'popular' ? 'materials_popular' : 'materials_other'
+      RefreshManager.setForceRefreshFlag(refreshKey)
+      await this.loadMaterials(true)
+      wx.showToast({
+        title: '刷新成功',
+        icon: 'success',
+        duration: 1000
+      })
+    } catch (err) {
+      console.error('[material-list] 下拉刷新失败:', err)
+      wx.showToast({
+        title: '刷新失败',
+        icon: 'none'
+      })
+    } finally {
+      wx.stopPullDownRefresh()
+    }
   },
 
   // 加载更多
@@ -549,18 +834,6 @@ Page({
     wx.navigateBack()
   },
 
-  // 打开搜索页面
-  openSearch() {
-    // TODO: 搜索页面待实现
-    wx.showToast({
-      title: '搜索功能开发中',
-      icon: 'none',
-      duration: 2000
-    })
-    // wx.navigateTo({
-    //   url: '/pages/material-search/index'
-    // })
-  },
 
 
   // 添加类目（Manager专用）
@@ -856,5 +1129,140 @@ Page({
     }
     
     console.log('[material-list] ========== 诊断完成 ==========')
+  },
+
+  // 获取设备信息用于诊断底部栏定位问题
+  logDeviceInfo() {
+    try {
+      const systemInfo = wx.getSystemInfoSync()
+      console.log('[material-list] ========== 设备信息诊断 ==========')
+      console.log('[material-list] 设备型号:', systemInfo.model)
+      console.log('[material-list] 系统版本:', systemInfo.system)
+      console.log('[material-list] 微信版本:', systemInfo.version)
+      console.log('[material-list] 基础库版本:', systemInfo.SDKVersion)
+      console.log('[material-list] 屏幕宽度:', systemInfo.screenWidth, 'px')
+      console.log('[material-list] 屏幕高度:', systemInfo.screenHeight, 'px')
+      console.log('[material-list] 窗口宽度:', systemInfo.windowWidth, 'px')
+      console.log('[material-list] 窗口高度:', systemInfo.windowHeight, 'px')
+      console.log('[material-list] 状态栏高度:', systemInfo.statusBarHeight, 'px')
+      
+      // 导航栏高度计算
+      const navBarHeight = systemInfo.statusBarHeight + 44 // 44是标准导航栏高度
+      console.log('[material-list] 导航栏总高度:', navBarHeight, 'px')
+      
+      console.log('[material-list] 安全区域:', {
+        top: systemInfo.safeArea ? systemInfo.safeArea.top : 'N/A',
+        right: systemInfo.safeArea ? systemInfo.safeArea.right : 'N/A',
+        bottom: systemInfo.safeArea ? systemInfo.safeArea.bottom : 'N/A',
+        left: systemInfo.safeArea ? systemInfo.safeArea.left : 'N/A',
+        width: systemInfo.safeArea ? systemInfo.safeArea.width : 'N/A',
+        height: systemInfo.safeArea ? systemInfo.safeArea.height : 'N/A'
+      })
+      
+      // 计算底部安全区域
+      const bottomSafeArea = systemInfo.screenHeight - (systemInfo.safeArea ? systemInfo.safeArea.bottom : systemInfo.screenHeight)
+      console.log('[material-list] 底部安全区域高度:', bottomSafeArea, 'px')
+      console.log('[material-list] 像素比:', systemInfo.pixelRatio)
+      
+      // 转换为 rpx 单位 (750rpx = 屏幕宽度)
+      const rpxRatio = 750 / systemInfo.windowWidth
+      console.log('[material-list] rpx转换比例:', rpxRatio)
+      console.log('[material-list] 底部安全区域 (rpx):', Math.round(bottomSafeArea * rpxRatio), 'rpx')
+      
+      // 计算实际可用高度
+      const availableHeight = systemInfo.windowHeight - navBarHeight - bottomSafeArea
+      console.log('[material-list] 实际可用内容高度:', availableHeight, 'px')
+      console.log('[material-list] 实际可用内容高度 (rpx):', Math.round(availableHeight * rpxRatio), 'rpx')
+      
+      // 底部栏高度信息
+      const bottomBarHeight = 140 // CSS中定义的固定高度(rpx)
+      const bottomBarHeightPx = bottomBarHeight / rpxRatio
+      console.log('[material-list] 底部栏固定高度:', bottomBarHeight, 'rpx /', Math.round(bottomBarHeightPx), 'px')
+      
+      // 延迟获取DOM信息，确保页面渲染完成
+      setTimeout(() => {
+        // 诊断底部栏实际位置
+        wx.createSelectorQuery()
+          .select('.bottom-bar')
+          .boundingClientRect(rect => {
+            if (rect) {
+              console.log('[material-list] 底部栏DOM信息:', {
+                top: rect.top,
+                bottom: rect.bottom,
+                height: rect.height,
+                width: rect.width
+              })
+              console.log('[material-list] 底部栏实际高度:', rect.height, 'px')
+              console.log('[material-list] 底部栏距离屏幕底部:', systemInfo.windowHeight - rect.bottom, 'px')
+              
+              // 检查是否符合预期
+              const expectedBottom = bottomSafeArea
+              const actualBottom = systemInfo.windowHeight - rect.bottom
+              if (Math.abs(actualBottom - expectedBottom) > 2) {
+                console.warn('[material-list] ⚠️ 底部栏位置异常！预期距底部:', expectedBottom, 'px, 实际:', actualBottom, 'px')
+              } else {
+                console.log('[material-list] ✅ 底部栏位置正常')
+              }
+            }
+          })
+          .exec()
+          
+        // 诊断主内容区域
+        wx.createSelectorQuery()
+          .select('.main-content')
+          .boundingClientRect(rect => {
+            if (rect) {
+              console.log('[material-list] 主内容区域DOM信息:', {
+                top: rect.top,
+                bottom: rect.bottom,
+                height: rect.height
+              })
+              
+              // 检查主内容区域是否与底部栏有重叠
+              wx.createSelectorQuery()
+                .select('.bottom-bar')
+                .boundingClientRect(bottomRect => {
+                  if (bottomRect) {
+                    const gap = bottomRect.top - rect.bottom
+                    console.log('[material-list] 主内容与底部栏间隙:', gap, 'px')
+                    if (gap < 0) {
+                      console.warn('[material-list] ⚠️ 内容与底部栏重叠！')
+                    }
+                  }
+                })
+                .exec()
+            }
+          })
+          .exec()
+      }, 500) // 延迟500ms确保页面渲染完成
+      
+      console.log('[material-list] ========== 设备信息诊断完成 ==========')
+    } catch (err) {
+      console.error('[material-list] 获取设备信息失败:', err)
+    }
+  },
+
+  // 监听页面滚动，检查底部栏是否被遮挡
+  onPageScroll(e) {
+    // 检查是否滚动到底部附近
+    if (e.scrollTop > 0) {
+      // 定期输出滚动位置，帮助诊断
+      if (!this.scrollLogTimer) {
+        this.scrollLogTimer = setTimeout(() => {
+          console.log('[material-list] 页面滚动位置:', e.scrollTop, 'px')
+          this.scrollLogTimer = null
+        }, 1000) // 1秒内只输出一次日志
+      }
+    }
+  },
+
+  // 监听页面尺寸变化
+  onResize(size) {
+    console.log('[material-list] 页面尺寸变化:', {
+      windowWidth: size.size.windowWidth,
+      windowHeight: size.size.windowHeight
+    })
+    // 重新诊断设备信息
+    this.logDeviceInfo()
   }
 })

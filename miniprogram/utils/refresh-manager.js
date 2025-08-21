@@ -28,6 +28,21 @@ class RefreshManager {
         maxCacheTime: 1 * 60 * 1000,  // 最大缓存时间：1分钟
         forceRefreshEvents: ['TICKET_UPDATED', 'TICKET_ACCEPTED', 'TICKET_COMPLETED', 'TICKET_REJECTED']
       },
+      materials: {
+        minInterval: 30 * 1000,       // 最小刷新间隔：30秒
+        maxCacheTime: 5 * 60 * 1000,  // 最大缓存时间：5分钟（常用类目）
+        forceRefreshEvents: ['MATERIAL_UPDATED', 'ORDER_SUBMITTED', 'STOCK_CHANGED']
+      },
+      materials_popular: {
+        minInterval: 30 * 1000,       // 最小刷新间隔：30秒
+        maxCacheTime: 3 * 60 * 1000,  // 最大缓存时间：3分钟（常用变化频繁）
+        forceRefreshEvents: ['MATERIAL_UPDATED', 'ORDER_SUBMITTED']
+      },
+      materials_other: {
+        minInterval: 60 * 1000,       // 最小刷新间隔：60秒
+        maxCacheTime: 10 * 60 * 1000, // 最大缓存时间：10分钟（其他类目）
+        forceRefreshEvents: ['MATERIAL_UPDATED', 'ORDER_SUBMITTED']
+      },
       default: {
         minInterval: 20 * 1000,       // 默认最小刷新间隔：20秒
         maxCacheTime: 10 * 60 * 1000, // 默认最大缓存时间：10分钟

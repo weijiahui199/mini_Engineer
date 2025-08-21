@@ -1,0 +1,5 @@
+PLACEHOLDER for TDesign add-circle icon
+Used in: material-list page - Add new material button
+Size: 48rpx
+Color: #5B9FE6
+Replace this file with actual add-circle.png icon

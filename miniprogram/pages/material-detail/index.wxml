@@ -1,21 +1,5 @@
 <!-- 耗材详情页 -->
 <view class="container">
-  <!-- 自定义导航栏 -->
-  <view class="navbar">
-    <view class="navbar-content">
-      <view class="navbar-left" bindtap="goBack">
-        <image src="/assets/icons/common/back.png" class="nav-icon" />
-        <text class="nav-title">耗材详情</text>
-      </view>
-      <view class="navbar-right">
-        <view class="cart-icon-wrapper" bindtap="goToCart">
-          <image src="/assets/icons/business/cart.png" class="nav-icon" />
-          <view wx:if="{{cartCount > 0}}" class="cart-badge">{{cartCount > 99 ? '99+' : cartCount}}</view>
-        </view>
-      </view>
-    </view>
-  </view>
-
   <!-- 主内容区 -->
   <scroll-view class="main-content" scroll-y>
     <!-- 图片展示区 -->
@@ -142,5 +126,13 @@
             disabled="{{currentVariant.stock === 0}}">
       {{currentVariant.stock === 0 ? '暂无库存' : '加入申领车'}}
     </button>
+  </view>
+  
+  <!-- 浮动购物车按钮 -->
+  <view class="float-cart" bindtap="goToCart">
+    <t-badge count="{{cartCount}}" max-count="99" wx:if="{{cartCount > 0}}">
+      <image src="/assets/icons/business/cart.png" class="cart-icon" mode="aspectFit" />
+    </t-badge>
+    <image wx:else src="/assets/icons/business/cart.png" class="cart-icon" mode="aspectFit" />
   </view>
 </view>

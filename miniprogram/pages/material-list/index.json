@@ -1,9 +1,18 @@
 {
   "navigationBarTitleText": "耗材管理",
-  "enablePullDownRefresh": false,
-  "navigationStyle": "custom",
+  "enablePullDownRefresh": true,
+  "navigationBarBackgroundColor": "#5B9FE6",
+  "navigationBarTextStyle": "white",
   "backgroundTextStyle": "dark",
   "usingComponents": {
-    "t-loading": "tdesign-miniprogram/loading/loading"
+    "t-loading": "tdesign-miniprogram/loading/loading",
+    "t-side-bar": "tdesign-miniprogram/side-bar/side-bar",
+    "t-side-bar-item": "tdesign-miniprogram/side-bar-item/side-bar-item",
+    "t-badge": "tdesign-miniprogram/badge/badge",
+    "t-icon": "tdesign-miniprogram/icon/icon",
+    "t-stepper": "tdesign-miniprogram/stepper/stepper",
+    "t-button": "tdesign-miniprogram/button/button",
+    "t-empty": "tdesign-miniprogram/empty/empty",
+    "t-search": "tdesign-miniprogram/search/search"
   }
 }

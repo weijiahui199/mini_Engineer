@@ -1,191 +1,204 @@
 <!-- 申领车页面 -->
 <view class="container">
-  <!-- 导航栏 -->
-  <view class="navbar">
-    <view class="navbar-content">
-      <view class="navbar-left" bindtap="goBack">
-        <image src="/assets/icons/common/back.png" class="nav-icon" />
-        <text class="nav-title">申领车（{{cartItems.length}}）</text>
-      </view>
-      <text class="manage-btn" bindtap="toggleManageMode">{{manageMode ? '完成' : '管理'}}</text>
-    </view>
-  </view>
 
-  <!-- 提示信息 -->
-  <view class="tip-banner">
-    <image src="/assets/icons/common/info.png" class="tip-icon" />
-    <text class="tip-text">提交申领时可选择关联工单，方便耗材追踪</text>
-  </view>
-
-  <!-- 主内容区 -->
-  <scroll-view class="main-content" scroll-y>
-    <!-- 全选栏 -->
-    <view class="select-all-bar" wx:if="{{cartItems.length > 0}}">
-      <view class="checkbox-wrapper" bindtap="toggleSelectAll">
-        <view class="checkbox {{selectAll ? 'checked' : ''}}">
-          <image wx:if="{{selectAll}}" src="/assets/icons/common/check.png" class="check-icon" />
-        </view>
-        <text class="select-all-text">全选</text>
+  <!-- 内容容器组 -->
+  <view class="content-wrapper">
+    <!-- 顶部操作栏 -->
+    <view class="action-bar">
+      <view class="cart-count">
+        <text class="count-label">已选耗材</text>
+        <text class="count-value">{{cartItems.length}}</text>
+        <text class="count-unit">种</text>
       </view>
     </view>
+    
+    <!-- 提示信息栏 -->
+    <view class="info-banner">
+      <image src="/assets/icons/system/info_filled.png" class="info-icon" />
+      <text class="info-text">提交申领时可选择关联工单，方便耗材追踪</text>
+    </view>
 
-    <!-- 申领清单 -->
-    <view class="cart-list" wx:if="{{cartItems.length > 0}}">
-      <view wx:for="{{cartItems}}" wx:key="cartKey" class="cart-item {{item.stockWarning ? 'warning' : ''}}">
-        <!-- 选择框 -->
-        <view class="checkbox-wrapper" bindtap="toggleSelect" data-index="{{index}}">
-          <view class="checkbox {{item.selected ? 'checked' : ''}}">
-            <image wx:if="{{item.selected}}" src="/assets/icons/common/check.png" class="check-icon" />
+    <!-- 主内容区 -->
+    <scroll-view 
+      class="content-scroll" 
+      scroll-y="true"
+      enhanced="true"
+      show-scrollbar="false"
+      bindscroll="onScroll"
+      bindscrolltoupper="onScrollToUpper"
+      bindscrolltolower="onScrollToLower"
+      scroll-with-animation="true">
+      <!-- 全选栏 -->
+      <view class="select-all-card" wx:if="{{cartItems.length > 0}}">
+        <view class="checkbox-group" bindtap="toggleSelectAll">
+          <view class="checkbox {{selectAll ? 'checked' : ''}}">
+            <image wx:if="{{selectAll}}" src="/assets/icons/common/check.png" class="check-icon" />
           </view>
+          <text class="checkbox-label">全选</text>
         </view>
         
-        <!-- 产品图片 -->
-        <image class="item-image" 
-               src="{{item.image || placeholderImage}}" 
-               mode="aspectFill" />
-        
-        <!-- 产品信息 -->
-        <view class="item-info">
-          <text class="item-name">{{item.materialName}}</text>
-          <text class="item-spec">{{item.variantLabel}}</text>
+        <!-- 清空全部按钮 -->
+        <view class="clear-all-btn" bindtap="clearAllCart">
+          <image src="/assets/icons/business/delete_all.png" class="clear-icon" mode="aspectFit" />
+        </view>
+      </view>
+
+      <!-- 申领清单 -->
+      <view class="list-container" wx:if="{{cartItems.length > 0}}">
+        <view 
+          wx:for="{{cartItems}}" 
+          wx:key="cartKey"
+          class="list-item-card {{item.stockWarning ? 'warning' : ''}}"
+          bindlongpress="showDeleteMenu"
+          data-index="{{index}}">
+          <!-- 选择框 -->
+          <view class="checkbox-group" bindtap="toggleSelect" data-index="{{index}}">
+            <view class="checkbox {{item.selected ? 'checked' : ''}}">
+              <image wx:if="{{item.selected}}" src="/assets/icons/common/check.png" class="check-icon" />
+            </view>
+          </view>
           
-          <view class="item-footer">
-            <!-- 库存信息 -->
-            <view class="stock-info">
-              <text class="stock-text {{item.stockWarning ? 'warning' : ''}}">  
-                库存: {{item.stock}}{{item.unit}}
-              </text>
-              <text wx:if="{{item.stockWarning}}" class="stock-warning">
-                ⚠️ 库存不足，建议减少数量
-              </text>
-            </view>
+          <!-- 产品图片 -->
+          <image class="item-image" 
+                 src="{{item.image || placeholderImage}}" 
+                 mode="aspectFill" />
+          
+          <!-- 产品信息 -->
+          <view class="item-content">
+            <text class="item-title">{{item.materialName}}</text>
+            <text class="item-caption">{{item.variantLabel}}</text>
             
-            <!-- 数量步进器 -->
-            <view class="quantity-stepper">
-              <button class="stepper-btn minus {{item.quantity <= 1 ? 'disabled' : ''}}" 
-                      data-index="{{index}}"
-                      data-action="minus"
-                      bindtap="updateQuantity">
-                <image src="/assets/icons/common/minus.png" class="stepper-icon" />
-              </button>
-              <input type="number" 
-                     class="quantity-input" 
-                     value="{{item.quantity}}"
-                     data-index="{{index}}"
-                     bindinput="onQuantityInput" />
-              <button class="stepper-btn plus {{item.quantity >= item.stock ? 'disabled' : ''}}" 
-                      data-index="{{index}}"
-                      data-action="plus"
-                      bindtap="updateQuantity">
-                <image src="/assets/icons/common/plus.png" class="stepper-icon" />
-              </button>
+            <view class="item-footer">
+              <!-- 库存信息 -->
+              <view class="stock-info">
+                <text class="stock-label {{item.stockWarning ? 'warning' : ''}}">
+                  库存: {{item.stock}}{{item.unit}}
+                </text>
+                <text wx:if="{{item.stockWarning}}" class="stock-hint">
+                  库存不足，建议减少数量
+                </text>
+              </view>
+              
+              <!-- 数量步进器 -->
+              <view class="stepper">
+                <button class="stepper-btn stepper-minus {{item.quantity <= 0 ? 'disabled' : ''}}" 
+                        data-index="{{index}}"
+                        data-action="minus"
+                        bindtap="updateQuantity">
+                  <image src="/assets/icons/common/minus.png" class="stepper-icon" />
+                </button>
+                <input type="number" 
+                       class="stepper-input" 
+                       value="{{item.quantity}}"
+                       data-index="{{index}}"
+                       bindinput="onQuantityInput" />
+                <button class="stepper-btn stepper-plus {{item.quantity >= item.stock ? 'disabled' : ''}}" 
+                        data-index="{{index}}"
+                        data-action="plus"
+                        bindtap="updateQuantity">
+                  <image src="/assets/icons/common/plus.png" class="stepper-icon" />
+                </button>
+              </view>
             </view>
           </view>
+          
+        </view>
+      </view>
+
+      <!-- 空状态 -->
+      <view wx:else class="empty-state">
+        <image src="/assets/icons/business/cart.png" class="empty-image" />
+        <text class="empty-title">申领车还是空的</text>
+        <text class="empty-caption">赶紧去添加需要的耗材吧</text>
+        <button class="btn-primary" bindtap="goToMaterialList">去选耗材</button>
+      </view>
+
+      <!-- 关联工单 -->
+      <view class="section-card" wx:if="{{cartItems.length > 0}}">
+        <view class="section-header">
+          <text class="section-title">关联工单</text>
+          <text class="section-caption">{{isManager ? '便于成本追踪' : '只能选择您负责的工单'}}</text>
         </view>
         
-        <!-- 删除按钮 -->
-        <view wx:if="{{manageMode}}" 
-              class="delete-btn" 
-              data-index="{{index}}"
-              bindtap="deleteItem">
-          <image src="/assets/icons/common/delete.png" class="delete-icon" />
-        </view>
-      </view>
-    </view>
-
-    <!-- 空状态 -->
-    <view wx:else class="empty-state">
-      <view class="empty-icon">🛒</view>
-      <text class="empty-text">申领车还是空的</text>
-      <text class="empty-hint">赶紧去添加需要的耗材吧</text>
-      <button class="go-shopping-btn" bindtap="goToMaterialList">去选耗材</button>
-    </view>
-
-    <!-- 关联工单 -->
-    <view class="ticket-section" wx:if="{{cartItems.length > 0}}">
-      <view class="section-header">
-        <text class="section-title">关联工单（可选）</text>
-        <text class="section-hint">便于成本追踪</text>
-      </view>
-      
-      <!-- 已选工单 -->
-      <view wx:if="{{selectedTicket}}" class="selected-ticket">
-        <view class="ticket-info">
-          <view class="ticket-header">
-            <text class="ticket-no">{{selectedTicket.ticketNo}}</text>
-            <view class="ticket-status status-{{selectedTicket.status}}">
-              {{selectedTicket.statusText}}
+        <!-- 已选工单 -->
+        <view wx:if="{{selectedTicket}}" class="ticket-selected">
+          <view class="ticket-info">
+            <view class="ticket-row">
+              <text class="ticket-no">{{selectedTicket.ticketNo}}</text>
+              <view class="tag tag-{{selectedTicket.status}}">
+                {{selectedTicket.statusText}}
+              </view>
             </view>
+            <text class="ticket-body">{{selectedTicket.title}}</text>
+            <text class="ticket-caption">提交人: {{selectedTicket.submitterName}}</text>
           </view>
-          <text class="ticket-title">{{selectedTicket.title}}</text>
-          <text class="ticket-customer">客户: {{selectedTicket.customerName}}</text>
-        </view>
-        <text class="change-ticket" bindtap="selectTicket">更换</text>
-      </view>
-      
-      <!-- 未选工单 -->
-      <view wx:else class="select-ticket-area">
-        <!-- 快速选择 -->
-        <view class="quick-select" wx:if="{{recentTickets.length > 0}}">
-          <scroll-view scroll-x class="quick-tickets">
-            <view wx:for="{{recentTickets}}" 
-                  wx:key="_id" 
-                  class="quick-ticket-item"
-                  data-ticket="{{item}}"
-                  bindtap="quickSelectTicket">
-              <text class="quick-ticket-no">{{item.ticketNo}}</text>
-              <text class="quick-ticket-title">{{item.title}}</text>
-            </view>
-          </scroll-view>
+          <text class="link-text" bindtap="selectTicket">更换</text>
         </view>
         
-        <button class="select-ticket-btn" bindtap="selectTicket">
-          <image src="/assets/icons/common/plus.png" class="btn-icon" />
-          <text>选择工单</text>
-        </button>
+        <!-- 未选工单 -->
+        <view wx:else class="ticket-empty">
+          <!-- 快速选择 -->
+          <view class="quick-select" wx:if="{{recentTickets.length > 0}}">
+            <scroll-view scroll-x class="quick-list">
+              <view wx:for="{{recentTickets}}" 
+                    wx:key="_id" 
+                    class="quick-item"
+                    data-ticket="{{item}}"
+                    bindtap="quickSelectTicket">
+                <text class="quick-no">{{item.ticketNo}}</text>
+                <text class="quick-title">{{item.title}}</text>
+              </view>
+            </scroll-view>
+          </view>
+          
+          <button class="btn-outline" bindtap="selectTicket">
+            <image src="/assets/icons/common/plus.png" class="btn-icon" />
+            <text>选择工单</text>
+          </button>
+        </view>
       </view>
-    </view>
 
-    <!-- 备注 -->
-    <view class="note-section" wx:if="{{cartItems.length > 0}}">
-      <text class="section-title">备注信息</text>
-      <textarea class="note-input" 
-                placeholder="请输入备注信息（选填）"
-                value="{{note}}"
-                maxlength="200"
-                bindinput="onNoteInput"></textarea>
-      <text class="note-count">{{note.length}}/200</text>
-    </view>
-
-    <!-- 申领须知 -->
-    <view class="notice-section" wx:if="{{cartItems.length > 0}}">
-      <view class="notice-header">
-        <image src="/assets/icons/common/info.png" class="notice-icon" />
-        <text class="notice-title">申领须知</text>
+      <!-- 备注 -->
+      <view class="section-card" wx:if="{{cartItems.length > 0}}">
+        <text class="section-title">备注信息</text>
+        <textarea class="textarea-input" 
+                  placeholder="请输入备注信息（选填）"
+                  value="{{note}}"
+                  maxlength="200"
+                  bindinput="onNoteInput"></textarea>
+        <text class="input-count">{{note.length}}/200</text>
       </view>
-      <view class="notice-content">
-        <text class="notice-item">1. 申领提交后将直接扣减库存，无需审批</text>
-        <text class="notice-item">2. 请根据实际需求适量申领，避免浪费</text>
-        <text class="notice-item">3. 如有紧急需求，请联系管理员</text>
-      </view>
-    </view>
 
-    <!-- 底部占位 -->
-    <view class="bottom-placeholder"></view>
-  </scroll-view>
+      <!-- 申领须知 -->
+      <view class="notice-card" wx:if="{{cartItems.length > 0}}">
+        <view class="notice-header">
+          <image src="/assets/icons/system/info.png" class="notice-icon" />
+          <text class="notice-title">申领须知</text>
+        </view>
+        <view class="notice-list">
+          <text class="notice-item">1. 申领提交后将直接扣减库存，无需审批</text>
+          <text class="notice-item">2. 请根据实际需求适量申领，避免浪费</text>
+          <text class="notice-item">3. 如有紧急需求，请联系管理员</text>
+        </view>
+      </view>
+
+      <!-- 底部占位 -->
+      <view class="bottom-safe-area"></view>
+    </scroll-view>
+  </view>
 
   <!-- 底部结算栏 -->
-  <view class="checkout-bar" wx:if="{{cartItems.length > 0}}">
-    <view class="checkout-info">
-      <text class="selected-count">已选: {{selectedCount}}件</text>
+  <view class="bottom-bar" wx:if="{{cartItems.length > 0}}">
+    <view class="bottom-info">
+      <text class="bottom-text">已选: {{selectedCount}}件</text>
       <!-- Manager可以看总价 -->
-      <view wx:if="{{isManager}}" class="total-price">
+      <view wx:if="{{isManager}}" class="price-group">
         <text class="price-label">合计:</text>
         <text class="price-value">¥{{totalPrice}}</text>
       </view>
     </view>
     
-    <button class="submit-btn {{selectedCount === 0 ? 'disabled' : ''}}" 
+    <button class="btn-primary {{selectedCount === 0 ? 'disabled' : ''}}" 
             bindtap="submitRequisition"
             disabled="{{selectedCount === 0}}">
       提交申领
@@ -194,66 +207,86 @@
 </view>
 
 <!-- 工单选择弹窗 -->
-<view wx:if="{{showTicketSelector}}" class="modal-mask" bindtap="closeTicketSelector">
-  <view class="ticket-selector" catchtap="stopPropagation">
-    <view class="selector-header">
-      <text class="selector-title">选择关联工单</text>
-      <image src="/assets/icons/common/close.png" 
-             class="close-icon" 
-             bindtap="closeTicketSelector" />
+<view wx:if="{{showTicketSelector}}" class="modal-mask {{showTicketSelector ? 'show' : ''}}" bindtap="closeTicketSelector">
+  <view class="bottom-sheet {{showTicketSelector ? 'show' : ''}}" 
+        catchtap="stopPropagation"
+        bindtouchstart="onSheetTouchStart"
+        bindtouchmove="onSheetTouchMove"
+        bindtouchend="onSheetTouchEnd">
+    <!-- 把手 -->
+    <view class="sheet-handle-wrapper" bindtap="closeTicketSelector">
+      <view class="sheet-handle"></view>
+    </view>
+    
+    <view class="sheet-header">
+      <text class="sheet-title">选择关联工单</text>
+      <view class="sheet-close" bindtap="closeTicketSelector">
+        <image src="/assets/icons/common/close.png" class="close-icon" />
+      </view>
     </view>
     
     <!-- 搜索栏 -->
-    <view class="search-bar">
-      <image src="/assets/icons/common/search.png" class="search-icon" />
-      <input class="search-input" 
-             placeholder="搜索工单号、客户、问题"
-             value="{{ticketSearchKeyword}}"
-             bindinput="onTicketSearch" />
+    <view class="search-wrapper">
+      <view class="search-box">
+        <image src="/assets/icons/common/search.png" class="search-icon" />
+        <input class="search-input" 
+               placeholder="搜索工单号、客户、问题"
+               value="{{ticketSearchKeyword}}"
+               bindinput="onTicketSearch" />
+      </view>
     </view>
     
     <!-- Tab切换 -->
-    <view class="tab-bar">
+    <view class="tabs">
       <view class="tab-item {{ticketTab === 'my' ? 'active' : ''}}" 
             data-tab="my"
-            bindtap="switchTicketTab">我的工单</view>
+            bindtap="switchTicketTab">
+        <text class="tab-text">我的工单</text>
+        <view wx:if="{{ticketTab === 'my'}}" class="tab-indicator"></view>
+      </view>
       <view class="tab-item {{ticketTab === 'recent' ? 'active' : ''}}" 
             data-tab="recent"
-            bindtap="switchTicketTab">最近工单</view>
+            bindtap="switchTicketTab">
+        <text class="tab-text">最近工单</text>
+        <view wx:if="{{ticketTab === 'recent'}}" class="tab-indicator"></view>
+      </view>
       <view class="tab-item {{ticketTab === 'all' ? 'active' : ''}}" 
             data-tab="all"
-            bindtap="switchTicketTab">全部工单</view>
+            bindtap="switchTicketTab">
+        <text class="tab-text">全部工单</text>
+        <view wx:if="{{ticketTab === 'all'}}" class="tab-indicator"></view>
+      </view>
     </view>
     
     <!-- 工单列表 -->
-    <scroll-view class="ticket-list" scroll-y>
+    <scroll-view class="sheet-content" scroll-y>
       <!-- 不关联选项 -->
-      <view class="ticket-item no-link" bindtap="selectNoTicket">
-        <text class="no-link-text">不关联工单</text>
+      <view class="sheet-item no-link" bindtap="selectNoTicket">
+        <text class="sheet-item-text">不关联工单</text>
       </view>
       
       <view wx:for="{{filteredTickets}}" 
             wx:key="_id" 
-            class="ticket-item"
+            class="sheet-item"
             data-ticket="{{item}}"
             bindtap="onSelectTicket">
-        <view class="ticket-content">
-          <view class="ticket-header">
-            <text class="ticket-no">{{item.ticketNo}}</text>
-            <view class="ticket-status status-{{item.status}}">
+        <view class="sheet-item-content">
+          <view class="sheet-item-row">
+            <text class="sheet-item-no">{{item.ticketNo}}</text>
+            <view class="tag tag-{{item.status}}">
               {{item.statusText}}
             </view>
           </view>
-          <text class="ticket-title">{{item.title}}</text>
-          <view class="ticket-meta">
-            <text class="ticket-customer">客户: {{item.customerName}}</text>
-            <text class="ticket-time">{{item.createTimeText}}</text>
+          <text class="sheet-item-title">{{item.title}}</text>
+          <view class="sheet-item-meta">
+            <text class="sheet-item-caption">提交人: {{item.submitterName}}</text>
+            <text class="sheet-item-time">{{item.createTimeText}}</text>
           </view>
         </view>
       </view>
       
-      <view wx:if="{{filteredTickets.length === 0}}" class="no-tickets">
-        <text>暂无工单</text>
+      <view wx:if="{{filteredTickets.length === 0}}" class="sheet-empty">
+        <text class="sheet-empty-text">{{isManager ? '暂无工单' : '暂无您负责的工单，请先接单'}}</text>
       </view>
     </scroll-view>
   </view>

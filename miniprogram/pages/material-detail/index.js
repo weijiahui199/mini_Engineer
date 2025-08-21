@@ -374,10 +374,5 @@ Page({
     wx.navigateTo({
       url: '/pages/material-cart/index'
     })
-  },
-
-  // 返回
-  goBack() {
-    wx.navigateBack()
   }
 })

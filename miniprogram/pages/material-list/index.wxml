@@ -1,191 +1,124 @@
-<!-- 耗材列表页 -->
+<!-- 耗材列表页 - 优化后的结构 -->
 <view class="container">
-  <!-- 顶部导航栏 -->
-  <view class="navbar">
-    <!-- 第一行：返回按钮和标题 -->
-    <view class="navbar-header">
-      <view class="navbar-left" bindtap="goBack">
-        <image src="/assets/icons/common/back.png" class="nav-icon" />
-        <text class="nav-title">耗材管理</text>
-      </view>
-    </view>
-    <!-- 第二行：搜索栏 -->
-    <view class="navbar-search">
-      <view class="search-bar" bindtap="openSearch">
-        <image src="/assets/icons/common/search.png" class="search-icon" />
-        <text class="search-placeholder">搜索耗材名称、编号</text>
-      </view>
-    </view>
-  </view>
+  <!-- 搜索栏 -->
+  <t-search 
+    model:value="{{searchValue}}"
+    placeholder="搜索耗材名称、编号"
+    bind:submit="handleSearch"
+    bind:clear="handleClearSearch"
+    class="search-bar"
+  />
 
   <!-- 主体内容 -->
   <view class="main-content">
-    <!-- 左侧类目导航 -->
-    <view class="category-sidebar">
-      <view 
-        class="category-item {{currentCategory === 'popular' ? 'active' : ''}}"
-        data-category="popular"
-        bindtap="switchCategory"
-      >
-        <text class="category-name">常用</text>
-      </view>
+    <!-- TDesign 侧边栏 -->
+    <view class="sidebar-wrapper">
+      <t-side-bar value="{{currentCategory}}" bind:change="onCategoryChange">
+        <t-side-bar-item value="popular" label="常用" />
+        <t-side-bar-item value="paper" label="纸张" />
+        <t-side-bar-item value="writing" label="书写" />
+        <t-side-bar-item value="print" label="打印" />
+        <t-side-bar-item value="clean" label="清洁" />
+      </t-side-bar>
       
-      <view 
-        class="category-item {{currentCategory === 'paper' ? 'active' : ''}}"
-        data-category="paper"
-        bindtap="switchCategory"
-      >
-        <text class="category-name">纸张</text>
-      </view>
-      
-      <view 
-        class="category-item {{currentCategory === 'writing' ? 'active' : ''}}"
-        data-category="writing"
-        bindtap="switchCategory"
-      >
-        <text class="category-name">书写</text>
-      </view>
-      
-      <view 
-        class="category-item {{currentCategory === 'print' ? 'active' : ''}}"
-        data-category="print"
-        bindtap="switchCategory"
-      >
-        <text class="category-name">打印耗材</text>
-      </view>
-      
-      <view 
-        class="category-item {{currentCategory === 'clean' ? 'active' : ''}}"
-        data-category="clean"
-        bindtap="switchCategory"
-      >
-        <text class="category-name">清洁/杂项</text>
+      <!-- 经理专用：添加类目按钮 -->
+      <view wx:if="{{isManager}}" class="add-category-btn" bindtap="manageCategories">
+        <image src="/assets/icons/common/add.png" class="add-icon" mode="aspectFit" />
+        <text>添加类目</text>
       </view>
     </view>
 
-    <!-- 右侧产品列表 -->
-    <view class="product-list">
-      <view class="product-list-container">
-        <!-- 产品卡片 -->
-        <view wx:for="{{materials}}" wx:key="_id" class="product-card">
-          <!-- 缺货标识 -->
-          <view wx:if="{{item.stockStatus === 'danger'}}" class="stock-alert-bar"></view>
+    <!-- 产品列表 -->
+    <scroll-view class="product-list" scroll-y enhanced show-scrollbar="{{false}}">
+      <view class="product-list-content">
+        <!-- 产品卡片 - 优化布局 -->
+        <view wx:for="{{materials}}" wx:key="_id" class="product-card" data-id="{{item._id}}" bindtap="goToDetail">
+          <!-- 缺货警示条 -->
+          <view wx:if="{{item.stockStatus === 'danger'}}" class="stock-alert"></view>
           
-          <!-- 产品图片 -->
-          <view class="product-image-wrapper">
+          <!-- 库存标识 - 移到右上角 -->
+          <view class="stock-badge-wrapper">
+            <t-tag theme="{{item.stockStatus === 'danger' ? 'danger' : item.stockStatus === 'warning' ? 'warning' : 'success'}}" variant="light" size="small">
+              {{item.stockStatusText}}
+            </t-tag>
+          </view>
+          
+          <!-- 产品主体内容 -->
+          <view class="product-main">
+            <!-- 产品图片 -->
             <image 
               wx:if="{{item.defaultImage}}"
               class="product-image" 
               src="{{item.defaultImage}}"
               mode="aspectFill"
+              lazy-load
             />
-            <view wx:else class="product-image-placeholder">
-              <text class="placeholder-text">{{item.name[0]}}</text>
+            <view wx:else class="product-image placeholder">
+              <text>{{item.name[0]}}</text>
+            </view>
+            
+            <!-- 产品信息 -->
+            <view class="product-info">
+              <text class="product-name">{{item.name}}</text>
+              <text class="product-desc">{{item.description}}</text>
+              <text class="product-stock">库存: {{item.stockInfo}}</text>
             </view>
           </view>
           
-          <view class="product-content">
-            <view class="product-header">
-              <view class="product-info">
-                <text class="product-name">{{item.name}}</text>
-                <text class="product-spec">{{item.description}}</text>
-              </view>
-              <view class="stock-badge stock-{{item.stockStatus}}">
-                {{item.stockStatusText}}
-              </view>
-            </view>
+          <!-- 操作区 - 移到右下角 -->
+          <view class="product-action" catchtap="stopPropagation">
+            <!-- 单规格：步进器 -->
+            <t-stepper 
+              wx:if="{{item.variants.length === 1}}"
+              value="{{item.quantity || 0}}"
+              min="0"
+              max="99"
+              data-id="{{item._id}}"
+              bind:change="onQuantityChange"
+              theme="filled"
+              size="medium"
+            />
             
-            <view class="product-footer">
-              <view class="product-price-info">
-                <!-- Manager可以看价格，Engineer只看库存 -->
-                <text class="product-price" wx:if="{{userRole === 'Manager' && item.showPrice}}">¥{{item.priceRange}}</text>
-                <text class="product-stock" wx:if="{{userRole === 'Manager'}}">库存: {{item.stockInfo}}</text>
-                <!-- Engineer角色：库存信息显示更大 -->
-                <text class="product-stock-large" wx:else>库存: {{item.stockInfo}}</text>
-              </view>
-              
-              <!-- 单规格：数量步进器 -->
-              <view wx:if="{{item.variants.length === 1}}" class="quantity-stepper">
-                <button 
-                  class="stepper-btn minus {{item.quantity === 0 ? 'disabled' : ''}}"
-                  data-id="{{item._id}}"
-                  data-action="minus"
-                  bindtap="updateQuantity"
-                >
-                  <image src="/assets/icons/common/minus.png" class="stepper-icon" />
-                </button>
-                <input 
-                  type="number" 
-                  class="quantity-input"
-                  value="{{item.quantity || 0}}"
-                  data-id="{{item._id}}"
-                  bindinput="onQuantityInput"
-                />
-                <button 
-                  class="stepper-btn plus"
-                  data-id="{{item._id}}"
-                  data-action="plus"
-                  bindtap="updateQuantity"
-                >
-                  <image src="/assets/icons/common/plus.png" class="stepper-icon" />
-                </button>
-              </view>
-              
-              <!-- 多规格：选规格按钮 -->
-              <button 
-                wx:else 
-                class="select-spec-btn"
-                data-id="{{item._id}}"
-                bindtap="selectSpec"
-              >
-                选规格
-              </button>
-            </view>
+            <!-- 多规格：选择按钮 -->
+            <t-button 
+              wx:else
+              size="medium"
+              theme="primary"
+              data-id="{{item._id}}"
+              bind:tap="selectSpec"
+            >
+              选规格
+            </t-button>
           </view>
         </view>
         
         <!-- 空状态 -->
-        <view wx:if="{{!loading && materials.length === 0}}" class="empty-state">
-          <text class="empty-icon">📦</text>
-          <text class="empty-text">{{currentCategory === 'popular' ? '暂无常用耗材' : '该类目暂无耗材'}}</text>
-          <text class="empty-hint">{{currentCategory === 'popular' ? '请切换到其他类目查看' : '请联系管理员添加耗材'}}</text>
+        <view wx:if="{{!loading && materials.length === 0}}" class="empty-container">
+          <t-empty 
+            icon="info-circle"
+            description="{{currentCategory === 'popular' ? '暂无常用耗材' : '该类目暂无耗材'}}"
+          />
         </view>
         
         <!-- 加载中 -->
-        <view wx:if="{{loading && materials.length === 0}}" class="loading-state">
+        <view wx:if="{{loading}}" class="loading-container">
           <t-loading theme="circular" size="40rpx" text="加载中..." />
         </view>
+        
+        <!-- 经理专用：添加耗材按钮 -->
+        <view wx:if="{{isManager && !loading}}" class="add-product-card" bindtap="addProduct">
+          <image src="/assets/icons/common/plus.png" class="add-product-icon" mode="aspectFit" />
+          <text class="add-product-text">添加新耗材</text>
+        </view>
       </view>
-    </view>
+    </scroll-view>
   </view>
 
-  <!-- 底部栏 -->
-  <view class="bottom-bar">
-    <!-- 左侧：仓库信息 -->
-    <view class="warehouse-info">
-      <view class="info-item">
-        <text class="info-label">当前仓库</text>
-        <text class="info-value">{{currentWarehouse}}</text>
-      </view>
-      <view class="info-divider"></view>
-      <view class="info-item">
-        <text class="info-label">库存策略</text>
-        <text class="info-value">{{stockStrategy}}</text>
-      </view>
-    </view>
-    
-    <!-- 右侧：申领车按钮 -->
-    <view class="cart-btn" bindtap="goToCart">
-      <view class="cart-icon-wrapper">
-        <image src="/assets/icons/business/cart.png" class="cart-icon" />
-        <view wx:if="{{cartCount > 0}}" class="cart-badge">{{cartCount}}</view>
-      </view>
-      <view class="cart-info">
-        <text class="cart-count">{{cartCount}}件商品</text>
-        <!-- Manager可以看总价，Engineer不显示价格 -->
-        <text class="cart-total" wx:if="{{userRole === 'Manager'}}">¥{{cartTotal}}</text>
-        <text class="cart-action" wx:else>去申领</text>
-      </view>
-    </view>
+  <!-- 简化的底部栏 - 浮动购物车按钮 -->
+  <view class="float-cart" bindtap="goToCart">
+    <t-badge count="{{cartCount}}" max-count="99" wx:if="{{cartCount > 0}}">
+      <image src="/assets/icons/business/cart_fill.png" class="cart-icon" mode="aspectFit" />
+    </t-badge>
+    <image wx:else src="/assets/icons/business/cart_white.png" class="cart-icon" mode="aspectFit" />
   </view>
 </view>
