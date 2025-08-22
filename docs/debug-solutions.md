@@ -1268,6 +1268,54 @@ console.log('缓存信息:', {
      - 固定定位 + flex布局要谨慎
      - 保持DOM结构简洁
 
+### 问题 #27：TDesign组件样式覆盖问题
+- **发生时间**：2025-08-21
+- **问题描述**：
+  1. TDesign的textarea组件字数统计样式无法修改
+  2. 使用普通CSS选择器不生效
+  3. 微信小程序不支持深度选择器（>>>、/deep/）
+- **错误信息**：样式不生效，字数统计显示没有变化
+- **问题原因**：
+  1. **组件样式隔离**：TDesign组件有自己的样式作用域
+  2. **选择器限制**：普通CSS选择器无法穿透组件边界
+  3. **深度选择器不支持**：微信小程序不支持 `>>>` 或 `/deep/` 语法
+- **解决方案**：
+  1. **使用组件提供的样式接口**：
+     ```xml
+     <!-- 使用 t-class 属性 -->
+     <t-textarea 
+       t-class="custom-textarea"
+       t-class-indicator="custom-indicator"
+     />
+     ```
+  2. **定义自定义样式类**：
+     ```css
+     /* 自定义textarea样式 */
+     .custom-textarea {
+       background-color: #f5f5f5 !important;
+       border-radius: 12rpx !important;
+     }
+     
+     /* 自定义字数统计样式 */
+     .custom-indicator {
+       font-size: 32rpx !important;
+       color: #666666 !important;
+       font-weight: 600 !important;
+     }
+     ```
+- **相关文件**：
+  - `/miniprogram/pages/material-cart/index.wxml` - 添加t-class属性
+  - `/miniprogram/pages/material-cart/index.wxss` - 定义自定义样式类
+- **验证结果**：
+  - 输入框背景色成功修改为浅灰色
+  - 字数统计字体放大并加粗
+  - 样式正确应用，不再被组件默认样式覆盖
+- **经验总结**：
+  1. **了解组件API**：TDesign提供了 `t-class-*` 系列属性用于自定义样式
+  2. **查阅组件文档**：不同组件提供的样式接口不同，需要查阅文档
+  3. **使用官方方式**：避免使用hack方式，使用组件官方提供的样式接口
+  4. **!important使用**：在自定义样式中可能需要使用 `!important` 提高优先级
+
 ## 更新日志
 
 - 2025-08-12：创建文档，整理调试模板和技巧
@@ -1281,3 +1329,4 @@ console.log('缓存信息:', {
 - 2025-08-18：添加用户角色更新后工单列表不刷新问题及解决方案
 - 2024-12-24：添加耗材列表页布局不稳定、步进器延迟、错误提示不友好等问题的解决方案（问题 #23-25）
 - 2024-12-24：添加耗材列表页右侧卡片不显示问题及scroll-view渲染问题的解决方案（问题 #26）
+- 2025-08-21：添加TDesign组件样式覆盖问题及解决方案（问题 #27）

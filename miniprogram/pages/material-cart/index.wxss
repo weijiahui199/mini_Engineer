@@ -1,967 +1,820 @@
-/* 申领车页面样式 - 微信小程序设计规范 */
+/* 申领车页面样式 - 重构版 */
 
-/* ==================== 基础配置 ==================== */
+/* TDesign 颜色变量 */
 page {
-  height: 100%;
-  background: #F7F8FA; /* bg.page */
-  overflow-x: hidden; /* 防止横向滚动 */
+  --td-brand-color: #0052d9;
+  --td-success-color: #00a870;
+  --td-warning-color: #ed7b2f;
+  --td-error-color: #e34d59;
+  --td-text-color-primary: #262626;
+  --td-text-color-secondary: #8b8b8b;
+  --td-bg-color-page: #f3f3f3;
+  --td-bg-color-container: #ffffff;
+  --td-border-color: #e7e7e7;
+  --td-spacer-1: 8rpx;
+  --td-spacer-2: 16rpx;
+  --td-spacer-3: 24rpx;
+  --td-spacer-4: 32rpx;
+  --td-radius: 16rpx;
+  --td-radius-small: 8rpx;
+  
+  background-color: var(--td-bg-color-page);
 }
 
-.container {
-  height: 100vh;
-  background: #F7F8FA; /* bg.page */
+/* 主容器 - Flex布局 */
+.cart-page {
   display: flex;
   flex-direction: column;
-  width: 100%;
-  box-sizing: border-box;
-  overflow: hidden;
+  height: 100vh;
+  background-color: var(--td-bg-color-page);
 }
 
-/* ==================== 顶部操作栏 ==================== */
-.action-bar {
+/* 固定顶部 */
+.cart-header {
+  flex: 0 0 auto;
+  background-color: var(--td-bg-color-container);
+  border-bottom: 1rpx solid var(--td-border-color);
+  padding-top: env(safe-area-inset-top);
+}
+
+.header-content {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 24rpx 32rpx; /* Page.PaddingX */
-  background: #FFFFFF; /* bg.card */
-  border-bottom: 1rpx solid rgba(0, 0, 0, 0.08); /* line.divider */
-  min-height: 88rpx; /* 最小高度 */
+  padding: var(--td-spacer-3) var(--td-spacer-4);
 }
 
-.cart-count {
-  display: flex;
-  align-items: baseline;
-  gap: 8rpx;
+.header-title {
+  font-size: 36rpx;
+  font-weight: 500;
+  color: var(--td-text-color-primary);
 }
 
-.count-label {
-  font-size: 28rpx; /* Body */
-  color: rgba(0, 0, 0, 0.6); /* text.secondary */
-  line-height: 44rpx;
+.header-action {
+  font-size: 28rpx;
+  color: var(--td-brand-color);
 }
 
-.count-value {
-  font-size: 40rpx; /* H1 */
-  font-weight: 600;
-  color: #4A8DD4; /* brand.primary */
-  line-height: 56rpx;
-}
-
-.count-unit {
-  font-size: 24rpx; /* Caption */
-  color: rgba(0, 0, 0, 0.6); /* text.secondary */
-  margin-left: 4rpx;
-  line-height: 36rpx;
-}
-
-.clear-all-btn {
-  padding: 12rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 200ms cubic-bezier(0.2,0,0,1);
-}
-
-.clear-all-btn:active {
-  transform: scale(0.9);
-  opacity: 0.6;
-}
-
-.clear-icon {
-  width: 48rpx;
-  height: 48rpx;
-}
-
-/* ==================== 内容容器 ==================== */
-.content-wrapper {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  box-sizing: border-box;
-  overflow: hidden;
-}
-
-/* 信息提示栏 */
+/* 提示信息栏 */
 .info-banner {
-  background: rgba(91, 159, 230, 0.08); /* 主色半透明背景 */
-  margin: 0 32rpx 16rpx;
-  padding: 20rpx 24rpx;
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
-  border-radius: 12rpx; /* sm */
-  border: 1rpx solid rgba(91, 159, 230, 0.2);
+  padding: var(--td-spacer-2) var(--td-spacer-4);
+  background-color: #ecf2fe;
 }
 
 .info-icon {
-  width: 32rpx;
-  height: 32rpx;
-  margin-right: 12rpx;
+  width: 36rpx;
+  height: 36rpx;
+  margin-right: var(--td-spacer-2);
   flex-shrink: 0;
 }
 
 .info-text {
-  font-size: 24rpx; /* Caption */
-  color: rgba(0, 0, 0, 0.6); /* text.secondary */
-  line-height: 36rpx;
+  font-size: 24rpx;
+  color: var(--td-brand-color);
+  line-height: 1.5;
 }
 
-/* ==================== 主内容滚动区 ==================== */
-.content-scroll {
+/* 滚动内容区 */
+.cart-body {
   flex: 1;
-  padding: 0 32rpx; /* Page.PaddingX */
-  padding-bottom: 160rpx; /* 为底部栏留出空间 */
-  width: 100%;
-  box-sizing: border-box;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
-/* ==================== 全选卡片 ==================== */
-.select-all-card {
-  background: #FFFFFF;
-  padding: 24rpx 32rpx; /* Card.Padding */
-  margin-bottom: 16rpx; /* Card.Gap */
-  border-radius: 16rpx; /* md */
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.08);
+/* 全选栏 */
+.select-all-bar {
   display: flex;
-  align-items: center;
   justify-content: space-between;
-}
-
-.checkbox-group {
-  display: flex;
   align-items: center;
-  min-height: 88rpx; /* 触控热区 */
+  padding: var(--td-spacer-1) var(--td-spacer-4);
+  background-color: var(--td-bg-color-container);
+  margin-bottom: var(--td-spacer-2);
+  min-height: 72rpx;
 }
 
-.checkbox {
+.select-all-left {
+  flex: 1;
+}
+
+/* 自定义checkbox样式 */
+.custom-checkbox {
   width: 40rpx;
   height: 40rpx;
-  border: 3rpx solid rgba(0, 0, 0, 0.4); /* text.tertiary */
+  border: 2rpx solid #d9d9d9;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 200ms cubic-bezier(0.2,0,0,1); /* 动效 */
+  margin-right: var(--td-spacer-2);
+  transition: all 0.2s;
 }
 
-.checkbox.checked {
-  background: #4A8DD4; /* brand.primary */
-  border-color: #4A8DD4;
+.custom-checkbox.checked {
+  border-color: transparent;
+  background-color: transparent;
 }
 
-.check-icon {
-  width: 24rpx;
-  height: 24rpx;
-  filter: brightness(0) invert(1);
+.custom-checkbox .check-icon {
+  width: 40rpx;
+  height: 40rpx;
 }
 
-.checkbox-label {
-  font-size: 28rpx; /* Body */
-  color: rgba(0, 0, 0, 0.9); /* text.primary */
-  margin-left: 16rpx;
-  line-height: 44rpx;
+/* 全选栏文字 */
+.select-all-left {
+  display: flex;
+  align-items: center;
 }
 
-/* ==================== 列表容器 ==================== */
-.list-container {
-  margin-bottom: 24rpx;
-  width: 100%; /* 确保宽度 */
-  box-sizing: border-box;
+.select-all-text {
+  font-size: 26rpx;
+  color: var(--td-text-color-primary);
 }
 
-/* 列表项卡片 */
-.list-item-card {
-  background: #FFFFFF;
-  margin-bottom: 16rpx; /* Card.Gap */
-  padding: 32rpx; /* Card.Padding */
-  border-radius: 16rpx; /* md */
+/* 清空购物车按钮 */
+.clear-cart-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 60rpx;
+  height: 60rpx;
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+.clear-cart-btn:active {
+  background-color: rgba(227, 77, 89, 0.1);
+}
+
+.clear-cart-icon {
+  width: 40rpx;
+  height: 40rpx;
+}
+
+
+/* 购物车列表 */
+.cart-list {
+  padding: 0 var(--td-spacer-4);
+}
+
+/* 购物车项 */
+.cart-item {
   display: flex;
   align-items: flex-start;
-  min-height: 96rpx; /* ListItem.MinHeight */
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.08);
-  position: relative;
-  transition: all 200ms cubic-bezier(0.2,0,0,1);
-  width: 100%; /* 确保卡片宽度 */
-  box-sizing: border-box; /* 包含padding */
-  overflow: hidden; /* 防止内容溢出 */
+  padding: var(--td-spacer-3);
+  background-color: var(--td-bg-color-container);
+  border-radius: var(--td-radius);
+  margin-bottom: var(--td-spacer-3);
 }
 
-.list-item-card.warning {
-  border: 2rpx solid #FAAD14; /* state.warning */
+.cart-item.warning-border {
+  border-left: 8rpx solid var(--td-warning-color);
 }
 
-.list-item-card:active {
-  transform: scale(0.98);
-}
-
-/* 商品图片 */
 .item-image {
-  width: 112rpx; /* 列表缩略图 */
-  height: 112rpx;
-  border-radius: 12rpx; /* sm */
-  background: #F7F8FA;
-  flex-shrink: 0;
-  margin: 0 24rpx 0 12rpx;
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: var(--td-radius-small);
+  margin-right: var(--td-spacer-3);
+  background-color: #f5f5f5;
 }
 
-/* 商品内容 */
 .item-content {
   flex: 1;
   display: flex;
   flex-direction: column;
-  min-width: 0; /* 防止flex子元素溢出 */
-  overflow: hidden; /* 防止内容溢出 */
+  justify-content: space-between;
+  min-height: 160rpx;
+}
+
+.item-header {
+  margin-bottom: var(--td-spacer-2);
 }
 
 .item-title {
-  font-size: 32rpx; /* Title */
-  font-weight: 600;
-  color: rgba(0, 0, 0, 0.9); /* text.primary */
-  line-height: 48rpx;
-  margin-bottom: 8rpx;
-  overflow: hidden; /* 防止文字溢出 */
-  text-overflow: ellipsis; /* 显示省略号 */
-  white-space: nowrap; /* 不换行 */
+  font-size: 30rpx;
+  color: var(--td-text-color-primary);
+  font-weight: 500;
+  display: block;
+  margin-bottom: var(--td-spacer-1);
 }
 
-.item-caption {
-  font-size: 24rpx; /* Caption */
-  color: rgba(0, 0, 0, 0.6); /* text.secondary */
-  line-height: 36rpx;
-  margin-bottom: 16rpx;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.item-variant {
+  font-size: 24rpx;
+  color: var(--td-text-color-secondary);
+  display: block;
 }
 
 .item-footer {
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
-  margin-top: auto;
 }
 
-/* 库存信息 */
 .stock-info {
   display: flex;
   flex-direction: column;
-  gap: 8rpx;
+  gap: var(--td-spacer-1);
 }
 
 .stock-label {
-  font-size: 24rpx; /* Caption */
-  color: rgba(0, 0, 0, 0.6); /* text.secondary */
-  line-height: 36rpx;
+  font-size: 26rpx;
+  color: var(--td-text-color-secondary);
 }
 
-.stock-label.warning {
-  color: #FAAD14; /* state.warning */
+.stock-label.warning-text {
+  color: var(--td-warning-color);
   font-weight: 500;
 }
 
-.stock-hint {
-  font-size: 24rpx; /* Caption */
-  color: #FAAD14; /* state.warning */
-  line-height: 36rpx;
+.stock-warning {
+  font-size: 22rpx;
+  color: var(--td-warning-color);
 }
 
-/* 数量步进器 */
-.stepper {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-}
-
-.stepper-btn {
-  width: 64rpx; /* Stepper height */
-  height: 64rpx;
-  border-radius: 50%;
-  background: #F7F8FA;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  padding: 0;
-  transition: all 200ms cubic-bezier(0.2,0,0,1);
-}
-
-.stepper-plus {
-  background: #4A8DD4; /* brand.primary */
-}
-
-.stepper-plus .stepper-icon {
-  filter: brightness(0) invert(1);
-}
-
-.stepper-btn.disabled {
-  opacity: 0.4; /* disabled.alpha */
-}
-
-.stepper-btn:active:not(.disabled) {
-  transform: scale(0.95);
-}
-
-.stepper-icon {
-  width: 24rpx;
-  height: 24rpx;
-}
-
-.stepper-input {
-  width: 80rpx;
-  height: 48rpx;
-  text-align: center;
-  font-size: 28rpx; /* Body */
-  font-weight: 500;
-  color: rgba(0, 0, 0, 0.9); /* text.primary */
-  background: #F7F8FA;
-  border-radius: 8rpx; /* xs */
-}
-
-/* 删除按钮 */
-.delete-btn {
-  position: absolute;
-  right: 32rpx;
-  top: 32rpx;
-  width: 48rpx;
-  height: 48rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.delete-icon {
-  width: 32rpx;
-  height: 32rpx;
-  opacity: 0.6;
-}
-
-/* ==================== 空状态 ==================== */
+/* 空状态 */
 .empty-state {
-  padding: 120rpx 60rpx;
-  text-align: center;
-  background: #FFFFFF;
-  border-radius: 16rpx; /* md */
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.08);
-  margin: 24rpx 0;
-}
-
-.empty-image {
-  width: 200rpx;
-  height: 200rpx;
-  margin-bottom: 32rpx;
-}
-
-.empty-title {
-  font-size: 28rpx; /* Body */
-  color: rgba(0, 0, 0, 0.9); /* text.primary */
-  line-height: 44rpx;
-  margin-bottom: 16rpx;
-  display: block;
-}
-
-.empty-caption {
-  font-size: 24rpx; /* Caption */
-  color: rgba(0, 0, 0, 0.6); /* text.secondary */
-  line-height: 36rpx;
-  margin-bottom: 48rpx;
-  display: block;
-}
-
-/* ==================== Section 卡片 ==================== */
-.section-card {
-  background: #FFFFFF;
-  margin-bottom: 16rpx; /* Card.Gap */
-  padding: 32rpx; /* Card.Padding */
-  border-radius: 16rpx; /* md */
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.08);
-}
-
-.section-header {
+  padding: 120rpx var(--td-spacer-4);
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   align-items: center;
-  margin-bottom: 24rpx; /* Section 标题下边距 */
 }
 
-.section-title {
-  font-size: 32rpx; /* Title */
-  font-weight: 600;
-  color: rgba(0, 0, 0, 0.9); /* text.primary */
-  line-height: 48rpx;
+/* 功能区域卡片 */
+.section-card {
+  background-color: var(--td-bg-color-container);
+  margin: var(--td-spacer-3) 0;
+  padding: var(--td-spacer-3) var(--td-spacer-4);
 }
 
-.section-caption {
-  font-size: 24rpx; /* Caption */
-  color: rgba(0, 0, 0, 0.4); /* text.tertiary */
-  line-height: 36rpx;
-}
-
-/* 已选工单 */
+/* 已选工单样式 */
 .ticket-selected {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20rpx;
-  background: #F0F7FF; /* 浅蓝色背景 */
-  border: 1rpx solid #5B9FE6;
-  border-radius: 12rpx; /* sm */
+  margin-top: var(--td-spacer-2);
 }
 
-.ticket-info {
+.ticket-card {
   flex: 1;
+  padding: var(--td-spacer-2);
+  background-color: #ecf2fe;
+  border-radius: var(--td-radius-small);
+  border: 2rpx solid var(--td-brand-color);
 }
 
-.ticket-row {
+.ticket-header {
   display: flex;
   align-items: center;
-  gap: 12rpx;
-  margin-bottom: 8rpx;
+  gap: var(--td-spacer-2);
+  margin-bottom: var(--td-spacer-1);
 }
 
 .ticket-no {
-  font-size: 24rpx; /* Caption */
-  color: #4A8DD4; /* 蓝色 */
+  font-size: 28rpx;
   font-weight: 500;
+  color: var(--td-text-color-primary);
 }
 
-.ticket-body {
-  font-size: 28rpx; /* Body */
-  color: rgba(0, 0, 0, 0.9); /* text.primary */
-  line-height: 44rpx;
-  margin-bottom: 8rpx;
+.ticket-title {
+  font-size: 26rpx;
+  color: var(--td-text-color-secondary);
+  display: block;
+  margin-bottom: var(--td-spacer-1);
+}
+
+.ticket-submitter {
+  font-size: 24rpx;
+  color: var(--td-text-color-secondary);
   display: block;
 }
 
-.ticket-caption {
-  font-size: 24rpx; /* Caption */
-  color: rgba(0, 0, 0, 0.6); /* text.secondary */
-  line-height: 36rpx;
+.remove-icon {
+  width: 40rpx;
+  height: 40rpx;
+  padding: var(--td-spacer-2);
+}
+
+/* 快速选择工单 */
+.quick-tickets {
+  margin-top: var(--td-spacer-2);
+  width: 100%;
+  align-self: flex-start;
+}
+
+.quick-label {
+  font-size: 24rpx;
+  color: var(--td-text-color-secondary);
   display: block;
-}
-
-.link-text {
-  font-size: 28rpx; /* Body */
-  color: #5B9FE6; /* 浅蓝色 */
-}
-
-/* 状态标签 */
-.tag {
-  padding: 4rpx 12rpx;
-  border-radius: 8rpx; /* xs */
-  font-size: 24rpx; /* Caption */
-  line-height: 36rpx;
-}
-
-.tag-pending {
-  background: #FFF3CD;
-  color: #92400E;
-}
-
-.tag-processing {
-  background: #DBEAFE;
-  color: #1E40AF;
-}
-
-.tag-resolved {
-  background: #D1FAE5;
-  color: #065F46;
-}
-
-.tag-cancelled {
-  background: #FEE2E2;
-  color: #991B1B;
-}
-
-/* 快速选择 */
-.quick-select {
-  margin-bottom: 24rpx;
+  margin-bottom: var(--td-spacer-2);
 }
 
 .quick-list {
-  white-space: nowrap;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--td-spacer-2);
+  margin-bottom: var(--td-spacer-3);
 }
 
-.quick-item {
-  display: inline-block;
-  background: #FFFFFF;
-  border: 1rpx solid rgba(0, 0, 0, 0.08); /* line.divider */
-  border-radius: 12rpx; /* sm */
-  padding: 16rpx 24rpx;
-  margin-right: 16rpx;
-  transition: all 200ms cubic-bezier(0.2,0,0,1);
+.quick-tag {
+  margin-right: var(--td-spacer-2);
+  margin-bottom: var(--td-spacer-2);
 }
 
-.quick-item:active {
-  background: #F0F7FF;
-  border-color: #5B9FE6;
-}
-
-.quick-no {
-  font-size: 24rpx; /* Caption */
-  color: #4A8DD4; /* 蓝色 */
-  margin-right: 12rpx;
-}
-
-.quick-title {
-  font-size: 24rpx; /* Caption */
-  color: rgba(0, 0, 0, 0.6); /* text.secondary */
-}
-
-/* ==================== 输入区域 ==================== */
-.textarea-input {
+/* 未选工单容器 */
+.ticket-empty {
+  padding: var(--td-spacer-3) 0;
   width: 100%;
-  min-height: 160rpx;
-  padding: 20rpx;
-  background: #F7F8FA;
-  border-radius: 12rpx; /* sm */
-  font-size: 28rpx; /* Body */
-  line-height: 44rpx;
-  margin-top: 16rpx;
-  box-sizing: border-box;
-  color: rgba(0, 0, 0, 0.9); /* text.primary */
-}
-
-.input-count {
-  position: absolute;
-  right: 48rpx;
-  bottom: 48rpx;
-  font-size: 24rpx; /* Caption */
-  color: rgba(0, 0, 0, 0.4); /* text.tertiary */
-}
-
-/* ==================== 申领须知 ==================== */
-.notice-card {
-  background: #FFFBF0;
-  padding: 24rpx 32rpx;
-  margin-bottom: 24rpx;
-  border-radius: 16rpx; /* md */
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.08);
-}
-
-.notice-header {
   display: flex;
-  align-items: center;
-  margin-bottom: 16rpx;
+  flex-direction: column;
+  align-items: flex-end;
 }
 
-.notice-icon {
-  width: 32rpx;
-  height: 32rpx;
-  margin-right: 12rpx;
-}
-
-.notice-title {
-  font-size: 28rpx; /* Body */
-  font-weight: 500;
-  color: #FAAD14; /* state.warning */
-  line-height: 44rpx;
-}
-
-.notice-list {
-  padding-left: 44rpx;
-}
-
-.notice-item {
-  font-size: 24rpx; /* Caption */
-  color: rgba(0, 0, 0, 0.6); /* text.secondary */
-  line-height: 40rpx;
-  display: block;
-  margin-bottom: 8rpx;
-}
-
-/* ==================== 底部安全区域 ==================== */
-.bottom-safe-area {
-  height: 200rpx; /* 留出足够空间避免内容被底部栏遮挡 */
-  flex-shrink: 0; /* 防止被压缩 */
-}
-
-/* ==================== 底部结算栏 ==================== */
-.bottom-bar {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: #FFFFFF;
-  padding: 24rpx 32rpx; /* Page.PaddingX */
-  padding-bottom: calc(24rpx + env(safe-area-inset-bottom));
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  box-shadow: 0 -4rpx 16rpx rgba(0, 0, 0, 0.08);
-  z-index: 100;
-  height: 140rpx; /* 固定高度 */
-  box-sizing: border-box;
-}
-
-.bottom-info {
-  display: flex;
-  align-items: center;
-  gap: 24rpx;
-}
-
-.bottom-text {
-  font-size: 28rpx; /* Body */
-  color: rgba(0, 0, 0, 0.6); /* text.secondary */
-  line-height: 44rpx;
-}
-
-.price-group {
-  display: flex;
-  align-items: baseline;
-  gap: 8rpx;
-}
-
-.price-label {
-  font-size: 28rpx; /* Body */
-  color: rgba(0, 0, 0, 0.6); /* text.secondary */
-}
-
-.price-value {
-  font-size: 36rpx; /* H2 */
-  font-weight: 600;
-  color: #FA5151; /* state.error */
-  line-height: 52rpx;
-}
-
-/* ==================== 按钮样式 ==================== */
-.btn-primary {
-  min-width: 200rpx;
-  height: 88rpx; /* Button/Large */
-  background: linear-gradient(135deg, #5B9FE6 0%, #4A8DD4 100%); /* brand.primary 渐变 */
-  color: #FFFFFF;
-  font-size: 32rpx; /* Title */
-  font-weight: 500;
-  border-radius: 44rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  padding: 0 32rpx; /* Button padding */
-  transition: all 200ms cubic-bezier(0.2,0,0,1);
-  box-shadow: 0 4rpx 12rpx rgba(74, 141, 212, 0.25); /* 主色阴影 */
-}
-
-.btn-primary:active:not(.disabled) {
-  transform: scale(0.98);
-  opacity: 0.9;
-}
-
-.btn-primary.disabled {
-  opacity: 0.4; /* disabled.alpha */
-}
-
-.btn-outline {
-  width: 100%;
-  height: 80rpx; /* Button/Medium */
-  background: transparent;
-  border: 2rpx solid rgba(0, 0, 0, 0.08); /* line.divider */
-  border-radius: 12rpx; /* sm */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12rpx;
-  font-size: 28rpx; /* Body */
-  color: rgba(0, 0, 0, 0.9); /* text.primary */
-  transition: all 200ms cubic-bezier(0.2,0,0,1);
-}
-
-.btn-outline:active {
-  background: rgba(0, 0, 0, 0.04);
-}
-
+/* 选择工单按钮图标 */
 .btn-icon {
   width: 32rpx;
   height: 32rpx;
+  margin-right: 8rpx;
 }
 
-/* ==================== 底部弹窗 Bottom Sheet ==================== */
-.modal-mask {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.4); /* 遮罩透明度 0.4 */
-  z-index: 999;
-  display: flex;
-  align-items: flex-end;
-  animation: fadeIn 200ms cubic-bezier(0.2,0,0,1); /* 进入 200ms */
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.bottom-sheet {
+/* 快速选择工单列表 */
+.quick-ticket-list {
+  margin-top: 16rpx;
+  margin-bottom: 24rpx;
   width: 100%;
-  max-height: 70vh; /* 最大高 70vh */
-  background: #FFFFFF;
-  border-radius: 24rpx 24rpx 0 0; /* 圆角 24rpx */
-  padding-bottom: env(safe-area-inset-bottom);
-  animation: slideUp 240ms cubic-bezier(0.2,0,0,1); /* 进入 240ms */
+}
+
+/* 快速选择工单卡片 - 类似耗材卡片 */
+.quick-ticket-card {
   display: flex;
-  flex-direction: column;
-  overflow: hidden; /* 防止内容溢出 */
-  box-sizing: border-box;
-  box-shadow: 0 -8rpx 32rpx rgba(0, 0, 0, 0.1); /* 添加阴影 */
-  transition: transform 160ms cubic-bezier(0.2,0,0,1); /* 关闭动画 */
-}
-
-@keyframes slideUp {
-  from { transform: translateY(100%); }
-  to { transform: translateY(0); }
-}
-
-/* 把手 */
-.sheet-handle-wrapper {
-  padding: 16rpx 0;
-  display: flex;
-  justify-content: center;
-  width: 100%;
-  box-sizing: border-box;
-  cursor: grab; /* 显示可拖动 */
-}
-
-.sheet-handle {
-  width: 72rpx; /* 把手宽度 72rpx */
-  height: 8rpx; /* 把手高度 8rpx */
-  background: rgba(0, 0, 0, 0.12); /* 稍深一点 */
-  border-radius: 4rpx;
-  transition: background 200ms;
-}
-
-.sheet-handle-wrapper:active .sheet-handle {
-  background: rgba(0, 0, 0, 0.2); /* 点击时加深 */
-}
-
-.sheet-header {
-  padding: 24rpx 32rpx; /* Page.PaddingX */
-  border-bottom: 1rpx solid rgba(0, 0, 0, 0.08); /* line.divider */
-  display: flex;
-  justify-content: space-between;
   align-items: center;
-  width: 100%;
-  box-sizing: border-box;
+  background: var(--td-bg-color-container);
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-bottom: 16rpx;
+  border: 2rpx solid transparent;
+  transition: all 0.3s ease;
 }
 
-.sheet-title {
-  font-size: 36rpx; /* H2 */
-  font-weight: 600;
-  color: rgba(0, 0, 0, 0.9); /* text.primary */
-  line-height: 52rpx;
+/* 选中状态 */
+.quick-ticket-active {
+  background: #ecf2fe;
+  border-color: #4A8DD4;
+  box-shadow: 0 4rpx 16rpx rgba(74, 141, 212, 0.1);
 }
 
-.sheet-close {
+/* 工单选中框 */
+.ticket-checkbox {
+  width: 40rpx;
+  height: 40rpx;
+  border: 2rpx solid var(--td-border-color);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 20rpx;
+  transition: all 0.2s ease;
+}
+
+.ticket-checkbox.checked {
+  background: #4A8DD4;
+  border-color: #4A8DD4;
+}
+
+/* 工单图标容器 */
+.ticket-icon-wrapper {
+  width: 80rpx;
+  height: 80rpx;
+  background: #f0f0f0;
+  border-radius: 12rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 24rpx;
+}
+
+.quick-ticket-active .ticket-icon-wrapper {
+  background: #e6f0ff;
+}
+
+/* 工单图标 */
+.ticket-icon {
   width: 48rpx;
   height: 48rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  transition: background 200ms;
 }
 
-.sheet-close:active {
-  background: rgba(0, 0, 0, 0.05);
+/* 工单信息 */
+.ticket-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+/* 工单主要信息行 */
+.ticket-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* 工单标题 */
+.ticket-title-text {
+  flex: 1;
+  font-size: 30rpx;
+  font-weight: 500;
+  color: var(--td-text-color-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-right: 16rpx;
+}
+
+/* 工单元信息 */
+.ticket-meta {
+  display: flex;
+  align-items: center;
+  font-size: 24rpx;
+  color: var(--td-text-color-secondary);
+}
+
+/* 工单号 */
+.ticket-no-text {
+  font-weight: 500;
+}
+
+/* 分隔符 */
+.ticket-separator {
+  margin: 0 12rpx;
+  color: var(--td-text-color-placeholder);
+}
+
+/* 报修人 */
+.ticket-submitter-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 备注区域 */
+.remark-wrapper {
+  padding: var(--td-spacer-2) 0;
+}
+
+/* 自定义textarea样式 */
+.custom-textarea {
+  background-color: #f5f5f5 !important;
+  border-radius: 12rpx !important;
+  padding: 20rpx !important;
+}
+
+/* 自定义字数统计样式 */
+.custom-indicator {
+  font-size: 32rpx !important;
+  color: #666666 !important;
+  font-weight: 600 !important;
+  margin-top: 16rpx !important;
+  display: block !important;
+}
+
+/* 底部占位 */
+.bottom-safe-area {
+  height: 200rpx;
+}
+
+/* 工单选择弹窗 */
+.ticket-selector {
+  height: 80vh;
+  background: var(--td-bg-color-container);
+  border-radius: 24rpx 24rpx 0 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 弹窗头部 */
+.selector-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 32rpx;
+  border-bottom: 1rpx solid var(--td-border-color);
+}
+
+.selector-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: var(--td-text-color-primary);
 }
 
 .close-icon {
-  width: 32rpx;
-  height: 32rpx;
-  opacity: 0.6;
+  width: 40rpx;
+  height: 40rpx;
+  padding: 8rpx;
 }
 
 /* 搜索栏 */
-.search-wrapper {
-  padding: 24rpx 32rpx; /* Page.PaddingX */
-  background: #F7F8FA;
-  width: 100%;
-  box-sizing: border-box;
+.selector-search {
+  padding: 24rpx 32rpx;
+  background: var(--td-bg-color-container);
 }
 
-.search-box {
-  background: #FFFFFF;
-  border-radius: 12rpx; /* sm */
-  padding: 0 24rpx;
-  height: 80rpx; /* Search.Height */
+/* 自定义搜索框 */
+.custom-search {
   display: flex;
   align-items: center;
-  gap: 16rpx;
-  width: 100%;
-  box-sizing: border-box;
+  height: 72rpx;
+  background: #f5f5f5;
+  border-radius: 36rpx;
+  padding: 0 24rpx;
 }
 
 .search-icon {
   width: 32rpx;
   height: 32rpx;
-  flex-shrink: 0;
-  opacity: 0.4;
+  margin-right: 16rpx;
+  opacity: 0.5;
 }
 
 .search-input {
   flex: 1;
-  font-size: 28rpx; /* Body */
-  color: rgba(0, 0, 0, 0.9); /* text.primary */
-  line-height: 44rpx;
-  min-width: 0; /* 防止flex子元素溢出 */
+  font-size: 28rpx;
+  color: var(--td-text-color-primary);
+  background: transparent;
 }
 
-/* Tab 切换 */
-.tabs {
-  display: flex;
-  padding: 0 32rpx; /* Page.PaddingX */
-  border-bottom: 1rpx solid rgba(0, 0, 0, 0.08); /* line.divider */
-  width: 100%;
-  box-sizing: border-box;
-  background: #FFFFFF;
-}
-
-.tab-item {
-  flex: 1;
-  padding: 24rpx 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  position: relative;
-  transition: all 200ms;
-}
-
-.tab-text {
-  font-size: 28rpx; /* Body */
-  color: rgba(0, 0, 0, 0.6); /* text.secondary */
-  line-height: 44rpx;
-  transition: all 200ms cubic-bezier(0.2,0,0,1);
-}
-
-.tab-item.active .tab-text {
-  color: #4A8DD4; /* brand.primary */
-  font-weight: 500;
-}
-
-.tab-indicator {
-  position: absolute;
-  bottom: 0;
-  width: 64rpx;
-  height: 4rpx; /* Tab.IndicatorHeight */
-  background: #4A8DD4; /* brand.primary */
-  border-radius: 2rpx;
+.clear-icon {
+  width: 32rpx;
+  height: 32rpx;
+  padding: 8rpx;
+  margin-left: 8rpx;
 }
 
 /* 工单列表 */
-.sheet-content {
+.ticket-list {
   flex: 1;
-  padding: 0 32rpx; /* Page.PaddingX */
-  padding-top: 16rpx; /* 顶部间距 */
+  padding: 0 32rpx;
   overflow-y: auto;
-  overflow-x: hidden;
-  width: 100%;
-  box-sizing: border-box;
-  -webkit-overflow-scrolling: touch; /* iOS平滑滚动 */
-  min-height: 0; /* 确保可滚动 */
 }
 
-.sheet-item {
+/* 工单选择项 */
+.ticket-select-item {
+  display: flex;
+  align-items: flex-start;
   padding: 24rpx 0;
-  border-bottom: 1rpx solid rgba(0, 0, 0, 0.08); /* line.divider */
-  min-height: 96rpx; /* ListItem.MinHeight */
-  width: 100%;
-  box-sizing: border-box;
+  border-bottom: 1rpx solid var(--td-border-level-1-color);
 }
 
-.sheet-item:last-child {
+.ticket-select-item:last-child {
   border-bottom: none;
 }
 
-.sheet-item:active {
-  background: rgba(0, 0, 0, 0.04);
-  margin: 0 -32rpx;
-  padding: 24rpx 32rpx;
-  width: calc(100% + 64rpx);
+/* 工单项内容 */
+.ticket-item-content {
+  flex: 1;
+  margin-left: 20rpx;
 }
 
-.sheet-item.no-link {
-  text-align: center;
-  font-weight: 500;
-  color: rgba(0, 0, 0, 0.6);
-}
-
-.sheet-item-text {
-  font-size: 28rpx; /* Body */
-  color: rgba(0, 0, 0, 0.6); /* text.secondary */
-  line-height: 44rpx;
-}
-
-.sheet-item-content {
-  display: flex;
-  flex-direction: column;
-  gap: 8rpx;
-  width: 100%;
-  overflow: hidden; /* 防止内容溢出 */
-}
-
-.sheet-item-row {
+.ticket-item-header {
   display: flex;
   align-items: center;
-  gap: 12rpx;
+  justify-content: space-between;
+  margin-bottom: 12rpx;
 }
 
-.sheet-item-no {
-  font-size: 24rpx; /* Caption */
-  color: #4A8DD4; /* 蓝色 */
+.ticket-item-no {
+  font-size: 30rpx;
   font-weight: 500;
+  color: var(--td-text-color-primary);
 }
 
-.sheet-item-title {
-  font-size: 28rpx; /* Body */
-  color: rgba(0, 0, 0, 0.9); /* text.primary */
-  line-height: 44rpx;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  width: 100%;
+.ticket-item-title {
+  font-size: 28rpx;
+  color: var(--td-text-color-primary);
+  line-height: 1.5;
+  margin-bottom: 8rpx;
 }
 
-.sheet-item-meta {
+.ticket-item-note {
+  font-size: 24rpx;
+  color: var(--td-text-color-secondary);
+  line-height: 1.4;
+}
+
+.ticket-item-desc {
+  font-size: 24rpx;
+  color: var(--td-text-color-secondary);
+  margin-top: 8rpx;
+}
+
+/* 无结果提示 */
+.no-result {
+  padding: 80rpx 32rpx;
+  text-align: center;
+}
+
+/* 弹窗底部按钮 */
+.selector-footer {
+  padding: 24rpx 32rpx;
+  border-top: 1rpx solid var(--td-border-color);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* 固定底部结算栏 */
+.cart-footer {
+  flex: 0 0 auto;
+  background-color: var(--td-bg-color-container);
+  border-top: 1rpx solid var(--td-border-color);
+  padding-bottom: env(safe-area-inset-bottom);
+  box-shadow: 0 -4rpx 12rpx rgba(0, 0, 0, 0.04);
+}
+
+.footer-content {
+  padding: var(--td-spacer-3) var(--td-spacer-4);
+}
+
+.footer-info {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: var(--td-spacer-3);
 }
 
-.sheet-item-caption {
-  font-size: 24rpx; /* Caption */
-  color: rgba(0, 0, 0, 0.4); /* text.tertiary */
-  line-height: 36rpx;
+.selected-text {
+  font-size: 28rpx;
+  color: var(--td-text-color-secondary);
 }
 
-.sheet-item-time {
-  font-size: 24rpx; /* Caption */
-  color: rgba(0, 0, 0, 0.4); /* text.tertiary */
-  line-height: 36rpx;
+.price-info {
+  display: flex;
+  align-items: baseline;
+  gap: var(--td-spacer-1);
 }
 
-.sheet-empty {
-  padding: 60rpx 0;
-  text-align: center;
+.price-label {
+  font-size: 28rpx;
+  color: var(--td-text-color-secondary);
 }
 
-.sheet-empty-text {
-  font-size: 28rpx; /* Body */
-  color: rgba(0, 0, 0, 0.4); /* text.tertiary */
-  line-height: 44rpx;
+.price-value {
+  font-size: 36rpx;
+  color: var(--td-error-color);
+  font-weight: 600;
 }
 
-/* 左滑删除按钮 */
+.footer-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--td-spacer-3);
+}
+
+/* 继续添加按钮 - 左对齐 */
+.continue-btn {
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.08);
+}
+
+/* 提交申领按钮 - 右对齐 */
+.submit-btn {
+  box-shadow: 0 4rpx 16rpx rgba(74, 141, 212, 0.25);
+  margin-left: auto;
+}
+
+.footer-actions t-button {
+  flex: 1;
+}
+
+/* 工单选择弹窗 */
+.ticket-selector {
+  background-color: var(--td-bg-color-container);
+  border-radius: var(--td-radius) var(--td-radius) 0 0;
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.selector-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--td-spacer-3) var(--td-spacer-4);
+  border-bottom: 1rpx solid var(--td-border-color);
+}
+
+.selector-title {
+  font-size: 32rpx;
+  font-weight: 500;
+  color: var(--td-text-color-primary);
+}
+
+.close-icon {
+  width: 48rpx;
+  height: 48rpx;
+  padding: var(--td-spacer-2);
+}
+
+.selector-search {
+  padding: var(--td-spacer-3) var(--td-spacer-4);
+  border-bottom: 1rpx solid var(--td-border-color);
+}
+
+.ticket-list {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 400rpx;
+  max-height: 50vh;
+  padding: var(--td-spacer-2) 0;
+}
+
+/* 工单选择项 */
+.ticket-select-item {
+  display: flex;
+  align-items: flex-start;
+  padding: var(--td-spacer-3) var(--td-spacer-4);
+  background-color: var(--td-bg-color-container);
+  border-bottom: 1rpx solid #f0f0f0;
+  transition: background-color 0.2s;
+}
+
+.ticket-select-item:active {
+  background-color: #f5f5f5;
+}
+
+.ticket-item-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--td-spacer-1);
+}
+
+.ticket-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--td-spacer-1);
+}
+
+.ticket-item-no {
+  font-size: 30rpx;
+  font-weight: 500;
+  color: var(--td-text-color-primary);
+}
+
+.ticket-item-title {
+  font-size: 28rpx;
+  color: var(--td-text-color-primary);
+  line-height: 1.4;
+}
+
+.ticket-item-note {
+  font-size: 24rpx;
+  color: var(--td-text-color-secondary);
+  line-height: 1.4;
+}
+
+.ticket-item-desc {
+  font-size: 24rpx;
+  color: var(--td-text-color-secondary);
+  margin-top: var(--td-spacer-1);
+}
+
+.no-result {
+  padding: 80rpx var(--td-spacer-4);
+}
+
+.selector-footer {
+  padding: var(--td-spacer-3) var(--td-spacer-4);
+  border-top: 1rpx solid var(--td-border-color);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* 左滑删除按钮样式 */
 .swipe-delete-btn {
-  width: 120rpx;
-  height: 100%;
-  background: #FF4444;
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 100rpx;
+  height: 100%;
+  background-color: #ff6b6b;
+  border-radius: 0 16rpx 16rpx 0;
+  margin-right: 16rpx;
 }
 
 .swipe-delete-icon {
-  width: 48rpx;
-  height: 48rpx;
+  width: 40rpx;
+  height: 40rpx;
+  filter: brightness(0) invert(1);  /* 将图标变为白色 */
 }
+
+/* 动画效果 */
+.cart-item,
+.section-card,
+.ticket-card {
+  transition: all 0.3s ease;
+}
+
+.cart-item:active {
+  transform: scale(0.98);
+  opacity: 0.9;
+}
+

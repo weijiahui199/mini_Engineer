@@ -8,7 +8,6 @@ Page({
     selectedCount: 0,
     totalPrice: '0.00',
     selectAll: false,
-    manageMode: false,
     
     // 用户信息
     userInfo: null,
@@ -16,6 +15,7 @@ Page({
     
     // 工单相关
     selectedTicket: null,
+    selectedTicketId: '', // 用于TDesign Radio组件
     recentTickets: [],
     showTicketSelector: false,
     ticketTab: 'my',
@@ -29,25 +29,20 @@ Page({
     // 占位图
     placeholderImage: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160"%3E%3Crect width="160" height="160" fill="%23f0f0f0"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%23999" font-size="14"%3E暂无图片%3C/text%3E%3C/svg%3E',
     
-    // 滚动视图高度
-    scrollViewHeight: 0
+    // TDesign左滑删除按钮配置
+    swipeRightBtns: [{
+      text: '',  // 不显示文字，使用图标
+      className: 'swipe-delete-btn'
+    }],
+    
+    // 图标路径
+    plusIcon: '/assets/icons/common/plus.png',
+    
+    // 配置项
+    stockWarningThreshold: 0.8 // 库存预警阈值（80%）
   },
 
   onLoad() {
-    console.log('=== 申领车页面加载 ===')
-    
-    // 获取系统信息以调试宽度问题
-    const systemInfo = wx.getSystemInfoSync()
-    console.log('系统信息:', {
-      screenWidth: systemInfo.screenWidth,
-      windowWidth: systemInfo.windowWidth,
-      windowHeight: systemInfo.windowHeight,
-      pixelRatio: systemInfo.pixelRatio,
-      model: systemInfo.model
-    })
-    
-    // 使用系统导航栏后，动态计算可用高度
-    // 需要在onReady中计算实际高度
     
     // 获取用户信息
     const userInfo = wx.getStorageSync('userInfo')
@@ -89,234 +84,17 @@ Page({
     // 加载最近工单
     this.loadRecentTickets()
   },
-  
-  onReady() {
-    // 页面渲染完成后计算高度
-    setTimeout(() => {
-      this.calculateScrollViewHeight()
-    }, 100)
-  },
 
   onShow() {
-    console.log('=== 页面显示 ===')
     // 刷新购物车数据
     this.loadCartData()
-    
-    // 页面显示后检查元素宽度和高度
-    setTimeout(() => {
-      this.checkElementWidths()
-      this.checkScrollability()
-      this.calculateScrollViewHeight()
-    }, 300)
   },
   
-  // 动态计算scroll-view高度
-  calculateScrollViewHeight() {
-    console.log('=== 动态计算scroll-view高度 ===')
-    const query = wx.createSelectorQuery()
-    const systemInfo = wx.getSystemInfoSync()
-    
-    // 使用系统导航栏后，只需计算页面内部元素
-    query.select('.action-bar').boundingClientRect()
-    query.select('.info-banner').boundingClientRect()
-    query.select('.bottom-bar').boundingClientRect()
-    
-    query.exec((res) => {
-      const actionBarHeight = res[0] ? res[0].height : 60
-      const infoBannerHeight = res[1] ? res[1].height : 60
-      const bottomBarHeight = res[2] ? res[2].height : 80
-      
-      // 计算可用高度：窗口高度 - 操作栏 - 信息栏 - 底部栏
-      const scrollViewHeight = systemInfo.windowHeight - actionBarHeight - infoBannerHeight - bottomBarHeight
-      
-      console.log('动态计算结果:', {
-        windowHeight: systemInfo.windowHeight,
-        actionBarHeight,
-        infoBannerHeight,
-        bottomBarHeight,
-        scrollViewHeight
-      })
-      
-      this.setData({
-        scrollViewHeight
-      })
-    })
-  },
   
-  // 检查元素宽度（调试用）
-  checkElementWidths() {
-    console.log('=== 检查元素宽度 ===')
-    const query = wx.createSelectorQuery()
-    
-    // 检查主要容器
-    query.select('.container').boundingClientRect()
-    query.select('.action-bar').boundingClientRect()
-    query.select('.content-wrapper').boundingClientRect()
-    query.select('.content-scroll').boundingClientRect()
-    query.select('.list-container').boundingClientRect()
-    query.select('.list-item-card').boundingClientRect()
-    
-    query.exec((res) => {
-      const screenWidth = wx.getSystemInfoSync().windowWidth
-      const elements = [
-        { name: 'container', rect: res[0] },
-        { name: 'action-bar', rect: res[1] },
-        { name: 'content-wrapper', rect: res[2] },
-        { name: 'content-scroll', rect: res[3] },
-        { name: 'list-container', rect: res[4] },
-        { name: 'list-item-card', rect: res[5] }
-      ]
-      
-      console.log(`屏幕宽度: ${screenWidth}px`)
-      
-      elements.forEach(({ name, rect }) => {
-        if (rect) {
-          console.log(`${name}:`, {
-            width: rect.width,
-            left: rect.left,
-            right: rect.right,
-            超出: rect.width > screenWidth ? `是(${rect.width - screenWidth}px)` : '否'
-          })
-          
-          if (rect.width > screenWidth) {
-            console.error(`⚠️ ${name} 超出屏幕宽度！超出: ${rect.width - screenWidth}px`)
-          }
-        } else {
-          console.log(`${name}: 未找到元素`)
-        }
-      })
-    })
-  },
   
-  // 检查滚动能力（调试用）
-  checkScrollability() {
-    console.log('=== 检查滚动能力 ===')
-    const query = wx.createSelectorQuery()
-    const systemInfo = wx.getSystemInfoSync()
-    
-    // 检查各个容器的高度
-    query.select('.container').boundingClientRect()
-    query.select('.content-wrapper').boundingClientRect()
-    query.select('.content-scroll').boundingClientRect()
-    query.select('.content-scroll').scrollOffset()
-    query.select('.bottom-bar').boundingClientRect()
-    query.select('.section-card').boundingClientRect()
-    
-    query.exec((res) => {
-      console.log('系统高度信息:', {
-        screenHeight: systemInfo.screenHeight,
-        windowHeight: systemInfo.windowHeight,
-        safeArea: systemInfo.safeArea
-      })
-      
-      if (res[0]) {
-        console.log('container 高度:', {
-          height: res[0].height,
-          top: res[0].top,
-          bottom: res[0].bottom
-        })
-      }
-      
-      if (res[1]) {
-        console.log('content-wrapper 高度:', {
-          height: res[1].height,
-          top: res[1].top,
-          bottom: res[1].bottom
-        })
-      }
-      
-      if (res[2]) {
-        console.log('content-scroll 高度:', {
-          height: res[2].height,
-          top: res[2].top,
-          bottom: res[2].bottom,
-          scrollHeight: res[2].scrollHeight
-        })
-      }
-      
-      if (res[3]) {
-        console.log('content-scroll 滚动信息:', {
-          scrollTop: res[3].scrollTop,
-          scrollHeight: res[3].scrollHeight
-        })
-      }
-      
-      if (res[4]) {
-        console.log('bottom-bar 位置:', {
-          height: res[4].height,
-          top: res[4].top,
-          bottom: res[4].bottom
-        })
-      }
-      
-      if (res[5]) {
-        console.log('最后一个section-card:', {
-          height: res[5].height,
-          top: res[5].top,
-          bottom: res[5].bottom
-        })
-      }
-      
-      // 检查是否可滚动
-      if (res[2] && res[3]) {
-        const scrollableHeight = res[2].height
-        const contentHeight = res[3].scrollHeight || res[2].scrollHeight
-        const canScroll = contentHeight > scrollableHeight
-        
-        console.log('滚动状态:', {
-          可滚动: canScroll,
-          容器高度: scrollableHeight,
-          内容高度: contentHeight,
-          差值: contentHeight - scrollableHeight
-        })
-        
-        if (!canScroll) {
-          console.warn('⚠️ 页面无法滚动！内容高度小于或等于容器高度')
-        }
-      }
-    })
-  },
-  
-  // 测试滚动功能
-  testScroll() {
-    console.log('=== 测试滚动功能 ===')
-    
-    // 创建 scroll-view 的上下文
-    const scrollViewContext = wx.createSelectorQuery().select('.content-scroll')
-    
-    if (scrollViewContext) {
-      // 获取 scroll-view 的信息
-      scrollViewContext.node((node) => {
-        if (node) {
-          console.log('ScrollView 节点信息:', node)
-        }
-      }).exec()
-      
-      // 获取滚动信息
-      scrollViewContext.scrollOffset((res) => {
-        console.log('ScrollView 滚动信息:', {
-          scrollTop: res.scrollTop,
-          scrollLeft: res.scrollLeft,
-          scrollHeight: res.scrollHeight,
-          scrollWidth: res.scrollWidth
-        })
-        
-        // 尝试程序滚动到底部
-        if (res.scrollHeight > 0) {
-          console.log('尝试滚动到底部...')
-          this.setData({
-            scrollTop: res.scrollHeight
-          }, () => {
-            console.log('已设置 scrollTop 为:', res.scrollHeight)
-          })
-        }
-      }).exec()
-    }
-  },
 
   // 加载购物车数据
   loadCartData() {
-    console.log('加载购物车数据...')
     try {
       const cart = wx.getStorageSync('materialCart') || {}
       const cartItems = []
@@ -324,7 +102,7 @@ Page({
       Object.keys(cart).forEach(cartKey => {
         const item = cart[cartKey]
         // 检查库存预警
-        const stockWarning = item.quantity > item.stock * 0.8 // 申领数量超过库存80%时预警
+        const stockWarning = item.quantity > item.stock * this.data.stockWarningThreshold
         
         cartItems.push({
           ...item,
@@ -335,18 +113,7 @@ Page({
       })
       
       this.setData({ cartItems }, () => {
-        console.log('购物车数据已设置:', {
-          itemCount: cartItems.length,
-          items: cartItems
-        })
         this.calculateTotal()
-        
-        // 数据加载后再次检查宽度
-        if (cartItems.length > 0) {
-          setTimeout(() => {
-            this.checkElementWidths()
-          }, 100)
-        }
       })
     } catch (e) {
       console.error('[material-cart] 加载购物车失败:', e)
@@ -404,37 +171,46 @@ Page({
       this.calculateTotal()
     })
   },
-
-  // 更新数量
-  updateQuantity(e) {
-    const { index, action } = e.currentTarget.dataset
-    const item = this.data.cartItems[index]
-    
-    let newQuantity = item.quantity
-    if (action === 'minus' && newQuantity > 0) {
-      newQuantity--
-      // 如果数量减到0，删除该项
-      if (newQuantity === 0) {
-        this.deleteItem(e)
-        return
+  
+  
+  // 左滑删除操作
+  onSwipeAction(e) {
+    const index = e.currentTarget.dataset.index
+    // 直接删除，不需要判断action
+    this.removeItem(index)
+  },
+  
+  // 删除单个商品
+  removeItem(index) {
+    wx.showModal({
+      title: '确认删除',
+      content: '确定要删除该耗材吗？',
+      success: (res) => {
+        if (res.confirm) {
+          const cartItems = [...this.data.cartItems]
+          const removedItem = cartItems.splice(index, 1)[0]
+          
+          // 更新本地存储
+          const cart = wx.getStorageSync('materialCart') || {}
+          delete cart[removedItem.cartKey]
+          wx.setStorageSync('materialCart', cart)
+          
+          this.setData({ cartItems }, () => {
+            this.calculateTotal()
+            wx.showToast({
+              title: '已删除',
+              icon: 'success'
+            })
+          })
+        }
       }
-    } else if (action === 'plus' && newQuantity < item.stock) {
-      newQuantity++
-    } else if (action === 'plus' && newQuantity >= item.stock) {
-      wx.showToast({
-        title: `库存仅剩${item.stock}${item.unit}`,
-        icon: 'none'
-      })
-      return
-    }
-    
-    this.updateItemQuantity(index, newQuantity)
+    })
   },
 
-  // 输入数量
-  onQuantityInput(e) {
+  // 数量变化 - 适配TDesign Stepper
+  onQuantityChange(e) {
     const index = e.currentTarget.dataset.index
-    const value = parseInt(e.detail.value) || 0
+    const value = e.detail.value
     const item = this.data.cartItems[index]
     
     if (value > item.stock) {
@@ -446,7 +222,13 @@ Page({
       return
     }
     
-    this.updateItemQuantity(index, Math.max(1, value))
+    if (value === 0) {
+      // 数量为0时删除
+      this.removeItem(index)
+      return
+    }
+    
+    this.updateItemQuantity(index, value)
   },
 
   // 更新商品数量
@@ -454,7 +236,7 @@ Page({
     const cartItems = [...this.data.cartItems]
     const item = cartItems[index]
     item.quantity = quantity
-    item.stockWarning = quantity > item.stock * 0.8
+    item.stockWarning = quantity > item.stock * this.data.stockWarningThreshold
     
     // 更新本地存储
     const cart = wx.getStorageSync('materialCart') || {}
@@ -472,7 +254,7 @@ Page({
       title: '确认清空',
       content: '确定要清空所有申领耗材吗？',
       confirmText: '清空',
-      confirmColor: '#FF4444',
+      confirmColor: '#e34d59',
       success: (res) => {
         if (res.confirm) {
           // 清空本地存储
@@ -552,52 +334,19 @@ Page({
   
   // 滚动事件监听
   onScroll(e) {
-    // 每10次滚动输出一次日志，避免日志过多
-    if (!this.scrollLogCount) this.scrollLogCount = 0
-    this.scrollLogCount++
-    if (this.scrollLogCount % 10 === 0) {
-      console.log('滚动中...', {
-        scrollTop: e.detail.scrollTop,
-        scrollHeight: e.detail.scrollHeight,
-        deltaY: e.detail.deltaY
-      })
-    }
+    // 滚动事件处理（如需要可以添加业务逻辑）
   },
   
   // 滚动到顶部
   onScrollToUpper(e) {
-    console.log('滚动到顶部', e)
+    // 滚动到顶部处理
   },
   
   // 滚动到底部
   onScrollToLower(e) {
-    console.log('滚动到底部', e)
-    // 检查底部内容是否被遮挡
-    this.checkBottomContent()
+    // 滚动到底部处理
   },
   
-  // 检查底部内容
-  checkBottomContent() {
-    const query = wx.createSelectorQuery()
-    query.select('.notice-card').boundingClientRect()
-    query.select('.bottom-bar').boundingClientRect()
-    query.select('.bottom-safe-area').boundingClientRect()
-    
-    query.exec((res) => {
-      console.log('底部内容位置:', {
-        noticeCard: res[0] ? { bottom: res[0].bottom, visible: res[0].top < wx.getSystemInfoSync().windowHeight } : null,
-        bottomBar: res[1] ? { top: res[1].top, height: res[1].height } : null,
-        safeArea: res[2] ? { height: res[2].height } : null
-      })
-      
-      if (res[0] && res[1]) {
-        const overlap = res[0].bottom - res[1].top
-        if (overlap > 0) {
-          console.error(`⚠️ 底部内容被遮挡！遮挡高度: ${overlap}px`)
-        }
-      }
-    })
-  },
 
   // 加载最近工单（参考工单列表页的实现方式）
   async loadRecentTickets() {
@@ -645,13 +394,21 @@ Page({
       selectedTicket: {
         ...ticket,
         statusText: this.getStatusText(ticket.status)
-      }
+      },
+      selectedTicketId: ticket._id
+    })
+  },
+  
+  // 移除已选工单
+  removeSelectedTicket() {
+    this.setData({
+      selectedTicket: null,
+      selectedTicketId: ''
     })
   },
 
   // 选择工单
   selectTicket() {
-    console.log('打开工单选择弹窗')
     this.setData({
       showTicketSelector: true,
       ticketTab: 'my'
@@ -738,14 +495,27 @@ Page({
     }
   },
 
-  // 切换工单Tab
-  switchTicketTab(e) {
-    const tab = e.currentTarget.dataset.tab
-    this.setData({ ticketTab: tab })
-    this.loadTickets()
+  // 工单弹窗可见性变化
+  onTicketPopupChange(e) {
+    this.setData({
+      showTicketSelector: e.detail.visible
+    })
+    if (e.detail.visible) {
+      this.loadTickets()
+    }
   },
-
-  // 搜索工单
+  
+  // 工单Tab切换 - 适配TDesign Tabs
+  onTicketTabChange(e) {
+    const tab = e.detail.value
+    this.setData({
+      ticketTab: tab
+    }, () => {
+      this.loadTickets()
+    })
+  },
+  
+  // 工单搜索
   onTicketSearch(e) {
     const keyword = e.detail.value
     this.setData({
@@ -753,6 +523,63 @@ Page({
       filteredTickets: this.filterTickets(this.data.allTickets, keyword)
     })
   },
+  
+  // 清空搜索
+  clearSearch() {
+    this.setData({
+      ticketSearchKeyword: '',
+      filteredTickets: this.data.allTickets
+    })
+  },
+  
+  // 选择工单项
+  selectTicketItem(e) {
+    const ticketId = e.currentTarget.dataset.ticketId
+    this.setData({
+      selectedTicketId: ticketId
+    })
+  },
+  
+  // 确认工单选择
+  confirmTicketSelection() {
+    const ticketId = this.data.selectedTicketId
+    if (ticketId) {
+      const ticket = this.data.allTickets.find(t => t._id === ticketId)
+      this.setData({
+        selectedTicket: ticket ? {
+          ...ticket,
+          statusText: this.getStatusText(ticket.status)
+        } : null
+      })
+    } else {
+      this.setData({
+        selectedTicket: null
+      })
+    }
+    this.closeTicketSelector()
+  },
+  
+  // 关闭工单选择器
+  closeTicketSelector() {
+    this.setData({
+      showTicketSelector: false
+    })
+  },
+  
+  // 切换工单Tab（旧方法保留兼容）
+  switchTicketTab(e) {
+    const tab = e.currentTarget.dataset.tab
+    this.setData({ ticketTab: tab })
+    this.loadTickets()
+  },
+  
+  // TDesign Tabs组件的change事件处理
+  onTicketTabChange(e) {
+    const tab = e.detail.value
+    this.setData({ ticketTab: tab })
+    this.loadTickets()
+  },
+
 
   // 过滤工单
   filterTickets(tickets, keyword = '') {
@@ -765,82 +592,13 @@ Page({
              (ticket.customerName && ticket.customerName.toLowerCase().includes(keyword))
     })
   },
-
-  // 选择工单
-  onSelectTicket(e) {
-    const ticket = e.currentTarget.dataset.ticket
-    this.setData({
-      selectedTicket: ticket,
-      showTicketSelector: false
-    })
-  },
-
-  // 不关联工单
-  selectNoTicket() {
-    this.setData({
-      selectedTicket: null,
-      showTicketSelector: false
-    })
-  },
-
-  // 关闭工单选择器
-  closeTicketSelector() {
-    console.log('关闭工单选择弹窗')
-    // 添加关闭动画
-    this.setData({
-      showTicketSelector: false,
-      ticketSearchKeyword: '' // 清空搜索关键词
-    })
-  },
-  
-  // 弹窗手势 - 开始触摸
-  onSheetTouchStart(e) {
-    this.sheetStartY = e.touches[0].clientY
-    this.sheetStartTime = Date.now()
-    console.log('弹窗触摸开始:', this.sheetStartY)
-  },
-  
-  // 弹窗手势 - 移动
-  onSheetTouchMove(e) {
-    const currentY = e.touches[0].clientY
-    const deltaY = currentY - this.sheetStartY
-    
-    // 如果向下滑动超过50px，显示关闭提示
-    if (deltaY > 50) {
-      // 可以添加视觉反馈
-    }
-  },
-  
-  // 弹窗手势 - 结束触摸
-  onSheetTouchEnd(e) {
-    const endY = e.changedTouches[0].clientY
-    const deltaY = endY - this.sheetStartY
-    const deltaTime = Date.now() - this.sheetStartTime
-    const velocity = deltaY / deltaTime
-    
-    console.log('弹窗触摸结束:', {
-      deltaY,
-      deltaTime,
-      velocity
-    })
-    
-    // 如果向下滑动超过100px或速度超过0.5，关闭弹窗
-    if (deltaY > 100 || velocity > 0.5) {
-      this.closeTicketSelector()
-    }
-  },
   
   // 阻止事件冒泡
   stopPropagation() {
     // 空函数，仅用于阻止事件冒泡
   },
 
-  // 阻止冒泡
-  stopPropagation() {
-    // 空函数，仅用于阻止事件冒泡
-  },
-
-  // 输入备注
+  // 输入备注 - 适配TDesign Textarea
   onNoteInput(e) {
     this.setData({
       note: e.detail.value
@@ -904,6 +662,15 @@ Page({
               data: submitData
             })
             
+            // 检查云函数调用是否成功
+            if (!result) {
+              throw new Error('云函数调用失败：返回结果为空')
+            }
+            
+            if (!result.result) {
+              throw new Error('云函数调用失败：返回结果格式错误')
+            }
+            
             if (result.result.success) {
               // 清空已提交的商品
               const cart = wx.getStorageSync('materialCart') || {}
@@ -925,18 +692,51 @@ Page({
               }, 2000)
             } else {
               wx.hideLoading()
+              const errorMsg = result.result.error || result.result.message || '未知错误'
+              console.error('[material-cart] 申领失败:', errorMsg)
               wx.showModal({
                 title: '申领失败',
-                content: result.result.error || '请重试',
+                content: errorMsg,
                 showCancel: false
               })
             }
           } catch (err) {
             console.error('[material-cart] 提交失败:', err)
             wx.hideLoading()
-            wx.showToast({
-              title: '网络错误',
-              icon: 'none'
+            
+            // 详细的错误处理
+            let errorTitle = '提交失败'
+            let errorContent = '请检查网络连接后重试'
+            
+            if (err.errCode) {
+              // 微信云函数特定错误
+              switch (err.errCode) {
+                case -1:
+                  errorContent = '网络连接失败，请检查网络后重试'
+                  break
+                case -502:
+                  errorContent = '云函数执行超时，请稍后重试'
+                  break
+                case -503:
+                  errorContent = '云函数不存在或未部署'
+                  errorTitle = '系统错误'
+                  break
+                case -504:
+                  errorContent = '云函数执行失败，请联系管理员'
+                  errorTitle = '系统错误'
+                  break
+                default:
+                  errorContent = `系统错误(${err.errCode})：${err.errMsg || '请联系管理员'}`
+                  errorTitle = '系统错误'
+              }
+            } else if (err.message) {
+              errorContent = err.message
+            }
+            
+            wx.showModal({
+              title: errorTitle,
+              content: errorContent,
+              showCancel: false
             })
           }
         }

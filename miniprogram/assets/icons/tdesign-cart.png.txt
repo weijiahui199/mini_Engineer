@@ -1,4 +1,0 @@
-PLACEHOLDER for TDesign cart icon
-Used in: material-list page - Shopping cart button
-Size: 48rpx
-Replace this file with actual cart.png icon
