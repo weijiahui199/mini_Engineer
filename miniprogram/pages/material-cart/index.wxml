@@ -185,12 +185,17 @@
 
     <!-- 申领须知 -->
     <view class="notice-card" wx:if="{{cartItems.length > 0}}">
-      <t-notice-bar 
-        visible="{{true}}"
-        prefixIcon="{{false}}"
-        content="申领须知：1. 申领提交后将直接扣减库存，无需审批 2. 请根据实际需求适量申领，避免浪费 3. 如有紧急需求，请联系管理员"
-        theme="info"
-      />
+      <view class="custom-notice">
+        <image src="/assets/icons/system/info.png" class="notice-icon" />
+        <view class="notice-content">
+          <text class="notice-title">申领须知：</text>
+          <view class="notice-items">
+            <text>1. 申领提交后将直接扣减库存，无需审批</text>
+            <text>2. 请根据实际需求适量申领，避免浪费</text>
+            <text>3. 如有紧急需求，请联系管理员</text>
+          </view>
+        </view>
+      </view>
     </view>
 
     <!-- 底部占位 -->

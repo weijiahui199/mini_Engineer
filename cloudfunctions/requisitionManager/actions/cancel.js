@@ -64,16 +64,30 @@ module.exports = async (event, wxContext) => {
         }
       }
       
-      // 时间检查：只能取消24小时内的申领单
-      const createTime = new Date(requisition.createTime)
+      // 时间检查：检查是否在可撤销时间内
       const now = new Date()
-      const hoursDiff = (now - createTime) / (1000 * 60 * 60)
       
-      if (hoursDiff > 24) {
-        await transaction.rollback()
-        return {
-          success: false,
-          error: '申领单已超过24小时，无法取消'
+      // 优先使用canCancelBefore字段（新版本）
+      if (requisition.canCancelBefore) {
+        const canCancelBefore = new Date(requisition.canCancelBefore)
+        if (now > canCancelBefore) {
+          await transaction.rollback()
+          return {
+            success: false,
+            error: '超过5分钟撤销时限，无法取消'
+          }
+        }
+      } else {
+        // 兼容旧版本：24小时内可撤销
+        const createTime = new Date(requisition.createTime)
+        const hoursDiff = (now - createTime) / (1000 * 60 * 60)
+        
+        if (hoursDiff > 24) {
+          await transaction.rollback()
+          return {
+            success: false,
+            error: '申领单已超过24小时，无法取消'
+          }
         }
       }
       
@@ -103,16 +117,27 @@ module.exports = async (event, wxContext) => {
         material.variants[variantIndex].stock += quantity
         const newTotalStock = material.variants.reduce((sum, v) => sum + v.stock, 0)
         
-        // 更新耗材库存
-        await transaction.collection('materials')
+        // 更新耗材库存（使用乐观锁）
+        const updateResult = await transaction.collection('materials')
           .doc(materialId)
           .update({
             data: {
               variants: material.variants,
               totalStock: newTotalStock,
+              version: _.inc(1), // 递增版本号
               updateTime: db.serverDate()
             }
           })
+        
+        // 检查更新是否成功
+        if (updateResult.stats.updated === 0) {
+          // 版本冲突，说明有并发修改
+          await transaction.rollback()
+          return {
+            success: false,
+            error: '库存数据已变更，请重试'
+          }
+        }
         
         // 记录库存变动日志
         await transaction.collection('material_logs').add({

@@ -115,13 +115,6 @@
    - 工单完成和关闭
    - 附件上传和查看
 
-### 待开发/待完善
-1. 材料管理模块
-2. 统计报表功能（工作量统计、绩效分析）
-3. 消息通知系统（新工单提醒、状态变更通知）
-4. 工单评价和反馈系统
-5. 批量操作功能（批量分配、批量关闭）
-6. 数据导出功能（Excel导出）
 
 ## ⚠️ 重要提醒给下一个Agent
 
@@ -147,6 +140,86 @@
 - 错误处理：always use try-catch for async operations
 
 ### 4. 数据库结构
+
+**materials集合**（耗材管理）：
+```javascript
+{
+  _id: String,           // 耗材ID
+  name: String,          // 耗材名称
+  category: String,      // 分类（办公用品/电脑配件/网络设备/维修工具/其他）
+  model: String,         // 型号规格
+  unit: String,          // 单位（个/套/盒/包）
+  image: String,         // 图片URL
+  description: String,   // 描述说明
+  
+  // 库存信息
+  stock: Number,         // 当前库存
+  minStock: Number,      // 最低库存（预警阈值）
+  maxStock: Number,      // 最高库存
+  
+  // 价格信息（仅管理员可见）
+  price: Number,         // 单价
+  supplier: String,      // 供应商
+  
+  // 变体信息（如不同颜色、容量等）
+  variants: [
+    {
+      name: String,      // 变体名称（如"黑色"、"16GB"）
+      stock: Number,     // 该变体库存
+      price: Number      // 该变体价格（可选）
+    }
+  ],
+  
+  // 状态和时间
+  status: String,        // 状态：active/inactive
+  createTime: Date,      // 创建时间
+  updateTime: Date       // 更新时间
+}
+```
+
+**requisitions集合**（申领记录）：
+```javascript
+{
+  _id: String,           // 申领单ID
+  requisitionNo: String, // 申领单号 REQ20250821xxxxx
+  
+  // 申领人信息
+  openid: String,        // 申领人openid
+  userName: String,      // 申领人姓名
+  department: String,    // 部门
+  
+  // 关联工单（可选）
+  ticketId: String,      // 关联工单ID
+  ticketNo: String,      // 关联工单号
+  
+  // 申领物品列表
+  items: [
+    {
+      materialId: String,    // 耗材ID
+      materialName: String,  // 耗材名称
+      variant: String,       // 变体（如有）
+      quantity: Number,      // 申领数量
+      unit: String,          // 单位
+      price: Number,         // 单价（申领时快照）
+      subtotal: Number       // 小计
+    }
+  ],
+  
+  // 汇总信息
+  totalItems: Number,    // 总件数
+  totalAmount: Number,   // 总金额
+  
+  // 备注和状态
+  note: String,          // 申领备注
+  status: String,        // pending/approved/rejected/completed
+  approver: String,      // 审批人（如需审批）
+  
+  // 时间记录
+  createTime: Date,      // 创建时间
+  approveTime: Date,     // 审批时间
+  completeTime: Date     // 完成时间
+}
+```
 
 **users集合**：
 ```javascript
@@ -280,6 +353,131 @@ const transaction = await db.startTransaction()
 *文档创建时间：2025-08-12*
 *最后更新：2025-08-16*
 
+## 🛠️ 耗材管理模块详细说明（重要）
+
+### 核心功能
+1. **耗材列表** (`/miniprogram/pages/material-list/`)
+   - 左侧分类导航 + 右侧产品卡片
+   - 支持多变体选择（颜色、规格等）
+   - 步进器选择数量，实时库存校验
+   - 购物车本地缓存（localStorage）
+
+2. **耗材详情** (`/miniprogram/pages/material-detail/`)
+   - 完整的产品信息展示
+   - 变体选择器（单选）
+   - 库存预警提示
+   - 加入购物车功能
+
+3. **申领车** (`/miniprogram/pages/material-cart/`)
+   - 购物车商品管理（增删改查）
+   - 关联工单选择（可选）
+   - 批量选择和全选
+   - 库存实时校验（80%预警）
+   - 申领备注
+   - 提交申领单
+
+4. **耗材管理** (`/miniprogram/pages/material-manage/`)
+   - 仅管理员可见
+   - 库存调整
+   - 价格管理
+   - 耗材上下架
+
+### 关键实现细节
+
+#### 1. 购物车数据结构
+```javascript
+// localStorage: 'materialCart'
+{
+  "materialId_variantName": {
+    materialId: String,
+    materialName: String,
+    variant: String,      // 变体名称
+    quantity: Number,
+    unit: String,
+    price: Number,
+    image: String,
+    stock: Number,        // 快照库存
+    selected: Boolean     // 是否选中
+  }
+}
+```
+
+#### 2. 库存预警机制
+```javascript
+// 可配置的预警阈值
+stockWarningThreshold: 0.8  // 80%
+
+// 判断逻辑
+if (quantity > stock * stockWarningThreshold) {
+  // 显示橙色警告边框
+  // 提示用户库存紧张
+}
+```
+
+#### 3. 关联工单逻辑
+- 工程师只能选择自己负责的工单
+- 经理可以选择所有工单
+- 支持搜索和Tab筛选（我的/最近/全部）
+- 不关联工单也可以申领
+
+#### 4. 云函数
+- `materialManager`: 耗材查询和管理
+- `requisitionManager`: 申领单提交和库存扣减
+- `initMaterialDB`: 初始化示例数据
+
+### UI/UX 特点
+1. **响应式设计**
+   - 固定左侧导航栏（180rpx）
+   - 右侧自适应宽度
+   - 防抖处理快速点击
+
+2. **视觉反馈**
+   - 库存不足：红色标记
+   - 库存紧张：橙色边框
+   - 选中状态：蓝色勾选
+   - 加载状态：骨架屏
+
+3. **错误处理**
+   - 友好的错误提示文案
+   - 操作建议和解决方案
+   - 统一的提示时长（2秒）
+
+### 常见问题和解决方案
+
+#### 问题1：TDesign组件样式无法覆盖
+**解决**：使用 `t-class` 和 `t-class-*` 属性
+```xml
+<t-textarea 
+  t-class="custom-textarea"
+  t-class-indicator="custom-indicator"
+/>
+```
+
+#### 问题2：搜索框图标不显示
+**解决**：使用本地PNG图标，不依赖TDesign icon
+```xml
+<image src="/assets/icons/common/search.png" class="search-icon" />
+```
+
+#### 问题3：Tab筛选显示在弹窗外
+**解决**：移除 `sticky` 属性，避免固定定位问题
+
+#### 问题4：快速点击步进器延迟
+**解决**：
+- 添加100ms防抖
+- 乐观更新UI
+- 异步保存购物车
+
+### 数据流程
+1. **加载耗材** → 云函数查询 → 格式化数据 → 渲染列表
+2. **加入购物车** → 本地缓存 → 实时库存校验 → 更新角标
+3. **提交申领** → 构建申领单 → 云函数事务 → 扣减库存 → 清空购物车
+
+### 权限控制
+- **用户**：只能查看，不能申领
+- **工程师**：可以申领，看不到价格
+- **经理**：可以申领，可以看价格，可以管理
+
 ## 📋 更新记录
 - 2025-08-16 早期: 添加数据库权限确认原则和问题排查顺序
 - 2025-08-16 晚期: 
@@ -290,6 +488,12 @@ const transaction = await db.startTransaction()
   - 添加云函数submitTicket的详细说明
   - 强调updateTime字段的重要性
 - 2024-12-24: 添加微信小程序scroll-view渲染问题和解决方案
+- 2025-08-21: 
+  - 添加耗材管理模块完整说明
+  - 更新数据库结构（materials、requisitions集合）
+  - 添加购物车实现细节
+  - 记录TDesign组件样式覆盖方案
+  - 添加库存预警机制说明
 
 ### 1. 微信小程序布局陷阱
 

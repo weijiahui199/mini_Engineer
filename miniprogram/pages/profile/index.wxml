@@ -77,7 +77,7 @@
         <t-icon name="task" size="48rpx" color="#0ea5e9" />
         <text class="entry-label">我的工单</text>
       </view>
-      <view class="entry-item" bindtap="goToMaterialStats">
+      <view class="entry-item" bindtap="goToMaterialManage" wx:if="{{userInfo.isManager}}">
         <t-icon name="box" size="48rpx" color="#10b981" />
         <text class="entry-label">耗材管理</text>
       </view>

@@ -721,10 +721,19 @@ Page({
     });
   },
 
-  goToMaterialStats() {
-    wx.showToast({
-      title: '功能开发中',
-      icon: 'none'
+  goToMaterialManage() {
+    // 检查用户权限
+    if (!this.data.userInfo.isManager) {
+      wx.showToast({
+        title: '仅管理员可访问',
+        icon: 'none'
+      });
+      return;
+    }
+    
+    // 导航到耗材管理页面
+    wx.navigateTo({
+      url: '/pages/material-manage/index'
     });
   },
 
@@ -890,6 +899,52 @@ Page({
   // 保存设置
   saveSettings() {
     wx.setStorageSync('settings', this.data.settings);
+  },
+
+  // 跳转到耗材管理页面（Manager专用）
+  goToMaterialManage() {
+    // 权限检查
+    const userInfo = this.data.userInfo
+    if (!userInfo.isManager) {
+      wx.showToast({
+        title: '无权限访问',
+        icon: 'none'
+      })
+      return
+    }
+    
+    wx.navigateTo({
+      url: '/pages/material-manage/index',
+      fail: (err) => {
+        console.error('[Profile] 跳转耗材管理失败:', err)
+        wx.showToast({
+          title: '页面跳转失败',
+          icon: 'none'
+        })
+      }
+    })
+  },
+
+  // 跳转到设置页面
+  goToSettings() {
+    wx.showToast({
+      title: '设置功能开发中',
+      icon: 'none'
+    })
+  },
+
+  // 跳转到个人信息页面
+  goToUserInfo() {
+    wx.navigateTo({
+      url: '/pages/user-info/index'
+    })
+  },
+
+  // 跳转到我的工单
+  navigateToTickets() {
+    wx.navigateTo({
+      url: '/pages/ticket-list/index'
+    })
   },
 
   // 退出登录
@@ -1113,5 +1168,33 @@ Page({
         console.log('[Profile] 已更新缓存中的头像信息');
       }
     }
+  },
+
+  // 跳转到耗材管理
+  goToMaterialManage() {
+    wx.navigateTo({
+      url: '/pages/material-manage/index'
+    })
+  },
+
+  // 跳转到我的工单
+  navigateToTickets() {
+    wx.switchTab({
+      url: '/pages/ticket-list/index'
+    })
+  },
+
+  // 跳转到设置页面
+  goToSettings() {
+    wx.navigateTo({
+      url: '/pages/settings/index'
+    })
+  },
+
+  // 跳转到个人信息页面
+  goToUserInfo() {
+    wx.navigateTo({
+      url: '/pages/user-info/index'
+    })
   }
 });

@@ -479,6 +479,57 @@ page {
   display: block !important;
 }
 
+/* 申领须知卡片 */
+.notice-card {
+  margin: var(--td-spacer-3) var(--td-spacer-4);
+}
+
+/* 自定义通知样式 */
+.custom-notice {
+  display: flex;
+  align-items: flex-start;
+  padding: 24rpx;
+  background: #e6f4ff;
+  border-radius: 12rpx;
+  border: 1rpx solid #91caff;
+}
+
+/* 通知图标 */
+.notice-icon {
+  width: 36rpx;
+  height: 36rpx;
+  margin-right: 16rpx;
+  margin-top: 4rpx;
+  flex-shrink: 0;
+}
+
+/* 通知内容 */
+.notice-content {
+  flex: 1;
+}
+
+/* 通知标题 */
+.notice-title {
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #0958d9;
+  display: block;
+  margin-bottom: 12rpx;
+}
+
+/* 通知条目 */
+.notice-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.notice-items text {
+  font-size: 26rpx;
+  color: #595959;
+  line-height: 1.6;
+}
+
 /* 底部占位 */
 .bottom-safe-area {
   height: 200rpx;

@@ -18,6 +18,11 @@ const deleteMaterial = require('./actions/delete')
 const updateStock = require('./actions/updateStock')
 const exportInventory = require('./actions/exportInventory')
 const exportRequisitions = require('./actions/exportRequisitions')
+const batchValidate = require('./actions/batchValidate')
+const getStats = require('./actions/getStats')
+const getStockAlerts = require('./actions/getStockAlerts')
+const getRecentChanges = require('./actions/getRecentChanges')
+const updatePrice = require('./actions/updatePrice')
 
 // 权限验证中间件
 async function checkPermission(openid, requiredRole) {
@@ -94,65 +99,120 @@ exports.main = async (event, context) => {
         }
         return await checkStock(event, wxContext)
         
-      case 'create':
-        // 创建耗材（仅经理）
-        if (!await checkPermission(openid, '经理')) {
-          return {
-            success: false,
-            error: '无权限操作'
-          }
-        }
-        return await createMaterial(event, wxContext)
+      // ========== 以下为经理端专用功能，已移至独立的经理端小程序 ==========
+      // 详细文档见: /docs/cloud-functions-manager-only.md
+      
+      // case 'create':
+      //   // 创建耗材（仅经理）
+      //   if (!await checkPermission(openid, '经理')) {
+      //     return {
+      //       success: false,
+      //       error: '无权限操作'
+      //     }
+      //   }
+      //   return await createMaterial(event, wxContext)
         
-      case 'update':
-        // 更新耗材（仅经理）
-        if (!await checkPermission(openid, '经理')) {
-          return {
-            success: false,
-            error: '无权限操作'
-          }
-        }
-        return await updateMaterial(event, wxContext)
+      // case 'update':
+      //   // 更新耗材（仅经理）
+      //   if (!await checkPermission(openid, '经理')) {
+      //     return {
+      //       success: false,
+      //       error: '无权限操作'
+      //     }
+      //   }
+      //   return await updateMaterial(event, wxContext)
         
-      case 'delete':
-        // 删除耗材（仅经理）
-        if (!await checkPermission(openid, '经理')) {
-          return {
-            success: false,
-            error: '无权限操作'
-          }
-        }
-        return await deleteMaterial(event, wxContext)
+      // case 'delete':
+      //   // 删除耗材（仅经理）
+      //   if (!await checkPermission(openid, '经理')) {
+      //     return {
+      //       success: false,
+      //       error: '无权限操作'
+      //     }
+      //   }
+      //   return await deleteMaterial(event, wxContext)
         
-      case 'updateStock':
-        // 更新库存（仅经理）
-        if (!await checkPermission(openid, '经理')) {
-          return {
-            success: false,
-            error: '无权限操作'
-          }
-        }
-        return await updateStock(event, wxContext)
+      // case 'updateStock':
+      //   // 更新库存（仅经理）
+      //   if (!await checkPermission(openid, '经理')) {
+      //     return {
+      //       success: false,
+      //       error: '无权限操作'
+      //     }
+      //   }
+      //   return await updateStock(event, wxContext)
         
-      case 'exportInventory':
-        // 导出库存CSV（仅经理）
-        if (!await checkPermission(openid, '经理')) {
-          return {
-            success: false,
-            error: '无权限操作'
-          }
-        }
-        return await exportInventory(event, wxContext)
+      // case 'exportInventory':
+      //   // 导出库存CSV（仅经理）
+      //   if (!await checkPermission(openid, '经理')) {
+      //     return {
+      //       success: false,
+      //       error: '无权限操作'
+      //     }
+      //   }
+      //   return await exportInventory(event, wxContext)
         
-      case 'exportRequisitions':
-        // 导出申领记录CSV（仅经理）
-        if (!await checkPermission(openid, '经理')) {
+      // case 'exportRequisitions':
+      //   // 导出申领记录CSV（仅经理）
+      //   if (!await checkPermission(openid, '经理')) {
+      //     return {
+      //       success: false,
+      //       error: '无权限操作'
+      //     }
+      //   }
+      //   return await exportRequisitions(event, wxContext)
+        
+      case 'batchValidate':
+        // 批量验证库存和价格（工程师及以上）
+        if (!await checkPermission(openid, '工程师')) {
           return {
             success: false,
-            error: '无权限操作'
+            error: '无权限访问'
           }
         }
-        return await exportRequisitions(event, wxContext)
+        return await batchValidate(event, wxContext)
+        
+      // case 'getStats':
+      //   // 获取统计数据（仅经理）
+      //   if (!await checkPermission(openid, '经理')) {
+      //     return {
+      //       success: false,
+      //       error: '无权限操作'
+      //     }
+      //   }
+      //   return await getStats(event, wxContext)
+        
+      // case 'getStockAlerts':
+      //   // 获取库存预警（仅经理）
+      //   if (!await checkPermission(openid, '经理')) {
+      //     return {
+      //       success: false,
+      //       error: '无权限操作'
+      //     }
+      //   }
+      //   return await getStockAlerts(event, wxContext)
+        
+      // case 'getRecentChanges':
+      //   // 获取最近变动（仅经理）
+      //   if (!await checkPermission(openid, '经理')) {
+      //     return {
+      //       success: false,
+      //       error: '无权限操作'
+      //     }
+      //   }
+      //   return await getRecentChanges(event, wxContext)
+        
+      // case 'updatePrice':
+      //   // 更新价格（仅经理）
+      //   if (!await checkPermission(openid, '经理')) {
+      //     return {
+      //       success: false,
+      //       error: '无权限操作'
+      //     }
+      //   }
+      //   return await updatePrice(event, wxContext)
+      
+      // ========== 经理端专用功能结束 ==========
         
       default:
         return {

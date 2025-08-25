@@ -9,8 +9,7 @@
     "pages/user-info/index",
     "pages/material-list/index",
     "pages/material-detail/index",
-    "pages/material-cart/index",
-    "pages/material-manage/index"
+    "pages/material-cart/index"
   ],
   "window": {
     "backgroundTextStyle": "light",

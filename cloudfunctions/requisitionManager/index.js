@@ -100,15 +100,20 @@ exports.main = async (event, context) => {
         }
         return await cancelRequisition(event, wxContext)
         
-      case 'statistics':
-        // 统计分析（仅经理）
-        if (!await checkPermission(openid, '经理')) {
-          return {
-            success: false,
-            error: '无权限访问'
-          }
-        }
-        return await getStatistics(event, wxContext)
+      // ========== 以下为经理端专用功能，已移至独立的经理端小程序 ==========
+      // 详细文档见: /docs/cloud-functions-manager-only.md
+      
+      // case 'statistics':
+      //   // 统计分析（仅经理）
+      //   if (!await checkPermission(openid, '经理')) {
+      //     return {
+      //       success: false,
+      //       error: '无权限访问'
+      //     }
+      //   }
+      //   return await getStatistics(event, wxContext)
+      
+      // ========== 经理端专用功能结束 ==========
         
       default:
         return {
