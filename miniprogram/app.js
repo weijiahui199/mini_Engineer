@@ -1,6 +1,7 @@
 // app.js
 const { EventBus, EVENTS } = require('./utils/event-bus');
 const RefreshManager = require('./utils/refresh-manager');
+const SubscriptionChecker = require('./utils/subscription-checker');
 
 App({
   onLaunch: function () {
@@ -11,12 +12,16 @@ App({
     // 设置全局事件监听，连接EventBus和RefreshManager
     this.setupGlobalEventHandlers();
     
+    // 初始化订阅检查器（会定期检查用户角色变化）
+    SubscriptionChecker.init();
+    console.log('[App] 订阅检查器初始化完成');
+    
     this.globalData = {
       // env 参数说明：
       //   env 参数决定接下来小程序发起的云开发调用（wx.cloud.xxx）会默认请求到哪个云环境的资源
       //   此处请填入环境 ID, 环境 ID 可打开云控制台查看
       //   如不填则使用默认环境（第一个创建的环境）
-      env: "cloud1-1gp11xbgcf2738ca",
+      env: "cloud1-3g4wr63w222b4842",
       userInfo: null,
       openid: null,
       db: null,

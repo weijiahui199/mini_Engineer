@@ -1,6 +1,6 @@
 // 耗材详情页
 const app = getApp()
-const MATERIAL_CATEGORIES = require('../../config/material-categories')
+const MATERIAL_CATEGORIES = require('../config/material-categories')
 
 Page({
   data: {

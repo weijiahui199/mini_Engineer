@@ -49,7 +49,7 @@
     "swc": false,
     "disableSWC": true
   },
-  "appid": "wx03bcf89a95766594",
+  "appid": "wx67c325605fd2872a",
   "projectname": "quickstart-wx-cloud",
   "libVersion": "3.8.12",
   "cloudfunctionTemplateRoot": "cloudfunctionTemplate/",
@@ -79,7 +79,20 @@
   "compileType": "miniprogram",
   "srcMiniprogramRoot": "miniprogram/",
   "packOptions": {
-    "ignore": [],
+    "ignore": [
+      {
+        "value": "miniprogram/node_modules/**",
+        "type": "glob"
+      },
+      {
+        "value": "miniprogram/miniprogram_npm/**/.wechatide.ib.json",
+        "type": "glob"
+      },
+      {
+        "value": "miniprogram/pages/example/**",
+        "type": "glob"
+      }
+    ],
     "include": []
   },
   "editorSetting": {

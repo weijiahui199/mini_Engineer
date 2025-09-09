@@ -1,9 +1,12 @@
 // 登录页面
+const { canSilentSubscribe, requestSubscribeMessage, recordSubscription, getEngineerTemplateIds } = require('../../utils/wxp');
+
 Page({
   data: {
     agreed: false,
     loading: false,
-    loginType: 'quick'  // 登录类型：quick（快速登录）、guest（游客）
+    loginType: 'quick',  // 登录类型：quick（快速登录）、guest（游客）
+    showSubscribeButton: false  // 是否显示订阅按钮
   },
 
   onLoad() {
@@ -72,6 +75,11 @@ Page({
                 title: '登录成功',
                 icon: 'success'
               });
+              
+              // 检查用户角色，如果是工程师或经理，请求订阅权限
+              if (userInfo.roleGroup === '工程师' || userInfo.roleGroup === '经理') {
+                await this.requestNotificationPermission();
+              }
               
               // 判断是否需要设置用户信息
               setTimeout(() => {
@@ -183,5 +191,86 @@ Page({
     wx.reLaunch({
       url: '/pages/dashboard/index'
     });
+  },
+
+  // 请求通知权限
+  async requestNotificationPermission() {
+    try {
+      const templates = getEngineerTemplateIds();
+      const templateIds = Object.values(templates);
+      
+      // 检查是否可以静默请求
+      const canSilent = await canSilentSubscribe(templateIds);
+      
+      if (canSilent) {
+        // 静默请求订阅
+        const { acceptedTemplateIds } = await requestSubscribeMessage(templateIds, false);
+        
+        if (acceptedTemplateIds.length > 0) {
+          // 构建类型映射
+          const typeMap = {};
+          Object.entries(templates).forEach(([type, templateId]) => {
+            typeMap[templateId] = type;
+          });
+          
+          await recordSubscription(acceptedTemplateIds, typeMap);
+          console.log(`静默订阅成功，订阅了 ${acceptedTemplateIds.length} 个模板`);
+        }
+      } else {
+        // 显示订阅按钮，让用户主动触发
+        this.setData({ showSubscribeButton: true });
+        
+        // 首次提示
+        const hasPrompted = wx.getStorageSync('ENGINEER_SUBSCRIBE_PROMPTED');
+        if (!hasPrompted) {
+          wx.showModal({
+            title: '开启通知',
+            content: '开启通知后，您可以及时收到新工单、取消通知等重要消息',
+            confirmText: '开启',
+            cancelText: '稍后',
+            success: (res) => {
+              if (res.confirm) {
+                this.onSubscribeClick();
+              }
+            }
+          });
+          wx.setStorageSync('ENGINEER_SUBSCRIBE_PROMPTED', true);
+        }
+      }
+    } catch (error) {
+      console.error('订阅请求失败:', error);
+    }
+  },
+  
+  // 用户点击订阅按钮
+  async onSubscribeClick() {
+    const templates = getEngineerTemplateIds();
+    const templateIds = Object.values(templates);
+    
+    const { acceptedTemplateIds, stats } = await requestSubscribeMessage(templateIds, true);
+    
+    if (acceptedTemplateIds.length > 0) {
+      // 构建类型映射
+      const typeMap = {};
+      Object.entries(templates).forEach(([type, templateId]) => {
+        typeMap[templateId] = type;
+      });
+      
+      const result = await recordSubscription(acceptedTemplateIds, typeMap);
+      
+      if (result.success) {
+        wx.showToast({
+          title: `订阅成功(${acceptedTemplateIds.length}个)`,
+          icon: 'success'
+        });
+        
+        this.setData({ showSubscribeButton: false });
+      }
+    } else if (stats.reject > 0) {
+      wx.showToast({
+        title: '您已拒绝订阅',
+        icon: 'none'
+      });
+    }
   }
 });

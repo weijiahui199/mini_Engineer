@@ -1,0 +1,11 @@
+{
+  "navigationBarTitleText": "耗材详情",
+  "usingComponents": {
+    "t-image": "tdesign-miniprogram/image/image",
+    "t-stepper": "tdesign-miniprogram/stepper/stepper",
+    "t-tag": "tdesign-miniprogram/tag/tag",
+    "t-cell": "tdesign-miniprogram/cell/cell",
+    "t-cell-group": "tdesign-miniprogram/cell-group/cell-group",
+    "t-popup": "tdesign-miniprogram/popup/popup"
+  }
+}

@@ -39,8 +39,16 @@ async function checkManagerPermission(openid) {
 exports.main = async (event, context) => {
   const wxContext = cloud.getWXContext()
   
+  console.log('[submitTicket] 收到请求:', {
+    action: event.action,
+    ticketId: event.ticketId,
+    openid: wxContext.OPENID
+  })
+  
   try {
     const { action } = event
+    
+    console.log('[submitTicket] 处理action:', action)
     
     switch (action) {
       case 'submit':
@@ -63,10 +71,25 @@ exports.main = async (event, context) => {
         return await continueTicket(event, wxContext)
       case 'getTicketListByRole':
         return await getTicketListByRole(event, wxContext)
+      case 'addRating':
+        return await addRating(event, wxContext)
+      case 'closeByUser':
+        return await closeTicketByUser(event, wxContext)
+      case 'cancelTicket':
+        return await cancelTicket(event, wxContext)
+      case 'getSubscriptionQuota':
+        return await getSubscriptionQuota(event, wxContext)
+      case 'checkSubscriptionQuota':
+        return await getSubscriptionQuota(event, wxContext)
+      case 'completeTicket':
+        return await completeTicket(event, wxContext)
+      case 'reopenTicket':
+        return await reopenTicket(event, wxContext)
       default:
+        console.error('[submitTicket] 无效的操作类型:', action)
         return {
           code: 400,
-          message: '无效的操作类型'
+          message: `无效的操作类型: ${action}`
         }
     }
   } catch (error) {
@@ -455,7 +478,7 @@ async function updateTicketStatus(event, wxContext) {
   }
   
   // 验证状态值
-  const validStatuses = ['pending', 'processing', 'resolved', 'rated', 'cancelled', 'closed']
+  const validStatuses = ['pending', 'processing', 'resolved', 'cancelled', 'closed']
   if (!validStatuses.includes(status)) {
     return {
       code: 400,
@@ -532,10 +555,9 @@ async function updateTicketStatus(event, wxContext) {
     const allowedTransitions = {
       'pending': ['processing', 'cancelled', 'resolved'], // 允许直接解决
       'processing': ['pending', 'resolved', 'cancelled'], // 允许暂停（回到pending）
-      'resolved': ['rated', 'closed', 'processing'], // 允许重新打开
-      'rated': ['closed'],
+      'resolved': ['closed', 'processing'], // 允许关闭或重新打开
       'cancelled': ['pending'], // 允许重新打开
-      'closed': []
+      'closed': [] // 已关闭不能再转换
     }
     
     if (!allowedTransitions[currentStatus]?.includes(status)) {
@@ -654,10 +676,16 @@ async function updateTicketStatus(event, wxContext) {
 
 // 新增：安全接单方法
 async function acceptTicket(event, wxContext) {
+  console.log('[acceptTicket] 开始处理接单:', {
+    ticketId: event.ticketId,
+    openid: wxContext.OPENID
+  })
+  
   const { ticketId } = event
   const _ = db.command
   
   if (!ticketId) {
+    console.error('[acceptTicket] 工单ID为空')
     return {
       code: 400,
       message: '工单ID不能为空'
@@ -665,8 +693,12 @@ async function acceptTicket(event, wxContext) {
   }
   
   // 首先检查用户权限
+  console.log('[acceptTicket] 检查用户权限...')
   const hasPermission = await checkEngineerPermission(wxContext.OPENID)
+  console.log('[acceptTicket] 用户权限检查结果:', hasPermission)
+  
   if (!hasPermission) {
+    console.error('[acceptTicket] 用户无权限')
     return {
       code: 403,
       message: '只有工程师或经理可以接单'
@@ -731,6 +763,12 @@ async function acceptTicket(event, wxContext) {
       })
       
       await transaction.commit()
+      
+      console.log('[acceptTicket] 接单成功:', {
+        ticketId: ticketId,
+        assigneeOpenid: wxContext.OPENID,
+        assigneeName: operatorName
+      })
       
       return {
         code: 200,
@@ -1063,4 +1101,486 @@ async function continueTicket(event, wxContext) {
       error: error.message
     }
   }
-} 
+}
+
+// ============ 以下是新增的评价、关闭、取消相关函数 ============
+
+// 添加评价函数
+async function addRating(event, wxContext) {
+  const { ticketId, rating } = event
+  const openid = wxContext.OPENID
+  
+  try {
+    // 获取工单信息
+    const ticketRes = await db.collection('tickets').doc(ticketId).get()
+    const ticket = ticketRes.data
+    
+    if (!ticket) {
+      return { code: 404, message: '工单不存在' }
+    }
+    
+    // 验证权限：必须是工单提交者
+    if (ticket.openid !== openid) {
+      return { code: 403, message: '只有工单提交者可以评价' }
+    }
+    
+    // 验证工单状态
+    if (ticket.status !== 'resolved') {
+      return { code: 400, message: '只能评价已解决的工单' }
+    }
+    
+    // 验证是否已评价
+    if (ticket.rating && ticket.rating.ratedAt) {
+      return { code: 400, message: '工单已评价，不能重复评价' }
+    }
+    
+    // 构建评价数据
+    const ratingData = {
+      overall: rating.overall || 5,
+      speed: rating.speed || 5,
+      quality: rating.quality || 5,
+      resolution: rating.resolution || 5,
+      comment: rating.comment || '',
+      ratedAt: new Date(),
+      raterId: openid
+    }
+    
+    // 更新工单评价信息并自动关闭工单
+    await db.collection('tickets').doc(ticketId).update({
+      data: {
+        rating: ratingData,
+        status: 'closed',  // 评价后自动关闭工单
+        closedAt: db.serverDate(),
+        closedBy: openid,
+        closedReason: '用户评价后自动关闭',
+        updateTime: db.serverDate()
+      }
+    })
+    
+    // 记录操作历史 - 包含评价和关闭两个事件
+    await db.collection('tickets').doc(ticketId).update({
+      data: {
+        processHistory: db.command.push([
+          {
+            id: `ph_${Date.now()}`,
+            action: 'rated',
+            operator: '用户',
+            operatorId: openid,
+            description: `评分：${ratingData.overall}星`,
+            timestamp: new Date().toISOString()
+          },
+          {
+            id: `ph_${Date.now() + 1}`,
+            action: 'closed',
+            operator: '系统',
+            operatorId: 'system',
+            description: '评价完成后自动关闭',
+            timestamp: new Date().toISOString()
+          }
+        ])
+      }
+    })
+    
+    return { 
+      code: 200, 
+      message: '评价成功，工单已自动关闭', 
+      data: {
+        ...ratingData,
+        status: 'closed'
+      }
+    }
+  } catch (error) {
+    console.error('评价失败:', error)
+    return { code: 500, message: '评价失败', error: error.message }
+  }
+}
+
+// 用户关闭工单函数
+async function closeTicketByUser(event, wxContext) {
+  const { ticketId, skipRating = false } = event
+  const openid = wxContext.OPENID
+  
+  try {
+    // 获取工单信息
+    const ticketRes = await db.collection('tickets').doc(ticketId).get()
+    const ticket = ticketRes.data
+    
+    if (!ticket) {
+      return { code: 404, message: '工单不存在' }
+    }
+    
+    // 验证权限
+    if (ticket.openid !== openid) {
+      return { code: 403, message: '只有工单提交者可以关闭工单' }
+    }
+    
+    // 验证工单状态
+    if (ticket.status !== 'resolved') {
+      return { code: 400, message: '只能关闭已解决的工单' }
+    }
+    
+    // 如果未评价且不跳过评价，则提示先评价
+    if (!ticket.rating && !skipRating) {
+      return { code: 400, message: '请先评价后再关闭工单' }
+    }
+    
+    // 更新工单状态
+    const updateData = {
+      status: 'closed',
+      closedAt: db.serverDate(),
+      closedBy: openid,
+      closedReason: skipRating ? '用户跳过评价' : '用户确认并评价',
+      updateTime: db.serverDate()
+    }
+    
+    // 如果跳过评价，添加默认评价
+    if (skipRating && !ticket.rating) {
+      updateData.rating = {
+        overall: 5,
+        speed: 5,
+        quality: 5,
+        resolution: 5,
+        comment: '用户未评价',
+        ratedAt: new Date(),
+        isSkipped: true
+      }
+    }
+    
+    await db.collection('tickets').doc(ticketId).update({
+      data: updateData
+    })
+    
+    // 添加历史记录
+    await db.collection('tickets').doc(ticketId).update({
+      data: {
+        processHistory: db.command.push({
+          id: `ph_${Date.now()}`,
+          action: 'closed',
+          operator: '用户',
+          operatorId: openid,
+          description: skipRating ? '用户确认解决（未评价）' : '用户确认解决并已评价',
+          timestamp: new Date().toISOString()
+        })
+      }
+    })
+    
+    return { code: 200, message: '工单已关闭' }
+  } catch (error) {
+    console.error('关闭工单失败:', error)
+    return { code: 500, message: '关闭失败', error: error.message }
+  }
+}
+
+// 用户取消工单函数
+async function cancelTicket(event, wxContext) {
+  const { ticketId, reason } = event
+  const openid = wxContext.OPENID
+  
+  try {
+    // 获取工单信息
+    const ticketRes = await db.collection('tickets').doc(ticketId).get()
+    const ticket = ticketRes.data
+    
+    if (!ticket) {
+      return { code: 404, message: '工单不存在' }
+    }
+    
+    // 验证权限：必须是工单提交者
+    if (ticket.openid !== openid) {
+      return { code: 403, message: '只有工单提交者可以取消' }
+    }
+    
+    // 验证工单状态：只能取消pending或processing状态
+    if (!['pending', 'processing'].includes(ticket.status)) {
+      return { code: 400, message: '该状态的工单不能取消' }
+    }
+    
+    // 更新工单状态
+    await db.collection('tickets').doc(ticketId).update({
+      data: {
+        status: 'cancelled',
+        cancelledAt: db.serverDate(),
+        cancelledBy: openid,
+        cancelReason: reason || '用户取消',
+        updateTime: db.serverDate()
+      }
+    })
+    
+    // 记录操作历史
+    await db.collection('tickets').doc(ticketId).update({
+      data: {
+        processHistory: db.command.push({
+          id: `ph_${Date.now()}`,
+          action: 'cancelled',
+          operator: '用户',
+          operatorId: openid,
+          description: reason || '用户取消工单',
+          timestamp: new Date().toISOString()
+        })
+      }
+    })
+    
+    // 触发取消通知（如果有指派工程师）
+    if (ticket.assigneeOpenid) {
+      cloud.callFunction({
+        name: 'sendNotification',
+        data: {
+          type: 'ticket_cancelled',
+          ticketData: {
+            title: ticket.title,  // 添加标题作为服务项目
+            ticketNo: ticket.ticketNo,
+            assigneeOpenid: ticket.assigneeOpenid,
+            cancelReason: reason
+          }
+        }
+      }).catch(err => {
+        console.log('取消通知发送失败:', err)
+      })
+    }
+    
+    return { code: 200, message: '工单已取消' }
+  } catch (error) {
+    console.error('取消工单失败:', error)
+    return { code: 500, message: '取消失败', error: error.message }
+  }
+}
+
+// 完成工单函数（包装 updateStatus）
+async function completeTicket(event, wxContext) {
+  const { ticketId, solution } = event
+  const openid = wxContext.OPENID
+  
+  try {
+    // 检查工程师权限
+    const hasPermission = await checkEngineerPermission(openid)
+    if (!hasPermission) {
+      return {
+        code: 403,
+        message: '只有工程师或经理可以完成工单'
+      }
+    }
+    
+    // 获取工单信息
+    const ticketRes = await db.collection('tickets').doc(ticketId).get()
+    const ticket = ticketRes.data
+    
+    if (!ticket) {
+      return { code: 404, message: '工单不存在' }
+    }
+    
+    // 检查是否是负责人
+    if (ticket.assigneeOpenid !== openid) {
+      // 检查是否是经理
+      const isManager = await checkManagerPermission(openid)
+      if (!isManager) {
+        return { code: 403, message: '只有工单负责人或经理可以完成工单' }
+      }
+    }
+    
+    // 检查工单状态
+    if (!['pending', 'processing'].includes(ticket.status)) {
+      return { code: 400, message: '只能完成待处理或处理中的工单' }
+    }
+    
+    // 获取操作者信息
+    const userResult = await db.collection('users').where({
+      openid: openid
+    }).limit(1).get()
+    
+    const operatorName = userResult.data[0]?.nickName || ticket.assigneeName || '工程师'
+    
+    // 使用 updateStatus 更新为 resolved
+    const updateData = {
+      status: 'resolved',
+      resolveTime: db.serverDate(),
+      updateTime: db.serverDate()
+    }
+    
+    // 如果提供了解决方案，添加到更新数据中
+    if (solution) {
+      updateData.solution = solution
+    }
+    
+    // 创建解决历史记录
+    const resolveHistory = {
+      id: `ph_${Date.now()}`,
+      action: 'resolved',
+      operator: operatorName,
+      operatorId: openid,
+      timestamp: new Date().toISOString(),
+      description: '工单已解决',
+      reason: null,
+      solution: solution || null
+    }
+    
+    // 更新工单
+    await db.collection('tickets').doc(ticketId).update({
+      data: {
+        ...updateData,
+        processHistory: db.command.push(resolveHistory)
+      }
+    })
+    
+    // 触发新工单通知给所有工程师（标记为resolved时通知）
+    try {
+      await cloud.callFunction({
+        name: 'sendNotification',
+        data: {
+          type: 'new_ticket',
+          ticketData: {
+            ...ticket,
+            _id: ticketId,
+            title: ticket.title,
+            ticketNo: ticket.ticketNo,
+            submitterName: ticket.submitterName,
+            phone: ticket.phone,
+            location: ticket.location,
+            company: ticket.company,
+            solution: solution
+          }
+        }
+      })
+    } catch (notifyError) {
+      console.log('通知发送失败，但不影响主流程:', notifyError)
+    }
+    
+    return {
+      code: 200,
+      message: '工单已标记为解决',
+      data: {
+        status: 'resolved',
+        solution: solution
+      }
+    }
+  } catch (error) {
+    console.error('完成工单失败:', error)
+    return {
+      code: 500,
+      message: '完成工单失败',
+      error: error.message
+    }
+  }
+}
+
+// 重新打开工单函数（包装 updateStatus）
+async function reopenTicket(event, wxContext) {
+  const { ticketId, reason } = event
+  const openid = wxContext.OPENID
+  
+  try {
+    // 检查工程师权限
+    const hasPermission = await checkEngineerPermission(openid)
+    if (!hasPermission) {
+      return {
+        code: 403,
+        message: '只有工程师或经理可以重新打开工单'
+      }
+    }
+    
+    // 获取工单信息
+    const ticketRes = await db.collection('tickets').doc(ticketId).get()
+    const ticket = ticketRes.data
+    
+    if (!ticket) {
+      return { code: 404, message: '工单不存在' }
+    }
+    
+    // 检查是否是负责人
+    if (ticket.assigneeOpenid !== openid) {
+      // 检查是否是经理
+      const isManager = await checkManagerPermission(openid)
+      if (!isManager) {
+        return { code: 403, message: '只有工单负责人或经理可以重新打开工单' }
+      }
+    }
+    
+    // 检查工单状态 - 只有 resolved 状态可以重新打开
+    if (ticket.status !== 'resolved') {
+      return { code: 400, message: '只能重新打开已解决的工单' }
+    }
+    
+    // 获取操作者信息
+    const userResult = await db.collection('users').where({
+      openid: openid
+    }).limit(1).get()
+    
+    const operatorName = userResult.data[0]?.nickName || ticket.assigneeName || '工程师'
+    
+    // 创建重新打开历史记录
+    const reopenHistory = {
+      id: `ph_${Date.now()}`,
+      action: 'reopened',
+      operator: operatorName,
+      operatorId: openid,
+      timestamp: new Date().toISOString(),
+      description: '重新打开工单',
+      reason: reason || '需要进一步处理'
+    }
+    
+    // 更新工单状态为 processing
+    await db.collection('tickets').doc(ticketId).update({
+      data: {
+        status: 'processing',
+        reopenTime: db.serverDate(),
+        updateTime: db.serverDate(),
+        processHistory: db.command.push(reopenHistory)
+      }
+    })
+    
+    return {
+      code: 200,
+      message: '工单已重新打开',
+      data: {
+        status: 'processing'
+      }
+    }
+  } catch (error) {
+    console.error('重新打开工单失败:', error)
+    return {
+      code: 500,
+      message: '重新打开工单失败',
+      error: error.message
+    }
+  }
+}
+
+// 查询当前用户的订阅配额（未使用数量），供工程师端订阅提醒使用
+async function getSubscriptionQuota(event, wxContext) {
+  try {
+    const where = {
+      openid: wxContext.OPENID,
+      used: false
+    }
+
+    // 总剩余配额
+    const countResult = await db.collection('user_subscriptions').where(where).count()
+
+    // 可选：按类型的明细（限制最多取前100条做统计，避免过大数据量）
+    let breakdown = {}
+    if (countResult.total > 0) {
+      const limit = Math.min(100, countResult.total)
+      const listRes = await db.collection('user_subscriptions')
+        .where(where)
+        .limit(limit)
+        .get()
+      listRes.data.forEach(rec => {
+        const t = rec.type || 'unknown'
+        breakdown[t] = (breakdown[t] || 0) + 1
+      })
+    }
+
+    return {
+      code: 200,
+      message: '查询成功',
+      quota: countResult.total || 0,
+      breakdown
+    }
+  } catch (error) {
+    console.error('查询订阅配额失败:', error)
+    return {
+      code: 500,
+      message: '查询订阅配额失败',
+      error: error.message
+    }
+  }
+}

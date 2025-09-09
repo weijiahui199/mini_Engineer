@@ -321,6 +321,32 @@
   z-index: 9999;
 }
 
+/* 订阅通知区域 */
+.subscribe-section {
+  margin-top: 30rpx;
+  padding: 20rpx;
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.1), rgba(34, 211, 238, 0.1));
+  border-radius: 20rpx;
+  text-align: center;
+}
+
+.subscribe-btn {
+  background: linear-gradient(135deg, #0ea5e9, #22d3ee);
+  color: white;
+  border: none;
+  border-radius: 25rpx;
+  padding: 10rpx 30rpx;
+  font-size: 28rpx;
+  margin-bottom: 10rpx;
+}
+
+.subscribe-tips {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.7);
+  display: block;
+  margin-top: 10rpx;
+}
+
 /* 响应式适配 */
 @media (max-height: 667px) {
   .logo-wrapper {

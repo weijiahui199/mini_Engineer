@@ -49,9 +49,9 @@ Page({
     statusText: {
       pending: '待处理',
       processing: '处理中',
-      resolved: '已解决',
+      resolved: '待用户确认',  // 修改：明确提示等待用户确认
       cancelled: '已取消',
-      closed: '已关闭',
+      closed: '已完成',       // 修改：已完成更清晰
       paused: '已暂停'
     },
     

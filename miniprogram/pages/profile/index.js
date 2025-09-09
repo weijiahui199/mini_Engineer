@@ -4,6 +4,7 @@ const avatarManager = require('../../utils/avatar-manager');
 const UserCache = require('../../utils/user-cache');
 const RefreshManager = require('../../utils/refresh-manager');
 const NetworkHandler = require('../../utils/network-handler');
+const { getDisplayUrl } = require('../../utils/display-url');
 
 Page({
   data: {
@@ -200,45 +201,8 @@ Page({
         return;
       }
       
-      // 实现三级头像优先级
-      let avatarUrl = '';
-      
-      // 1. 优先使用本地缓存的非默认头像
-      if (userInfo.localAvatar && !userInfo.localAvatar.includes('thirdwx.qlogo.cn')) {
-        avatarUrl = userInfo.localAvatar;
-        console.log('[Profile.loadUserInfo] 使用本地缓存头像:', avatarUrl);
-      }
-      // 2. 如果没有本地缓存但有云存储头像，尝试下载并缓存
-      else if (userInfo.avatar && userInfo.avatar.startsWith('cloud://')) {
-        console.log('[Profile.loadUserInfo] 检测到云存储头像，尝试获取本地缓存或下载');
-        // 如果UserCache没有自动下载（比如是刷新场景），这里手动下载
-        if (!userInfo.localAvatar || userInfo.localAvatar.includes('thirdwx.qlogo.cn')) {
-          console.log('[Profile.loadUserInfo] 本地无有效缓存，开始下载云存储头像');
-          const localPath = await UserCache.downloadAndCacheAvatar(userInfo.avatar);
-          if (localPath) {
-            avatarUrl = localPath;
-            console.log('[Profile.loadUserInfo] 云存储头像已下载到本地:', localPath);
-          } else {
-            // 下载失败，使用云存储URL（会触发临时链接获取）
-            avatarUrl = userInfo.avatar;
-            console.log('[Profile.loadUserInfo] 下载失败，使用云存储URL');
-          }
-        } else {
-          avatarUrl = userInfo.localAvatar;
-          console.log('[Profile.loadUserInfo] 使用已缓存的云存储头像');
-        }
-      }
-      // 3. 都没有则使用默认
-      else {
-        avatarUrl = userInfo.avatar || '';
-        console.log('[Profile.loadUserInfo] 使用默认头像或空');
-      }
-      
-      // 如果有版本号，添加版本参数解决缓存问题
-      if (avatarUrl && userInfo.avatarVersion) {
-        const separator = avatarUrl.includes('?') ? '&' : '?';
-        avatarUrl = `${avatarUrl}${separator}v=${userInfo.avatarVersion}`;
-      }
+      // 统一：使用 UserCache.getDisplayAvatarUrl 计算展示头像
+      const avatarUrl = await UserCache.getDisplayAvatarUrl(userInfo);
       
       console.log('[Profile.loadUserInfo] 决定使用的头像URL:', avatarUrl);
       console.log('[Profile.loadUserInfo] - localAvatar:', userInfo.localAvatar);
@@ -506,9 +470,9 @@ Page({
         throw new Error(updateRes.result?.message || '数据库更新失败');
       }
 
-      // 获取带版本号的头像URL
+      // 获取带版本号的头像URL（使用统一工具函数）
       const avatarVersion = updateRes.result.data?.avatarVersion || Date.now();
-      const avatarUrlWithVersion = `${uploadRes.fileID}?v=${avatarVersion}`;
+      const avatarUrlWithVersion = await getDisplayUrl(uploadRes.fileID, avatarVersion);
       
       // 更新本地缓存（包含版本号）
       const userInfo = wx.getStorageSync('userInfo') || {};
@@ -520,6 +484,11 @@ Page({
       app.globalData.userInfo.avatar = uploadRes.fileID;
       app.globalData.userInfo.avatarVersion = avatarVersion;
       
+      // 即时更新页面显示（使用临时URL）
+      if (avatarUrlWithVersion) {
+        this.setData({ 'userInfo.avatar': avatarUrlWithVersion });
+      }
+
       // 更新头像缓存并触发全局事件
       const UserCache = require('../../utils/user-cache');
       await UserCache.updateAvatarCache(uploadRes.fileID);

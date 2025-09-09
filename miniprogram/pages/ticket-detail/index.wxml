@@ -225,19 +225,13 @@
       </button>
     </view>
     
-    <!-- 已解决状态 -->
+    <!-- 已解决状态 - 只显示重新处理按钮，工单会在用户评价后自动关闭 -->
     <view wx:elif="{{ticketInfo.status === 'resolved' && isAssignee}}" class="action-group">
       <button 
         class="custom-action-btn btn-reopen"
         bindtap="reopenTicket"
       >
         重新处理
-      </button>
-      <button 
-        class="custom-action-btn btn-close"
-        bindtap="closeTicket"
-      >
-        关闭工单
       </button>
     </view>
     

@@ -1,8 +1,8 @@
 // 耗材列表页面
 const app = getApp()
-const MATERIAL_CATEGORIES = require('../../config/material-categories')
-const CacheManager = require('../../utils/cache-manager')
-const RefreshManager = require('../../utils/refresh-manager')
+const MATERIAL_CATEGORIES = require('../config/material-categories')
+const CacheManager = require('../../../utils/cache-manager')
+const RefreshManager = require('../../../utils/refresh-manager')
 
 // 友好的错误提示文案
 const ERROR_MESSAGES = {

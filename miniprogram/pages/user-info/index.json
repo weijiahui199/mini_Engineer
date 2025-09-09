@@ -1,6 +1,0 @@
-{
-  "navigationBarTitleText": "编辑个人信息",
-  "usingComponents": {
-    "t-toast": "tdesign-miniprogram/toast/toast"
-  }
-}

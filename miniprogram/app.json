@@ -5,12 +5,30 @@
     "pages/dashboard/index",
     "pages/ticket-list/index",
     "pages/ticket-detail/index",
-    "pages/profile/index",
-    "pages/user-info/index",
-    "pages/material-list/index",
-    "pages/material-detail/index",
-    "pages/material-cart/index"
+    "pages/profile/index"
   ],
+  "subpackages": [
+    {
+      "root": "packages/materials",
+      "pages": [
+        "material-list/index",
+        "material-detail/index",
+        "material-cart/index"
+      ]
+    },
+    {
+      "root": "packages/profile",
+      "pages": [
+        "user-info/index"
+      ]
+    }
+  ],
+  "preloadRule": {
+    "pages/dashboard/index": {
+      "packages": ["packages/materials", "packages/profile"],
+      "network": "all"
+    }
+  },
   "window": {
     "backgroundTextStyle": "light",
     "navigationBarBackgroundColor": "#0ea5e9",
@@ -46,37 +64,9 @@
   },
   "usingComponents": {
     "t-button": "miniprogram_npm/tdesign-miniprogram/button/button",
-    "t-icon": "miniprogram_npm/tdesign-miniprogram/icon/icon",
-    "t-cell": "miniprogram_npm/tdesign-miniprogram/cell/cell",
-    "t-cell-group": "miniprogram_npm/tdesign-miniprogram/cell-group/cell-group",
-    "t-tag": "miniprogram_npm/tdesign-miniprogram/tag/tag",
-    "t-search": "miniprogram_npm/tdesign-miniprogram/search/search",
-    "t-tabs": "miniprogram_npm/tdesign-miniprogram/tabs/tabs",
-    "t-tab-panel": "miniprogram_npm/tdesign-miniprogram/tab-panel/tab-panel",
-    "t-swipe-cell": "miniprogram_npm/tdesign-miniprogram/swipe-cell/swipe-cell",
-    "t-popup": "miniprogram_npm/tdesign-miniprogram/popup/popup",
-    "t-dialog": "miniprogram_npm/tdesign-miniprogram/dialog/dialog",
     "t-toast": "miniprogram_npm/tdesign-miniprogram/toast/toast",
     "t-loading": "miniprogram_npm/tdesign-miniprogram/loading/loading",
-    "t-empty": "miniprogram_npm/tdesign-miniprogram/empty/empty",
-    "t-fab": "miniprogram_npm/tdesign-miniprogram/fab/fab",
-    "t-picker": "miniprogram_npm/tdesign-miniprogram/picker/picker",
-    "t-input": "miniprogram_npm/tdesign-miniprogram/input/input",
-    "t-textarea": "miniprogram_npm/tdesign-miniprogram/textarea/textarea",
-    "t-checkbox": "miniprogram_npm/tdesign-miniprogram/checkbox/checkbox",
-    "t-checkbox-group": "miniprogram_npm/tdesign-miniprogram/checkbox-group/checkbox-group",
-    "t-radio": "miniprogram_npm/tdesign-miniprogram/radio/radio",
-    "t-radio-group": "miniprogram_npm/tdesign-miniprogram/radio-group/radio-group",
-    "t-switch": "miniprogram_npm/tdesign-miniprogram/switch/switch",
-    "t-slider": "miniprogram_npm/tdesign-miniprogram/slider/slider",
-    "t-stepper": "miniprogram_npm/tdesign-miniprogram/stepper/stepper",
-    "t-progress": "miniprogram_npm/tdesign-miniprogram/progress/progress",
-    "t-grid": "miniprogram_npm/tdesign-miniprogram/grid/grid",
-    "t-grid-item": "miniprogram_npm/tdesign-miniprogram/grid-item/grid-item",
-    "t-navbar": "miniprogram_npm/tdesign-miniprogram/navbar/navbar",
-    "t-notice-bar": "miniprogram_npm/tdesign-miniprogram/notice-bar/notice-bar",
-    "t-avatar": "miniprogram_npm/tdesign-miniprogram/avatar/avatar",
-    "t-badge": "miniprogram_npm/tdesign-miniprogram/badge/badge"
+    "t-empty": "miniprogram_npm/tdesign-miniprogram/empty/empty"
   },
   "lazyCodeLoading": "requiredComponents",
   "sitemapLocation": "sitemap.json"

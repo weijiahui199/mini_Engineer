@@ -1,6 +1,6 @@
 // 个人信息编辑页面
-const UserCache = require('../../utils/user-cache');
-const avatarManager = require('../../utils/avatar-manager');
+const UserCache = require('../../../utils/user-cache');
+const avatarManager = require('../../../utils/avatar-manager');
 import Toast from 'tdesign-miniprogram/toast/index';
 
 Page({
@@ -48,11 +48,16 @@ Page({
    * 处理头像更新事件
    * @param {Object} data 更新数据
    */
-  handleAvatarUpdate(data) {
+  async handleAvatarUpdate(data) {
     console.log('[UserInfo] 收到头像更新通知:', data);
     
-    // 优先使用本地路径，其次是临时URL，最后是文件ID
-    const avatarUrl = data.localPath || data.tempUrl || data.fileID;
+    // 优先使用本地路径，其次是临时URL；若只有 fileID 则转换为临时URL
+    let avatarUrl = data.localPath || data.tempUrl || '';
+    if (!avatarUrl && data.fileID) {
+      const { getDisplayUrl } = require('../../utils/display-url');
+      avatarUrl = await getDisplayUrl(data.fileID);
+      if (!avatarUrl) console.warn('[UserInfo] 获取头像展示URL失败，使用空兜底');
+    }
     
     if (avatarUrl) {
       // 更新页面显示
@@ -108,13 +113,16 @@ Page({
         'busy': '忙碌'
       };
 
+      // 统一：使用 UserCache.getDisplayAvatarUrl 计算展示头像
+      const displayAvatar = await UserCache.getDisplayAvatarUrl(userInfo);
+
       this.setData({
         userInfo: {
           nickName: userInfo.nickName || '',
           department: userInfo.department || '',
           phone: userInfo.phone || '',
           email: userInfo.email || '',
-          avatar: userInfo.localAvatar || userInfo.avatar || '',
+          avatar: displayAvatar,
           status: userInfo.status || 'online',
           roleGroup: userInfo.roleGroup || '用户'
         },

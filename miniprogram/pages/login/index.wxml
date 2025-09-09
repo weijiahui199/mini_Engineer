@@ -57,6 +57,19 @@
           </label>
         </checkbox-group>
       </view>
+
+      <!-- 订阅通知按钮（仅工程师/经理显示） -->
+      <view class="subscribe-section" wx:if="{{showSubscribeButton}}">
+        <button 
+          class="subscribe-btn"
+          bindtap="onSubscribeClick"
+          type="primary"
+          size="mini"
+        >
+          <text>开启消息通知</text>
+        </button>
+        <text class="subscribe-tips">开启后可及时收到工单通知</text>
+      </view>
     </view>
 
     <!-- 底部信息 -->

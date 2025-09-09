@@ -1,6 +1,12 @@
 {
+  "scripts": {
+    "compress:icons": "node scripts/compress-icons.js"
+  },
   "dependencies": {
     "fuse.js": "^7.1.0",
     "tdesign-miniprogram": "^1.10.0"
+  },
+  "devDependencies": {
+    "pngquant-bin": "^7.0.1"
   }
 }

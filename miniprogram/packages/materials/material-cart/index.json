@@ -1,0 +1,20 @@
+{
+  "navigationBarTitleText": "申领车",
+  "navigationBarBackgroundColor": "#4A8DD4",
+  "navigationBarTextStyle": "white",
+  "backgroundColor": "#f3f3f3",
+  "disableScroll": true,
+  "usingComponents": {
+    "t-swipe-cell": "tdesign-miniprogram/swipe-cell/swipe-cell",
+    "t-stepper": "tdesign-miniprogram/stepper/stepper",
+    "t-image": "tdesign-miniprogram/image/image",
+    "t-cell": "tdesign-miniprogram/cell/cell",
+    "t-tag": "tdesign-miniprogram/tag/tag",
+    "t-textarea": "tdesign-miniprogram/textarea/textarea",
+    "t-notice-bar": "tdesign-miniprogram/notice-bar/notice-bar",
+    "t-popup": "tdesign-miniprogram/popup/popup",
+    "t-search": "tdesign-miniprogram/search/search",
+    "t-tabs": "tdesign-miniprogram/tabs/tabs",
+    "t-tab-panel": "tdesign-miniprogram/tab-panel/tab-panel"
+  }
+}

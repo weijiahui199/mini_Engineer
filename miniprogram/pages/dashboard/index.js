@@ -367,18 +367,22 @@ Page({
           
           try {
             console.log('[Dashboard acceptTicket] 准备调用云函数...');
-            console.log('[Dashboard acceptTicket] 云函数参数:', {
+            const cloudParams = {
               action: 'acceptTicket',
               ticketId: ticketId
+            };
+            console.log('[Dashboard acceptTicket] 云函数参数:', cloudParams);
+            console.log('[Dashboard acceptTicket] 云函数参数类型:', {
+              actionType: typeof cloudParams.action,
+              actionValue: cloudParams.action,
+              ticketIdType: typeof cloudParams.ticketId,
+              ticketIdValue: cloudParams.ticketId
             });
             
             // 使用云函数接单
             const result = await wx.cloud.callFunction({
               name: 'submitTicket',
-              data: {
-                action: 'acceptTicket',
-                ticketId: ticketId
-              }
+              data: cloudParams
             });
             
             console.log('[Dashboard acceptTicket] 云函数完整返回:', result);
@@ -615,14 +619,14 @@ Page({
         throw new Error(updateRes.result?.message || '数据库更新失败');
       }
 
-      // 获取带版本号的头像URL
+      // 获取带版本号的头像URL（使用工具函数统一处理）
       const avatarVersion = updateRes.result.data?.avatarVersion || Date.now();
-      const avatarUrlWithVersion = `${uploadRes.fileID}?v=${avatarVersion}`;
+      const avatarUrlWithVersion = await getDisplayUrl(uploadRes.fileID, avatarVersion);
 
-      // 更新本地显示（带版本号）
-      this.setData({
-        'engineerInfo.avatar': avatarUrlWithVersion
-      });
+      // 更新本地显示（带版本号的临时URL）
+      if (avatarUrlWithVersion) {
+        this.setData({ 'engineerInfo.avatar': avatarUrlWithVersion });
+      }
 
       // 更新缓存（包含版本号）
       const userInfo = wx.getStorageSync('userInfo') || {};
@@ -707,45 +711,8 @@ Page({
         status: 'processing'
       }).count();
       
-      // 实现三级头像优先级
-      let avatarUrl = '';
-      
-      // 1. 优先使用本地缓存的非默认头像
-      if (userInfo.localAvatar && !userInfo.localAvatar.includes('thirdwx.qlogo.cn')) {
-        avatarUrl = userInfo.localAvatar;
-        console.log('[Dashboard.loadUserInfo] 使用本地缓存头像:', avatarUrl);
-      }
-      // 2. 如果没有本地缓存但有云存储头像，尝试下载并缓存
-      else if (userInfo.avatar && userInfo.avatar.startsWith('cloud://')) {
-        console.log('[Dashboard.loadUserInfo] 检测到云存储头像，尝试获取本地缓存或下载');
-        // 如果UserCache没有自动下载（比如是刷新场景），这里手动下载
-        if (!userInfo.localAvatar || userInfo.localAvatar.includes('thirdwx.qlogo.cn')) {
-          console.log('[Dashboard.loadUserInfo] 本地无有效缓存，开始下载云存储头像');
-          const localPath = await UserCache.downloadAndCacheAvatar(userInfo.avatar);
-          if (localPath) {
-            avatarUrl = localPath;
-            console.log('[Dashboard.loadUserInfo] 云存储头像已下载到本地:', localPath);
-          } else {
-            // 下载失败，使用云存储URL
-            avatarUrl = userInfo.avatar;
-            console.log('[Dashboard.loadUserInfo] 下载失败，使用云存储URL');
-          }
-        } else {
-          avatarUrl = userInfo.localAvatar;
-          console.log('[Dashboard.loadUserInfo] 使用已缓存的云存储头像');
-        }
-      }
-      // 3. 都没有则使用默认
-      else {
-        avatarUrl = userInfo.avatar || '';
-        console.log('[Dashboard.loadUserInfo] 使用默认头像或空');
-      }
-      
-      // 如果有版本号，添加版本参数解决缓存问题
-      if (avatarUrl && userInfo.avatarVersion) {
-        const separator = avatarUrl.includes('?') ? '&' : '?';
-        avatarUrl = `${avatarUrl}${separator}v=${userInfo.avatarVersion}`;
-      }
+      // 统一：使用 UserCache.getDisplayAvatarUrl 计算展示头像
+      const avatarUrl = await UserCache.getDisplayAvatarUrl(userInfo);
       
       console.log('[Dashboard.loadUserInfo] 最终决定使用的头像URL:', avatarUrl);
       

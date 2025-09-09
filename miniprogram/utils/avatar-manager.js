@@ -74,12 +74,16 @@ class AvatarManager {
       wx.setStorageSync('userInfo', userInfo);
 
       console.log('[AvatarManager] 头像更新成功:', uploadRes.fileID, '版本:', avatarVersion);
+
+      // 生成用于展示的临时URL（统一工具函数，带版本参数）
+      const { getDisplayUrl } = require('./display-url');
+      const displayUrl = await getDisplayUrl(uploadRes.fileID, avatarVersion);
       
       return {
         success: true,
         fileID: uploadRes.fileID,
         avatarVersion: avatarVersion,
-        avatarUrlWithVersion: `${uploadRes.fileID}?v=${avatarVersion}`
+        avatarUrlWithVersion: displayUrl
       };
 
     } catch (error) {

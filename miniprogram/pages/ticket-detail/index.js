@@ -500,8 +500,10 @@ Page({
             
             if (cloudResult.result && cloudResult.result.code === 200) {
               wx.hideLoading();
+              
+              // 先显示成功提示
               wx.showToast({
-                title: '工单已完成',
+                title: '已标记解决',
                 icon: 'success',
                 duration: 2000
               });
@@ -512,9 +514,17 @@ Page({
                 'ticketInfo.solution': solution
               });
               
-              // 延迟返回上一页
+              // 延迟后显示等待用户确认的提示
               setTimeout(() => {
-                wx.navigateBack();
+                wx.showModal({
+                  title: '提示',
+                  content: '工单已标记为解决状态，等待用户确认并评价',
+                  showCancel: false,
+                  confirmText: '知道了',
+                  success: () => {
+                    wx.navigateBack();
+                  }
+                });
               }, 2000);
             } else {
               throw new Error(cloudResult.result?.message || '云函数更新失败');
@@ -577,14 +587,27 @@ Page({
           try {
             const userInfo = this.app.globalData.userInfo;
             
+            console.log('[ticket-detail acceptTicket] 准备调用云函数...');
+            const cloudParams = {
+              action: 'acceptTicket',
+              ticketId: ticketId
+            };
+            console.log('[ticket-detail acceptTicket] 云函数参数:', cloudParams);
+            console.log('[ticket-detail acceptTicket] 云函数参数类型:', {
+              actionType: typeof cloudParams.action,
+              actionValue: cloudParams.action,
+              ticketIdType: typeof cloudParams.ticketId,
+              ticketIdValue: cloudParams.ticketId
+            });
+            
             // 使用云函数接单
             const result = await wx.cloud.callFunction({
               name: 'submitTicket',
-              data: {
-                action: 'acceptTicket',
-                ticketId: ticketId
-              }
+              data: cloudParams
             });
+            
+            console.log('[ticket-detail acceptTicket] 云函数返回:', result);
+            console.log('[ticket-detail acceptTicket] result.result:', result.result);
             
             if (result.result && result.result.code === 200) {
               wx.hideLoading();
@@ -616,6 +639,12 @@ Page({
             }
           } catch (error) {
             console.error('[acceptTicket] 错误:', error);
+            console.error('[acceptTicket] 错误详情:', {
+              message: error.message,
+              stack: error.stack,
+              errCode: error.errCode,
+              errMsg: error.errMsg
+            });
             wx.hideLoading();
             wx.showToast({ title: '处理失败', icon: 'error' });
           }

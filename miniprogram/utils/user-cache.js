@@ -381,26 +381,13 @@ class UserCache {
       
       console.log('[UserCache.downloadAndCacheAvatar] 开始下载云存储头像:', cloudFileID);
       
-      // 获取临时URL
-      const tempUrlResult = await wx.cloud.getTempFileURL({
-        fileList: [cloudFileID]
+      // 直接使用云能力下载文件，避免域名白名单限制
+      const downloadResult = await wx.cloud.downloadFile({
+        fileID: cloudFileID
       });
       
-      if (!tempUrlResult.fileList || tempUrlResult.fileList.length === 0) {
-        console.error('[UserCache.downloadAndCacheAvatar] 获取临时URL失败');
-        return null;
-      }
-      
-      const tempUrl = tempUrlResult.fileList[0].tempFileURL;
-      console.log('[UserCache.downloadAndCacheAvatar] 获取到临时URL:', tempUrl);
-      
-      // 下载文件
-      const downloadResult = await wx.downloadFile({
-        url: tempUrl
-      });
-      
-      if (downloadResult.statusCode !== 200) {
-        console.error('[UserCache.downloadAndCacheAvatar] 下载失败，状态码:', downloadResult.statusCode);
+      if (!downloadResult || !downloadResult.tempFilePath) {
+        console.error('[UserCache.downloadAndCacheAvatar] 下载失败，未获取到临时路径');
         return null;
       }
       
@@ -424,7 +411,7 @@ class UserCache {
         app.eventBus.emit(app.EVENTS.AVATAR_UPDATED, {
           fileID: cloudFileID,
           localPath: savedFile.savedFilePath,
-          tempUrl: tempUrl,
+          tempUrl: '',
           timestamp: Date.now(),
           source: 'UserCache.download'
         });
@@ -433,8 +420,57 @@ class UserCache {
       
       return savedFile.savedFilePath;
     } catch (error) {
-      console.error('[UserCache.downloadAndCacheAvatar] 下载头像失败:', error);
+      console.error('[UserCache.downloadAndCacheAvatar] 下载头像失败，尝试使用临时链接回退方案:', error);
+      // 回退方案：通过临时URL下载并保存（与 cacheAvatar 内逻辑一致）
+      try {
+        const localPath = await this.cacheAvatar(cloudFileID);
+        if (localPath) {
+          console.log('[UserCache.downloadAndCacheAvatar] 回退方案成功，已缓存到本地:', localPath);
+          return localPath;
+        }
+      } catch (fallbackError) {
+        console.error('[UserCache.downloadAndCacheAvatar] 回退方案失败:', fallbackError);
+      }
       return null;
+    }
+  }
+
+  /**
+   * 统一计算用于展示的头像URL（三级优先级 + 回退 + 版本参数）
+   * 1) 本地缓存头像（非微信默认头像）优先
+   * 2) 其后尝试下载云存储头像到本地，失败则使用临时URL
+   * 3) 否则返回用户信息中的头像字段
+   * 返回适合 <image> 使用的URL或本地路径
+   * @param {Object} userInfo
+   * @returns {Promise<string>}
+   */
+  static async getDisplayAvatarUrl(userInfo) {
+    try {
+      if (!userInfo) return '';
+
+      // 1. 本地缓存优先（且排除微信默认头像）
+      if (userInfo.localAvatar && !String(userInfo.localAvatar).includes('thirdwx.qlogo.cn')) {
+        return userInfo.localAvatar;
+      }
+
+      const avatar = userInfo.avatar || '';
+      const version = userInfo.avatarVersion;
+
+      // 2. 云存储头像：优先尝试下载本地缓存，失败则使用临时URL
+      if (avatar && String(avatar).startsWith('cloud://')) {
+        const localPath = await this.downloadAndCacheAvatar(avatar);
+        if (localPath) return localPath;
+        // 失败兜底：使用临时URL（附带版本）
+        const { getDisplayUrl } = require('./display-url');
+        return await getDisplayUrl(avatar, version);
+      }
+
+      // 3. 其它路径（http/https/wxfile等）：按需附加版本
+      const { getDisplayUrl } = require('./display-url');
+      return await getDisplayUrl(avatar, version);
+    } catch (e) {
+      console.warn('[UserCache.getDisplayAvatarUrl] 生成展示头像URL失败:', e);
+      return '';
     }
   }
 }
